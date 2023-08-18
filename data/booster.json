@@ -1,0 +1,86 @@
+{
+  "spreadsheet": "Copy of B2B order",
+  "sheet_id": 1683225420,
+    "items": [
+      {
+        "name": "id",
+        "row": 0,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "email",
+        "row": 1,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "name",
+        "row": 2,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "phone",
+        "row": 3,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "bank",
+        "row": 4,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "bankcard",
+        "row": 5,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "binance",
+        "row": 6,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "telegram",
+        "row": 7,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "discord",
+        "row": 8,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "is_verified",
+        "row": 9,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "bool"
+      }
+    ]
+  }

@@ -1,0 +1,115 @@
+import typing
+
+from beanie import PydanticObjectId
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi_users import exceptions
+from fastapi_users.router import ErrorCode
+from starlette import status
+from starlette.requests import Request
+from starlette.responses import Response
+
+from app.core.enums import RouteTag
+from app.services.auth import service as auth_service
+from app.services.sheets import flows as sheets_flows
+from app.services.accounting import service as accounting_service
+from app.services.accounting import models as accounting_models
+from app.services.search import service as search_service
+from app.services.orders import flows as orders_flows
+from app.services.orders import service as orders_service
+from app.services.permissions import service as permissions_service
+
+router = APIRouter(prefix="/users", tags=[RouteTag.USERS])
+
+
+@router.get("/{user_id}", response_model=auth_service.models.UserRead)
+async def get_me(user=Depends(auth_service.resolve_user)):
+    return auth_service.models.UserRead.model_validate(user)
+
+
+@router.patch("/{user_id}", response_model=auth_service.models.UserRead)
+async def update_user(user_update: auth_service.models.UserUpdate, request: Request,
+                      user=Depends(auth_service.resolve_user),
+                      user_manager: auth_service.UserManager = Depends(auth_service.get_user_manager)):
+    try:
+        user = await user_manager.update(
+            user_update, user, safe=False, request=request
+        )
+        return auth_service.models.UserRead.model_validate(user, from_attributes=True)
+    except exceptions.InvalidPasswordException as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": ErrorCode.UPDATE_USER_INVALID_PASSWORD,
+                "reason": e.reason,
+            },
+        )
+    except exceptions.UserAlreadyExists:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=ErrorCode.UPDATE_USER_EMAIL_ALREADY_EXISTS,
+        )
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
+               dependencies=[Depends(auth_service.current_active_superuser)])
+async def delete_user(
+        user=Depends(auth_service.resolve_user),
+        user_manager: auth_service.UserManager = Depends(auth_service.get_user_manager)
+):
+    await user_manager.delete(user)
+    return None
+
+
+@router.post("/{user_id}/add-google-token", status_code=200,
+             dependencies=[Depends(auth_service.current_active_superuser)])
+async def add_google_token(file: UploadFile, user=Depends(auth_service.resolve_user)):
+    token = auth_service.models.AdminGoogleToken.model_validate_json(await file.read())
+    if user.google:
+        sheets_flows.GoogleSheetsServiceManager.admin_delete(user.google.client_id)
+    user.google = token
+    await user.save_changes()
+    sheets_flows.GoogleSheetsServiceManager.admin_create(user)
+
+
+@router.post("/{user_id}/generate-api-token",
+             dependencies=[Depends(auth_service.current_active_superuser)])
+async def generate_api_token(
+        user=Depends(auth_service.resolve_user),
+        strategy=Depends(auth_service.auth_backend_api.get_strategy)):
+    response = await auth_service.auth_backend_api.login(strategy, user)
+    return response
+
+
+@router.get("/{user_id}/orders",
+            response_model=search_service.models.Paginated[
+                typing.Union[orders_service.schemas.OrderRead, orders_service.schemas.OrderReadUser]
+            ]
+            )
+async def get_user_orders(
+        paging: search_service.models.PaginationParams = Depends(),
+        sorting: search_service.models.OrderSortingParams = Depends(),
+        user=Depends(auth_service.resolve_user)
+):
+    query = [accounting_models.UserOrder.user.id == user.id]
+    if sorting.completed != search_service.models.OrderSelection.ALL:
+        if sorting.completed == search_service.models.OrderSelection.Completed:
+            query.append(accounting_models.UserOrder.completed == True)
+        else:
+            query.append(accounting_models.UserOrder.completed == False)
+    data = await search_service.paginate(accounting_models.UserOrder.find(*query, fetch_links=True), paging, sorting)
+    data["results"] = [await permissions_service.format_order_active(d.order, user, d) for d in data["results"]]
+    return data
+
+
+@router.get("/{user_id}/orders/{order_id}", response_model=orders_service.schemas.OrderRead)
+async def get_user_order(order_id: PydanticObjectId, user=Depends(auth_service.resolve_user)):
+    price = await accounting_service.get_by_order_id_user_id(order_id, user.id)
+    order = await orders_flows.get(order_id)
+    return await permissions_service.format_order_active(order, user, price)
+
+
+@router.get("/{user_id}/orders/{order_id}/telegram",
+            response_model=orders_service.schemas.OrderRead)
+async def get_user_order_telegram(order_id: PydanticObjectId, user=Depends(auth_service.resolve_user)):
+    order = await orders_flows.get(order_id)
+    return orders_service.format_by_perms(user, order)

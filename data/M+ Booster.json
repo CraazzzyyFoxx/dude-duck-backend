@@ -1,0 +1,64 @@
+{
+  "spreadsheet": "M+",
+  "sheet_id": 673034649,
+  "extra": {
+    "items": [
+      {
+        "name": "name",
+        "row": 0,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "rub",
+        "row": 1,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "PaymentCardNumber | PhoneNumber"
+      },
+      {
+        "name": "binance",
+        "row": 2,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "gold",
+        "row": 3,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "description",
+        "row": 4,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "username",
+        "row": 5,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "discord",
+        "row": 6,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      }
+    ]
+  }
+}

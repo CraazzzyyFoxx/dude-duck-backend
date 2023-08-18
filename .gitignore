@@ -1,0 +1,17 @@
+# ide folders
+.idea/
+.vscode/
+
+!/app/db/
+
+# not project files
+__pycache__
+.db/
+.data/
+.logs/
+poetry.lock
+
+.DS_Store
+.env
+.ruff_cache
+google.json

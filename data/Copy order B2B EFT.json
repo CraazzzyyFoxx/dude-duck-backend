@@ -1,0 +1,203 @@
+{
+  "spreadsheet": "Copy of B2B order",
+  "sheet_id": 1540753065,
+    "items": [
+    {
+        "name": "order_id",
+        "row": 0,
+        "null": false,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "date",
+        "row": 1,
+        "null": false,
+        "valid_values": [],
+        "type": "datetime"
+    },
+    {
+        "name": "exchange",
+        "row": 2,
+        "null": false,
+        "valid_values": [],
+        "type": "float"
+    },
+    {
+        "name": "shop",
+        "row": 3,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "shop_order_id",
+        "row": 4,
+        "null": true,
+        "valid_values": [],
+        "type": "str | int"
+    },
+      {
+        "name": "login",
+        "row": 5,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "password",
+        "row": 6,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "vpn",
+        "row": 7,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "boost_type",
+        "row": 8,
+        "null": true,
+        "valid_values": ["Pilot", "Self"],
+        "type": "str"
+    },
+    {
+        "name": "character_class",
+        "row": 9,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "nickname",
+        "row": 10,
+       "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "game",
+        "row": 11,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "category",
+        "row": 12,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "purchase",
+        "row": 13,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "comment",
+        "row": 14,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "contact",
+        "row": 17,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "booster",
+        "row": 18,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "auth_date",
+        "row": 19,
+       "null": true,
+        "valid_values": [],
+        "type": "datetime"
+    },
+    {
+        "name": "status",
+        "row": 20,
+        "null": true,
+        "valid_values": ["Completed", "In Progress", "Refund"],
+        "type": "str"
+    },
+    {
+        "name": "screenshot",
+        "row": 21,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "end_date",
+        "row": 22,
+        "null": true,
+        "valid_values": [],
+        "type": "datetime"
+    },
+    {
+        "name": "price_dollar",
+        "row": 23,
+        "null": true,
+        "valid_values": [],
+        "type": "float"
+    },
+    {
+        "name": "eta",
+        "row": 24,
+        "null": true,
+        "valid_values": [],
+        "type": "str"
+    },
+    {
+        "name": "price_booster_rub",
+        "row": 25,
+        "null": true,
+        "valid_values": [],
+        "type": "float"
+    },
+    {
+        "name": "price_booster_dollar",
+        "row": 26,
+        "null": true,
+        "valid_values": [],
+        "type": "float"
+    },
+    {
+        "name": "price_booster_dollar_fee",
+        "row": 27,
+        "null": true,
+        "valid_values": [],
+        "type": "float"
+    },
+    {
+        "name": "percent",
+        "row": 28,
+        "null": true,
+        "valid_values": [],
+        "type": "float"
+    },
+    {
+        "name": "status_paid",
+        "row": 29,
+        "null": true,
+        "valid_values": ["Paid", "Not Paid"],
+        "type": "str"
+    }
+]
+}
+

@@ -1,0 +1,306 @@
+{
+  "spreadsheet": "B2B order",
+  "sheet_id": 0,
+  "extra": {
+    "items": [
+      {
+        "name": "order_id",
+        "row": 0,
+        "null": false,
+        "generated": true,
+        "valid_values": [],
+        "type": "int"
+      },
+      {
+        "name": "date",
+        "row": 1,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "datetime"
+      },
+      {
+        "name": "exchange",
+        "row": 2,
+        "null": false,
+        "generated": true,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "shop",
+        "row": 3,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "shop_order_id",
+        "row": 4,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str | int"
+      },
+      {
+        "name": "boost_type",
+        "row": 5,
+        "null": true,
+        "generated": false,
+        "valid_values": [
+          "Pilot",
+          "Self"
+        ],
+        "type": "str"
+      },
+      {
+        "name": "region_fraction",
+        "row": 6,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "server",
+        "row": 7,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "character_class",
+        "row": 8,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "nickname",
+        "row": 9,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "armory",
+        "row": 10,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "game",
+        "row": 11,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "tg_channels",
+        "row": 12,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "category",
+        "row": 13,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "purchase",
+        "row": 14,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "comment",
+        "row": 15,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "battle_tag",
+        "row": 16,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "login",
+        "row": 17,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "password",
+        "row": 18,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "vpn",
+        "row": 19,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "contact",
+        "row": 20,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "booster",
+        "row": 24,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "auth_date",
+        "row": 25,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "datetime"
+      },
+      {
+        "name": "status",
+        "row": 26,
+        "null": true,
+        "generated": false,
+        "valid_values": [
+          "Completed",
+          "In Progress",
+          "Refund"
+        ],
+        "type": "str"
+      },
+      {
+        "name": "screenshot",
+        "row": 27,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "HttpUrl"
+      },
+      {
+        "name": "end_date",
+        "row": 28,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "datetime"
+      },
+      {
+        "name": "price_dollar",
+        "row": 29,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "eta",
+        "row": 30,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "price_booster_rub",
+        "row": 31,
+        "null": false,
+        "generated": true,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "price_booster_dollar",
+        "row": 32,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "price_booster_dollar_fee",
+        "row": 33,
+        "null": false,
+        "generated": true,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "costs_rub",
+        "row": 34,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "costs_dollar",
+        "row": 35,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "profit",
+        "row": 36,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "percent",
+        "row": 37,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "status_paid",
+        "row": 38,
+        "null": true,
+        "generated": false,
+        "valid_values": [
+          "Paid",
+          "Not Paid"
+        ],
+        "type": "str"
+      }
+    ]
+  }
+}

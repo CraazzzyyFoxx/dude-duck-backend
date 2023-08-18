@@ -1,0 +1,290 @@
+{
+  "spreadsheet": "B2B",
+  "sheet_id": 2002285519,
+  "extra": {
+    "items": [
+      {
+        "name": "order_id",
+        "row": 0,
+        "null": false,
+        "generated": true,
+        "valid_values": [],
+        "type": "int"
+      },
+      {
+        "name": "date",
+        "row": 1,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "datetime"
+      },
+      {
+        "name": "exchange",
+        "row": 2,
+        "null": false,
+        "generated": true,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "manager",
+        "row": 3,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "shop",
+        "row": 4,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "shop_order_id",
+        "row": 5,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str | int"
+      },
+      {
+        "name": "login",
+        "row": 6,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "password",
+        "row": 7,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "vpn",
+        "row": 8,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "platform",
+        "row": 9,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "boost_type",
+        "row": 10,
+        "null": true,
+        "generated": false,
+        "valid_values": [
+          "Pilot",
+          "Self"
+        ],
+        "type": "str"
+      },
+      {
+        "name": "region_fraction",
+        "row": 11,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "server",
+        "row": 12,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "character_class",
+        "row": 13,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "nickname",
+        "row": 14,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "battle_tag",
+        "row": 15,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "game",
+        "row": 16,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "category",
+        "row": 17,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "purchase",
+        "row": 18,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "comment",
+        "row": 19,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "contact",
+        "row": 20,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "booster",
+        "row": 24,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str | int"
+      },
+      {
+        "name": "discord",
+        "row": 25,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "auth_date",
+        "row": 26,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "datetime"
+      },
+      {
+        "name": "status",
+        "row": 27,
+        "null": true,
+        "generated": false,
+        "valid_values": [
+          "Completed",
+          "In Progress",
+          "Refund"
+        ],
+        "type": "str"
+      },
+      {
+        "name": "screenshot",
+        "row": 28,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "HttpUrl"
+      },
+      {
+        "name": "end_date",
+        "row": 29,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "datetime"
+      },
+      {
+        "name": "price_dollar",
+        "row": 30,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "eta",
+        "row": 31,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "str"
+      },
+      {
+        "name": "price_booster_rub",
+        "row": 32,
+        "null": false,
+        "generated": true,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "price_booster_dollar",
+        "row": 33,
+        "null": false,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "profit",
+        "row": 34,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "percent",
+        "row": 35,
+        "null": true,
+        "generated": false,
+        "valid_values": [],
+        "type": "float"
+      },
+      {
+        "name": "status_paid",
+        "row": 36,
+        "null": true,
+        "generated": false,
+        "valid_values": [
+          "Paid",
+          "Not Paid"
+        ],
+        "type": "str"
+      }
+    ]
+  }
+}
