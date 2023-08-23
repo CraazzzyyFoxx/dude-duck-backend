@@ -31,6 +31,8 @@ lru-cache = "^0.2.3"
 deepdiff = "^6.3.1"
 lru-dict = "^1.2.0"
 locust = "^2.16.1"
+flower = "^2.0.1"
+aioredis = "^2.0.1"
 
 
 

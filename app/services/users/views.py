@@ -9,7 +9,10 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core.enums import RouteTag
+from app.services.auth import flows as auth_flows
 from app.services.auth import service as auth_service
+from app.services.auth import manager as auth_manager
+from app.services.auth import utils as auth_utils
 from app.services.sheets import flows as sheets_flows
 from app.services.accounting import service as accounting_service
 from app.services.accounting import models as accounting_models
@@ -22,14 +25,14 @@ router = APIRouter(prefix="/users", tags=[RouteTag.USERS])
 
 
 @router.get("/{user_id}", response_model=auth_service.models.UserRead)
-async def get_me(user=Depends(auth_service.resolve_user)):
+async def get_me(user=Depends(auth_flows.resolve_user)):
     return auth_service.models.UserRead.model_validate(user)
 
 
 @router.patch("/{user_id}", response_model=auth_service.models.UserRead)
 async def update_user(user_update: auth_service.models.UserUpdate, request: Request,
-                      user=Depends(auth_service.resolve_user),
-                      user_manager: auth_service.UserManager = Depends(auth_service.get_user_manager)):
+                      user=Depends(auth_flows.resolve_user),
+                      user_manager: auth_manager.UserManager = Depends(auth_service.get_user_manager)):
     try:
         user = await user_manager.update(
             user_update, user, safe=False, request=request
@@ -53,30 +56,43 @@ async def update_user(user_update: auth_service.models.UserUpdate, request: Requ
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response,
                dependencies=[Depends(auth_service.current_active_superuser)])
 async def delete_user(
-        user=Depends(auth_service.resolve_user),
-        user_manager: auth_service.UserManager = Depends(auth_service.get_user_manager)
+        user=Depends(auth_flows.resolve_user),
+        user_manager: auth_manager.UserManager = Depends(auth_service.get_user_manager)
 ):
     await user_manager.delete(user)
     return None
 
 
-@router.post("/{user_id}/add-google-token", status_code=200,
-             dependencies=[Depends(auth_service.current_active_superuser)])
-async def add_google_token(file: UploadFile, user=Depends(auth_service.resolve_user)):
+@router.post("/{user_id}/google-token", status_code=201,
+             dependencies=[Depends(auth_service.current_active_superuser)],
+             response_model=auth_service.models.AdminGoogleToken
+             )
+async def add_google_token(file: UploadFile, user=Depends(auth_flows.resolve_user)):
     token = auth_service.models.AdminGoogleToken.model_validate_json(await file.read())
     if user.google:
         sheets_flows.GoogleSheetsServiceManager.admin_delete(user.google.client_id)
     user.google = token
     await user.save_changes()
     sheets_flows.GoogleSheetsServiceManager.admin_create(user)
+    return user.google
+
+
+@router.get("/{user_id}/google-token",
+            dependencies=[Depends(auth_service.current_active_superuser)],
+            response_model=auth_service.models.AdminGoogleToken)
+async def read_google_token(user=Depends(auth_flows.resolve_user)):
+    if user.google is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=[{"msg": "Google Service account doesn't setup."}])
+    return user.google
 
 
 @router.post("/{user_id}/generate-api-token",
              dependencies=[Depends(auth_service.current_active_superuser)])
 async def generate_api_token(
-        user=Depends(auth_service.resolve_user),
-        strategy=Depends(auth_service.auth_backend_api.get_strategy)):
-    response = await auth_service.auth_backend_api.login(strategy, user)
+        user=Depends(auth_flows.resolve_user),
+        strategy=Depends(auth_utils.auth_backend_api.get_strategy)):
+    response = await auth_utils.auth_backend_api.login(strategy, user)
     return response
 
 
@@ -88,7 +104,7 @@ async def generate_api_token(
 async def get_user_orders(
         paging: search_service.models.PaginationParams = Depends(),
         sorting: search_service.models.OrderSortingParams = Depends(),
-        user=Depends(auth_service.resolve_user)
+        user=Depends(auth_flows.resolve_user)
 ):
     query = [accounting_models.UserOrder.user.id == user.id]
     if sorting.completed != search_service.models.OrderSelection.ALL:
@@ -102,7 +118,7 @@ async def get_user_orders(
 
 
 @router.get("/{user_id}/orders/{order_id}", response_model=orders_service.schemas.OrderRead)
-async def get_user_order(order_id: PydanticObjectId, user=Depends(auth_service.resolve_user)):
+async def get_user_order(order_id: PydanticObjectId, user=Depends(auth_flows.resolve_user)):
     price = await accounting_service.get_by_order_id_user_id(order_id, user.id)
     order = await orders_flows.get(order_id)
     return await permissions_service.format_order_active(order, user, price)
@@ -110,6 +126,6 @@ async def get_user_order(order_id: PydanticObjectId, user=Depends(auth_service.r
 
 @router.get("/{user_id}/orders/{order_id}/telegram",
             response_model=orders_service.schemas.OrderRead)
-async def get_user_order_telegram(order_id: PydanticObjectId, user=Depends(auth_service.resolve_user)):
+async def get_user_order_telegram(order_id: PydanticObjectId, user=Depends(auth_flows.resolve_user)):
     order = await orders_flows.get(order_id)
     return orders_service.format_by_perms(user, order)

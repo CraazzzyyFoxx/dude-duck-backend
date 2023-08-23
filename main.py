@@ -7,7 +7,6 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import ORJSONResponse
-from starlette import status
 from starlette.staticfiles import StaticFiles
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -18,12 +17,11 @@ from app.middlewares.exception import ExceptionMiddleware
 from app.middlewares.time import TimeMiddleware
 from app.core.logging import logger
 from app.core import config
-from app.core.errors import APIValidationError
 
 from app.services.auth import service as auth_service
 from app.services.sheets import flows as sheets_flows
 from app.services.tasks import flows as tasks_flows
-from app.services.messages import service as message_service
+from app.services.telegram.message import service as message_service
 
 from app.api import router
 
@@ -59,25 +57,11 @@ async def lifespan(application: FastAPI):  # noqa
     yield
 
 
-responses: set[int] = {
-    status.HTTP_400_BAD_REQUEST,
-    status.HTTP_401_UNAUTHORIZED,
-    status.HTTP_403_FORBIDDEN,
-    status.HTTP_404_NOT_FOUND,
-    status.HTTP_500_INTERNAL_SERVER_ERROR,
-}
-
 app = FastAPI(
     title="DudeDuck CRM Backend",
     lifespan=lifespan,
     debug=False,
     default_response_class=ORJSONResponse,
-    responses={
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {
-            "description": "Validation Error",
-            "model": APIValidationError,
-        }
-    },
 )
 
 common_doc_settings = {
@@ -125,4 +109,6 @@ if __name__ == '__main__':
         "main:app",
         host=config.app.host,
         port=config.app.port,
+        ssl_keyfile='key.pem',
+        ssl_certfile='cert.pem'
     )

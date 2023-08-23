@@ -33,8 +33,6 @@ class OrderReadMeta(BaseModel):
 
 
 class OrderReadBase(OrderReadMeta):
-    id: PydanticObjectId
-
     exchange: float
     shop: str | None = None
     shop_order_id: str | int | None = None

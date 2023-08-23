@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
-from starlette import status
+from fastapi import APIRouter, Depends
 
 from app.core import enums
 from app.services.auth import service as auth_service
@@ -28,7 +27,7 @@ router = APIRouter(prefix='/sheets', tags=[enums.RouteTag.SHEETS])
 #     return await model.create()
 
 
-@router.post('/order', status_code=status.HTTP_200_OK, response_model=orders_service.models.Order)
+@router.post('/order', response_model=orders_service.models.Order)
 async def fetch_order_from_sheets(
         data: models.SheetEntity,
         user: auth_service.models.User = Depends(auth_service.current_active_superuser_api)
@@ -37,7 +36,7 @@ async def fetch_order_from_sheets(
     return await orders_flows.create(model)
 
 
-@router.patch('/order', status_code=status.HTTP_200_OK, response_model=orders_service.models.Order)
+@router.patch('/order', response_model=orders_service.models.Order)
 async def update_order_from_sheets(
         data: models.SheetEntity,
         user: auth_service.models.User = Depends(auth_service.current_active_superuser_api)
@@ -62,13 +61,7 @@ async def read_google_sheets_parser(
         sheet_id: int,
         _: auth_service.models.User = Depends(auth_service.current_active_superuser)
 ):
-    model = await models.OrderSheetParse.get_spreadsheet_sheet(spreadsheet, sheet_id)
-    if not model:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A Spreadsheet parse with this id does not exist."}],
-        )
-    return model
+    return await flows.get_by_spreadsheet_sheet(spreadsheet, sheet_id)
 
 
 @router.post('', response_model=models.OrderSheetParse)
@@ -76,33 +69,16 @@ async def create_google_sheets_parser(
         model: models.OrderSheetParseCreate,
         _: auth_service.models.User = Depends(auth_service.current_active_superuser)
 ):
-    data = await models.OrderSheetParse.get_spreadsheet_sheet(model.spreadsheet, model.sheet_id)
-
-    if data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A Spreadsheet parse with this id already exists"}],
-        )
-    parser = models.OrderSheetParse.model_validate(model.model_dump())
-    d = await parser.create()
-    return d
+    return await flows.create(model)
 
 
-@router.delete('/{spreadsheet}/{sheet_id}', response_model=models.OrderSheetParse)
+@router.delete('/{spreadsheet}/{sheet_id}')
 async def delete_google_sheets_parser(
         spreadsheet: str,
         sheet_id: int,
         _: auth_service.models.User = Depends(auth_service.current_active_superuser)
 ):
-    model = await models.OrderSheetParse.get_spreadsheet_sheet(spreadsheet, sheet_id)
-
-    if not model:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A Spreadsheet parse with this id does not exist."}],
-        )
-    await model.delete()
-    return model
+    return await flows.delete(spreadsheet, sheet_id)
 
 
 @router.patch('/{spreadsheet}/{sheet_id}', response_model=models.OrderSheetParse)
@@ -112,13 +88,4 @@ async def update_google_sheets_parser(
         data: models.OrderSheetParseUpdate,
         _: auth_service.models.User = Depends(auth_service.current_active_superuser)
 ):
-    model = await models.OrderSheetParse.get_spreadsheet_sheet(spreadsheet, sheet_id)
-
-    if not model:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A Spreadsheet parse with this id does not exist."}],
-        )
-    model.update_from(data)
-    await model.save()
-    return model
+    return await flows.update(spreadsheet, sheet_id, data)

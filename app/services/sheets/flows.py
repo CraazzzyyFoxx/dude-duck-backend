@@ -1,15 +1,15 @@
 import typing
 
+from anyio import to_process
 from fastapi import HTTPException
 from loguru import logger
 from fastapi.encoders import jsonable_encoder
 from gspread_asyncio import AsyncioGspreadClientManager
-from google.oauth2.service_account import Credentials  # noqa
+from google.oauth2.service_account import Credentials
 from gspread.utils import ValueRenderOption, DateTimeOption, ValueInputOption
-from pydantic import create_model, field_validator, BaseModel, ValidationError
-from pydantic._internal._model_construction import ModelMetaclass  # noqa
-from beanie import PydanticObjectId
+from pydantic import BaseModel, ValidationError
 from starlette import status
+from beanie import PydanticObjectId
 
 from app.core import config, errors
 from app.services.auth import models as auth_models
@@ -26,35 +26,8 @@ BM = typing.TypeVar("BM", bound=BaseModel)
 class GoogleSheetsServiceManagerMeta:
     def __init__(self):
         self.managers: dict[str, GoogleSheetsService] = {}
-        self.cache: dict[PydanticObjectId, typing.Type[BaseModel]] = {}
         with open(config.GOOGLE_CONFIG_FILE) as file:
             self.creds = auth_models.AdminGoogleToken.model_validate_json(file.read()).model_dump()
-
-    def generate_model(self, parser: models.OrderSheetParse):
-        if model := self.cache.get(parser.id):
-            return model
-
-        _fields = {}
-        _validators = {}
-        for getter in parser.items:
-            name = getter.name
-            field_type = getter.type
-            _fields[getter.name] = (service.get_type(field_type, getter.null), None if getter.null else ...)
-            if getter.valid_values:
-                _validators[f"{name}_parse"] = (field_validator(name, mode="before")
-                                                (service.enum_parse(name, getter.valid_values)))
-            elif field_type == "datetime":
-                _validators[f"{name}_parse"] = (field_validator(name, mode="before")(service.parse_datetime))
-            elif field_type == "timedelta":
-                _validators[f"{name}_parse"] = (field_validator(name, mode="before")(service.parse_timedelta))
-
-        check_model = create_model(f"CheckModel{parser.id}", **_fields, __validators__=_validators)  # type: ignore
-        self.cache[parser.id] = check_model
-        return check_model
-
-    def delete_from_cache(self, parser: models.OrderSheetParse):
-        if self.cache.get(parser.id):
-            self.cache.pop(parser.id)
 
     async def init(self):
         self.managers["0"] = GoogleSheetsService(AsyncioGspreadClientManager(self.get_creds()))
@@ -104,66 +77,6 @@ class GoogleSheetsService:
             return parser
         raise ValueError(f"No data for parser [spreadsheet={spreadsheet} sheet_id={sheet_id}]")
 
-    async def parse_row(
-            self,
-            model: typing.Type[models.SheetEntity],
-            spreadsheet: str,
-            sheet_id: int,
-            row_id: int,
-            row: list[typing.Any],
-            *,
-            is_raise: bool = True
-    ) -> BM | None:
-        parser = await self.get_parser(spreadsheet, sheet_id)
-        for i in range(len(parser.items) - len(row)):
-            row.append(None)
-
-        data_for_valid = {}
-        for getter in parser.items:
-            value = row[getter.row]
-            data_for_valid[getter.name] = value if value not in ["", " "] else None
-        try:
-            valid_model = GoogleSheetsServiceManager.generate_model(parser).model_validate(data_for_valid)
-        except ValidationError as error:
-            if is_raise:
-                logger.error(f"Spreadsheet={spreadsheet} sheet_id={sheet_id} row_id={row_id}")
-                logger.error(errors.APIValidationError.from_pydantic(error))
-                raise error
-                # return
-            else:
-                return
-        validated_data = valid_model.model_dump()
-        model_fields = []
-        containers = {}
-        data = {"extra": {}, "spreadsheet": spreadsheet, "sheet_id": sheet_id, "row_id": row_id}
-
-        for field in model.model_fields.items():
-            if isinstance(field[1].annotation, ModelMetaclass):
-                data[field[0]] = {}
-                containers[field[0]] = [field[0] for field in field[1].annotation.model_fields.items()]  # noqa
-            else:
-                model_fields.append(field[0])
-        for getter in parser.items:
-            if getter.name in model_fields:
-                data[getter.name] = validated_data[getter.name]
-            else:
-                for key, fields in containers.items():
-                    if getter.name in fields:
-                        data[key][getter.name] = validated_data[getter.name]
-                        break
-                else:
-                    data["extra"][getter.name] = validated_data[getter.name]
-        try:
-            return model(**data)
-        except ValidationError as error:
-            if is_raise:
-                logger.error(f"Spreadsheet={spreadsheet} sheet_id={sheet_id} row_id={row_id}")
-                logger.error(errors.APIValidationError.from_pydantic(error))
-                raise error
-                # return
-            else:
-                return
-
     async def data_to_row(
             self,
             spreadsheet: str,
@@ -207,7 +120,7 @@ class GoogleSheetsService:
         row = await sheet.get(range_name=service.get_range(parser, row_id=row_id),
                               value_render_option=ValueRenderOption.unformatted,
                               date_time_render_option=DateTimeOption.formatted_string)
-        return await self.parse_row(model, spreadsheet, sheet_id, row_id, row[0], is_raise=is_raise)
+        return service.parse_row(parser, model, spreadsheet, sheet_id, row_id, row[0], is_raise=is_raise)
 
     async def get_all_data(
             self,
@@ -215,6 +128,7 @@ class GoogleSheetsService:
             spreadsheet: str,
             sheet_id: int,
     ):
+
         agc = await self.manager.authorize()
         sh = await agc.open(spreadsheet)
         sheet = await sh.get_worksheet_by_id(sheet_id)
@@ -228,13 +142,8 @@ class GoogleSheetsService:
         rows = await sheet.get(range_name=service.get_range(parser, end_id=index),
                                value_render_option=ValueRenderOption.unformatted,
                                date_time_render_option=DateTimeOption.formatted_string)
-        resp = []
-        for row_id, row in enumerate(rows, parser.start):
-            data = await self.parse_row(model, spreadsheet, sheet_id, row_id, row, is_raise=False)
-            if data:
-                resp.append(data)
-
-        return resp
+        return service.parse_all_data(model, spreadsheet, sheet_id, rows, parser)
+        # return await to_process.run_sync(service.parse_all_data, model, spreadsheet, sheet_id, rows, parser)
 
     async def create_row_data(
             self,
@@ -321,9 +230,50 @@ async def get_order_from_sheets(data: models.SheetEntity, user: auth_models.User
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=[{"msg": "Google Service account doesn't setup."}])
     try:
-        model = await GoogleSheetsServiceManager.get(user=user).get_row_data(
-            orders_models.Order, data.spreadsheet, data.sheet_id, data.row_id)
+        model = (await GoogleSheetsServiceManager
+                 .get(user=user)
+                 .get_row_data(orders_models.Order, data.spreadsheet, data.sheet_id, data.row_id))  # type: ignore
     except ValidationError as error:
         raise errors.GoogleSheetsParserError.http_exception(orders_models.Order,
                                                             data.spreadsheet, data.sheet_id, data.row_id, error)
     return model
+
+
+async def get(parser_id: PydanticObjectId):
+    parser = await service.get(parser_id)
+    if not parser:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=[{"msg": "A Spreadsheet parse with this id does not exist."}],
+        )
+    return parser
+
+
+async def get_by_spreadsheet_sheet(spreadsheet: str, sheet: int):
+    parser = await service.get_by_spreadsheet_sheet(spreadsheet, sheet)
+    if not parser:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=[{"msg": "A Spreadsheet parse with this spreadsheet and sheet_id does not exist."}],
+        )
+    return parser
+
+
+async def create(parser_in: models.OrderSheetParseCreate):
+    data = await get_by_spreadsheet_sheet(parser_in.spreadsheet, parser_in.sheet_id)
+    if data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=[{"msg": "A Spreadsheet parse with this id already exists"}],
+        )
+    return await service.create(parser_in)
+
+
+async def update(spreadsheet, sheet_id, parser_in: models.OrderSheetParseUpdate):
+    data = await get_by_spreadsheet_sheet(spreadsheet, sheet_id)
+    return await service.update(data, parser_in)
+
+
+async def delete(spreadsheet: str, sheet_id: int):
+    parser = await get_by_spreadsheet_sheet(spreadsheet, sheet_id)
+    return await service.delete(parser.id)

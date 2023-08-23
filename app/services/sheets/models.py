@@ -55,8 +55,8 @@ class OrderSheetParse(Document):
     default: typing.Literal["order", "booster"] | None = Field(default=None)
 
     class Settings:
-        use_cache = True
-        cache_capacity = 5
+        use_state_management = True
+        state_management_save_previous = True
 
 
 class OrderSheetParseUpdate(BaseModel):

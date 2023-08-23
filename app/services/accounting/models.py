@@ -1,7 +1,7 @@
 import datetime
 import enum
 
-from pydantic import BaseModel, Field, model_validator, HttpUrl, constr
+from pydantic import BaseModel, Field, model_validator, HttpUrl, constr, field_validator, ConfigDict
 from beanie import Document, Link, PydanticObjectId
 from pymongo import IndexModel
 
@@ -81,22 +81,37 @@ class ManageBoosterForm(BaseModel):
 
 
 class UserOrderRead(BaseModel):
-    order: OrderRead
-    user: UserRead
+    model_config = ConfigDict(from_attributes=True)
+
+    order: PydanticObjectId = Field(serialization_alias="order_id")
+    user: PydanticObjectId = Field(serialization_alias="user_id")
     dollars: float
     completed: bool
     paid: bool
-    paid_time: datetime.datetime
+    paid_time: datetime.datetime | None
     method_payment: str
+
+    @field_validator("order", mode="before")
+    def order_id_resolver(cls, v):
+        return v.id
+
+    @field_validator("user", mode="before")
+    def user_id_resolver(cls, v):
+        return v.id
 
 
 class SheetBoosterOrderEntityCreate(BaseModel):
     username: str
     percent: float = Field(gt=0, lte=1)
 
+    @field_validator("percent", mode="before")
+    def percent_resolver(cls, v):
+        if v > 1:
+            return v / 100
+        return v
+
 
 class SheetUserOrderCreate(BaseModel):
-    order_id: str
     items: list[SheetBoosterOrderEntityCreate]
 
     @model_validator(mode='after')
@@ -106,7 +121,7 @@ class SheetUserOrderCreate(BaseModel):
         for item in self.items:
             total += item.percent
 
-        if total <= 0.99:
+        if total <= 0.99 or total > 1:
             raise ValueError("The final percentage must be greater or equal 0.99")
 
         return self  # noqa

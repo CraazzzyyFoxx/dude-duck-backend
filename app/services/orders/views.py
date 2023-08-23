@@ -13,7 +13,7 @@ from . import schemas, flows, models, service
 router = APIRouter(prefix="/orders", tags=[enums.RouteTag.ORDERS])
 
 
-@router.get(path="/{order_id}", response_model=typing.Union[schemas.OrderRead, schemas.OrderReadUser])
+@router.get(path="/{order_id}", response_model=schemas.OrderRead)
 async def get_order(order_id: PydanticObjectId, user=Depends(auth_service.current_active_superuser)):
     order = await flows.get(order_id)
     return await permissions_service.format_order(order, user)
@@ -31,7 +31,7 @@ async def update_order(
 
 
 @router.get(path="",
-            response_model=search_service.models.Paginated[typing.Union[schemas.OrderRead, schemas.OrderReadUser]])
+            response_model=search_service.models.Paginated[schemas.OrderRead])
 async def get_orders(
         paging: search_service.models.PaginationParams = Depends(),
         sorting: search_service.models.OrderSortingParams = Depends(),

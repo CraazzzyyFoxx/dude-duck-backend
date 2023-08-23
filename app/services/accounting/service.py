@@ -3,10 +3,9 @@ from datetime import datetime
 
 from beanie import PydanticObjectId
 from beanie.odm.operators.find.comparison import In
-from loguru import logger
 
 from app.core import config
-from app.services.auth import service as auth_service
+from app.services.auth import flows as auth_flows
 
 from . import models
 
@@ -14,7 +13,7 @@ BOOSTER_WITH_PRICE_REGEX = re.compile(config.app.username_regex + r"(\(\d+\))", 
 BOOSTER_REGEX = re.compile(config.app.username_regex, flags=re.UNICODE & re.MULTILINE)
 
 
-async def get(order_id: PydanticObjectId) -> models.UserOrder:
+async def get(order_id: PydanticObjectId) -> models.UserOrder | None:
     return await models.UserOrder.find_one({"_id": order_id})
 
 
@@ -32,7 +31,7 @@ async def create(user_order_in: models.UserOrderCreate):
 
 
 async def delete(user_order_id: PydanticObjectId):
-    user_order = await models.UserOrder.get(user_order_id)
+    user_order = await get(user_order_id)
     await user_order.delete()
 
 
@@ -48,8 +47,10 @@ async def get_by_user_id(user_id: PydanticObjectId) -> list[models.UserOrder]:
     return await models.UserOrder.find(models.UserOrder.user.id == user_id, fetch_links=True).to_list()
 
 
-async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.UserOrder:
-    return await models.UserOrder.find_one({"order.id": order_id, "user.id": user_id})
+async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.UserOrder | None:
+    return await models.UserOrder.find_one(models.UserOrder.user.id == user_id,
+                                           models.UserOrder.order.id == order_id,
+                                           fetch_links=True)
 
 
 async def get_all() -> list[models.UserOrder]:
@@ -84,12 +85,12 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
     return user_order
 
 
-async def check_user_total_orders(user: auth_service.models.User) -> bool:
+async def check_user_total_orders(user: auth_flows.models.User) -> bool:
     count = await models.UserOrder.find({"user._id": user.id, "completed": False}, fetch_links=True).count()
     return bool(count < user.max_orders)
 
 
-async def can_user_pick(user: auth_service.models.User) -> bool:
+async def can_user_pick(user: auth_flows.models.User) -> bool:
     if not user.is_verified:
         return False
     if not await check_user_total_orders(user):
@@ -133,16 +134,29 @@ def boosters_from_str(string: str) -> dict[str, int | None]:
     return resp
 
 
-async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
-    resp = []
-    users = await auth_service.models.User.find(In(auth_service.models.User.id, [d.user.id for d in data])).to_list()
+def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth_flows.models.User]):
     if len(users) == 1:
         return users[0].name
+    resp = []
     for d in data:
         for booster in users:
             if booster.id == d.user.id:
                 resp.append(f"{booster.name}({calculate_price_rub(d.dollars, order.exchange)})")
     return ' + '.join(resp)
+
+
+async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
+    users = await auth_flows.models.User.find(In(auth_flows.models.User.id, [d.user.id for d in data])).to_list()
+    return _boosters_to_str(order, data, users)
+
+
+def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: list[auth_flows.models.User]) -> str:
+    users = []
+    search = [d.user.id for d in data]
+    for user_in in users_in:
+        if user_in.id in search:
+            users.append(user_in)
+    return _boosters_to_str(order, data, users)
 
 
 async def boosters_from_order(order) -> None:
@@ -152,8 +166,23 @@ async def boosters_from_order(order) -> None:
     paid = True if order.status_paid == "Paid" else False
     boosters = boosters_from_str(order.booster)
     for booster, price in boosters.items():
-        if user := await auth_service.get_booster_by_name(booster):
+        if user := await auth_flows.get_booster_by_name(booster):
             dollars = order.price.price_booster_dollar_fee / len(boosters) if not price else price / order.exchange
             b = models.UserOrderCreate(order_id=order.id, user_id=user.id,
                                        dollars=dollars, completed=completed, paid=paid)
             await create(b)
+
+
+async def boosters_from_order_sync(order, users_in: list[auth_flows.models.User]) -> None:
+    if order.booster is None:
+        return
+    completed = True if order.status == "Completed" else False
+    paid = True if order.status_paid == "Paid" else False
+    boosters = boosters_from_str(order.booster)
+    for booster, price in boosters.items():
+        for user in users_in:
+            if user.name == booster:
+                dollars = order.price.price_booster_dollar_fee / len(boosters) if not price else price / order.exchange
+                b = models.UserOrderCreate(order_id=order.id, user_id=user.id,
+                                           dollars=dollars, completed=completed, paid=paid)
+                await create(b)

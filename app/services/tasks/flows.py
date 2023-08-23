@@ -4,10 +4,12 @@ from typing import cast
 from loguru import logger
 from deepdiff import DeepDiff
 
+
 from app.services.orders import service as order_service
 from app.services.sheets import flows as sheets_flows
 from app.services.sheets import service as sheets_service
 from app.services.accounting import service as accounting_service
+from app.services.auth import service as auth_service
 
 from .service import loop
 
@@ -18,7 +20,7 @@ async def sync_data_from(
 ):
     t = time.time()
     orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id)
-
+    users = await auth_service.models.User.find_all().to_list()
     for order in orders_db:
         s_order = orders.get(order.order_id, None)
         if s_order is None:
@@ -32,7 +34,7 @@ async def sync_data_from(
                 await order_service.update(order, s_order)
     for order_s in orders.values():
         order = await order_service.create(order_s)
-        await accounting_service.boosters_from_order(order)
+        await accounting_service.boosters_from_order_sync(order, users)
 
     logger.info(f"Syncing data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
                 f"completed in {time.time() - t}")
@@ -43,6 +45,7 @@ async def sync_data_to(cfg: sheets_flows.models.OrderSheetParse,
     t = time.time()
     to_sync = []
     orders_db = await accounting_service.get_by_sheet_prefetched(cfg.spreadsheet, cfg.sheet_id)
+    users = await auth_service.models.User.find_all().to_list()
     orders_db_map: dict[order_service.models.Order, list[accounting_service.models.UserOrder]] = {}
 
     for user_order in orders_db:
@@ -56,8 +59,7 @@ async def sync_data_to(cfg: sheets_flows.models.OrderSheetParse,
         order_sheet = orders.get(order.order_id, None)
         if order_sheet is None:
             continue
-
-        booster = await accounting_service.boosters_to_str(order, user_orders)
+        booster = accounting_service.boosters_to_str_sync(order, user_orders, users)
         if booster is not None and order_sheet.booster != booster:
             await order_service.update(order, order_service.models.OrderUpdate(booster=booster))
             to_sync.append((order.row_id, order_service.models.OrderUpdate(booster=booster)))

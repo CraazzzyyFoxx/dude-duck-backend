@@ -5,12 +5,6 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette import status
 
 
-status_map = {
-    status.HTTP_404_NOT_FOUND: "not found",
-    status.HTTP_400_BAD_REQUEST: "already exist"
-}
-
-
 class ValidationErrorDetail(BaseModel):
     location: str
     message: str

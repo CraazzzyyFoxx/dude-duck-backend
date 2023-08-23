@@ -141,6 +141,8 @@ class User(BeanieBaseUserDocument):
             PhoneNumber: lambda x: str(x),
             PaymentCardNumber: lambda x: str(x)
         }
+        use_state_management = True
+        state_management_save_previous = True
 
     def serializing_to_sheets(self):
         data = self.model_dump()
@@ -148,4 +150,3 @@ class User(BeanieBaseUserDocument):
             created_at = self.auth_date.strftime("%d.%m.%Y")
             data["created_at"] = created_at
         return data
-

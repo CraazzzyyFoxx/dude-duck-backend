@@ -4,44 +4,48 @@ from fastapi import HTTPException
 from loguru import logger
 from starlette import status
 from beanie.odm.operators.find.comparison import In
+from beanie import PydanticObjectId
 
 from app.services.auth.models import User
-from app.services.auth import service as auth_service
+from app.services.auth import flows as auth_flows
 from app.services.orders import service as order_service
-from app.services.orders import flows as order_flows
-from app.services.messages import service as messages_service
+from app.services.telegram.message import service as messages_service
 
 from . import models, service
 
 
-async def check_user_total_orders(user: auth_service.models.User) -> bool:
+async def check_user_total_orders(user: auth_flows.models.User) -> bool:
     if await service.check_user_total_orders(user):
         return True
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=[
-                            {
-                                "msg": "You have reached the limit of active orders."
-                            }
-                        ])
+                        detail=[{"msg": "You have reached the limit of active orders."}])
 
 
-async def can_user_pick(user: auth_service.models.User) -> bool:
+async def can_user_pick(user: auth_flows.models.User) -> bool:
     if not user.is_verified:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=[
-                                {
-                                    "msg": "Only verified users can fulfill orders"
-                                }
-                            ])
+                            detail=[{"msg": "Only verified users can fulfill orders"}])
     await check_user_total_orders(user)
     return True
 
 
-async def add_booster(order: order_service.models.Order, user: auth_service.models.User) -> models.UserOrder:
+async def can_user_pick_order(user: auth_flows.models.User, order: order_service.models.Order):
+    await can_user_pick(user)
+    order_user = await service.get_by_order_id_user_id(order.id, user.id)
+    if order_user:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=[{"msg": "You are already assigned to this order"}])
+    return True
+
+
+async def add_booster(order: order_service.models.Order, user: auth_flows.models.User) -> models.UserOrder:
     await service.can_user_pick(user)
     boosters = await service.get_by_order_id(order.id)
-    percent = 100 / len(boosters) + 1
-    price = order.price_booster_dollar_fee * percent
+    if len(boosters) == 0:
+        percent = 1
+    else:
+        percent = 1 / len(boosters) + 1
+    price = order.price.price_booster_dollar_fee * percent
     for booster in boosters:
         await service.update(booster, models.UserOrderUpdate(dollars=price))
 
@@ -51,60 +55,47 @@ async def add_booster(order: order_service.models.Order, user: auth_service.mode
     return data
 
 
-async def update_boosters_percent(data: models.SheetUserOrderCreate) -> list[models.UserOrder]:
-    order = await order_flows.get_by_order_id(data.order_id)
-
-    users = []
+async def update_boosters_percent(
+        order: order_service.models.Order,
+        data: models.SheetUserOrderCreate
+) -> list[models.UserOrder]:
+    users: list[tuple[PydanticObjectId, float]] = []
+    users_id = []
     for item in data.items:
-        user = await auth_service.get_booster_by_name(item.username)
+        user = await auth_flows.get_booster_by_name(item.username)
         users.append((user.id, item.percent))
+        users_id.append(user.id)
 
     boosters = await service.get_by_order_id(order.id)
-    count = 0
-    for booster in boosters:
-        for d in users:
-            if booster.user.id == d[0]:
-                break
+    boosters_map = {booster.user.id: booster for booster in boosters}
+    if [u[0] for u in users] == boosters_map.keys():
+        raise HTTPException(status_code=400, detail="The same boosters are indicated in the order")
+    add = len(boosters) < len(users)
+    if not add:
+        for _id in list(set(boosters_map.keys()) - set(users_id)):
+            x = await service.get_by_order_id_user_id(order.id, _id)
+            await service.delete(x.id)
+
+    for _id, percent in users:
+        if _id not in boosters_map.keys():
+            if add:
+                await service.create(models.UserOrderCreate(
+                    order_id=order.id,
+                    user_id=_id,
+                    dollars=order.price.price_booster_dollar_fee * percent
+                ))
         else:
-            count += 1
+            if not boosters_map[_id].paid:
+                await service.update(
+                    boosters_map[_id], models.UserOrderUpdate(
+                        dollars=order.price.price_booster_dollar_fee * percent
+                    )
+                )
 
-    if not count == 0 and count != 1:
-        raise HTTPException(status_code=400, detail=[
-                                {
-                                    "msg": "You can add or remove only one user per operation"
-                                }
-                            ])
-    need = None
-    if add := True if len(boosters) < len(users) else False:
-        for user in users:
-            if user[0] not in [b.id for b in boosters]:
-                need = user[0]
-    else:
-        for booster in boosters:
-            if booster.user.id not in [b[0] for b in users]:
-                need = booster.user.id
-
-    if add:
-        for user in users:
-            if user[0] == need:
-                await models.UserOrder(order_id=order.id, user_id=need,
-                                       dollars=order.price.price_booster_dollar_fee * user[1]).create()
-            for booster in boosters:
-                if user[0] == booster.user_id:  # TODO: Add check paid
-                    booster.dollars = order.price.price_booster_dollar_fee * user[1]
-                    await booster.save_changes()
-    else:
-        for booster in boosters:
-            for d in users:
-                if booster.user.id == need:
-                    await booster.delete()
-                if booster.user.id == d[0]:
-                    booster.dollars = order.price.price_booster_dollar_fee * d[1]
-                    await booster.save_changes()
-    data = await service.get_by_order_id(order.id)
-    booster = await service.boosters_to_str(order, data)
+    boosters = await service.get_by_order_id(order.id)
+    booster = await service.boosters_to_str(order, boosters)
     await order_service.update_with_sync(order, order_service.models.OrderUpdate(booster=booster))
-    return data
+    return boosters
 
 
 async def remove_booster(user: User, order: models.Order) -> bool:
@@ -178,32 +169,26 @@ async def create_user_report(user: User) -> models.UserAccountReport:
 #         orders = order_service.get_all_from_datetime_range_by_sheet(spreadsheet, sheet_id, start_date, end_date)
 
 
-async def close_order(user: auth_service.models.User, order: order_service.models.Order, data: models.CloseOrderForm):
+async def close_order(user: auth_flows.models.User, order: order_service.models.Order, data: models.CloseOrderForm):
     f = False
     for price in await service.get_by_order_id(order.id):
         if price.user.id == user.id:
             f = True
     if not f:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=[
-            {
-                "msg": f"You don't have access to the order"
-            }
-        ])
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=[{"msg": f"You don't have access to the order"}])
 
     await order_service.update_with_sync(order, order_service.models.OrderUpdate(
         screenshot=str(data.url), end_date=datetime.utcnow()))
-    await messages_service.send_order_close_request(user, order, data.url, data.message)
+    await messages_service.send_order_close_notify(user, order, data.url, data.message)
     return
 
 
 async def paid_order(user: User, order: models.Order) -> models.UserOrder:
     data = await service.get_by_order_id_user_id(order.id, user.id)
     if data.paid:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[
-                                {
-                                    "msg": f"The order has already been paid for {data.paid_time}"
-                                }
-                            ])
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=[{"msg": f"The order has already been paid for {data.paid_time}"}])
     await service.update(data, models.UserOrderUpdate(paid=True))
     boosters = await service.get_by_order_id(order.id)
     if all([booster.paid for booster in boosters]):

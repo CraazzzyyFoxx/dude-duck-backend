@@ -12,4 +12,5 @@ class RouteTag(StrEnum):
     RESPONSES = "📩 Responses"
     AUTH = "🤷🏿‍♀️‍ Auth"
     MESSAGES = "✉️ Telegram Messages"
+    CHANNELS = "✉️ Telegram Channels"
     ACCOUNTING = "📊 Accounting"

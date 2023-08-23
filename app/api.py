@@ -6,7 +6,7 @@ from app.services.orders.views import router as orders_router
 from app.services.accounting.views import router as accounting_router
 from app.services.response.views import router as response_router
 from app.services.users.views import router as users_router
-from app.services.messages.views import router as messages_router
+from app.services.telegram.views import router as telegram_router
 
 
 router = APIRouter()
@@ -18,6 +18,6 @@ api_router.include_router(accounting_router)
 api_router.include_router(sheets_router)
 api_router.include_router(orders_router)
 api_router.include_router(users_router)
-api_router.include_router(messages_router)
+api_router.include_router(telegram_router)
 
 router.include_router(api_router)
