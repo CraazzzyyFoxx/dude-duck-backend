@@ -12,7 +12,8 @@ from app.services.auth import models
 class DatabaseStrategyAPI(DatabaseStrategy):
     async def write_token(self, user: models.User) -> str:
         token = await models.AccessTokenAPI.find_one(models.AccessTokenAPI.user_id == user.id)
-        await token.delete()
+        if token:
+            await token.delete()
         access_token_dict = self._create_access_token_dict(user)
         access_token = await self.database.create(access_token_dict)
         return access_token.token

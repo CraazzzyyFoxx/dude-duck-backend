@@ -10,7 +10,8 @@ class OrderMessage(BaseModel):
 
 
 class OrderPull(BaseModel):
-    config_names: list[str] = Field(min_items=1)
+    config_names: list[str]
+    preorder: bool = False
 
 
 class OrderPullCreate(OrderPull):
@@ -26,9 +27,9 @@ class MessageEnum(int, enum.Enum):
     EDIT_ORDER = 1
     DELETE_ORDER = 2
 
-    RESPONSE_ADMINS = 3
-    RESPONSE_APPROVED = 4
-    RESPONSE_DECLINED = 5
+    RESPONSE_ORDER_ADMINS = 3
+    RESPONSE_ORDER_APPROVED = 4
+    RESPONSE_ORDER_DECLINED = 5
 
     REQUEST_VERIFY = 6
     VERIFIED = 7
@@ -45,6 +46,18 @@ class MessageEnum(int, enum.Enum):
     RESPONSE_CHOSE = 14
 
     ORDER_PAID = 15
+
+    SEND_PREORDER = 16
+    EDIT_PREORDER = 17
+    DELETE_PREORDER = 18
+
+    SENT_PREORDER = 19
+    EDITED_PREORDER = 20
+    DELETED_PREORDER = 21
+
+    RESPONSE_PREORDER_ADMINS = 22
+    RESPONSE_PREORDER_APPROVED = 23
+    RESPONSE_PREORDER_DECLINED = 24
 
 
 class MessageStatus(str, enum.Enum):
@@ -70,10 +83,13 @@ class SkippedPull(BaseModel):
 
 
 class OrderResponse(BaseModel):
-    created: list[SuccessPull] | None = Field(default=None)
-    updated: list[SuccessPull] | None = Field(default=None)
-    deleted: list[SuccessPull] | None = Field(default=None)
-    skipped: list[SkippedPull] | None = Field(default=None)
+    created: list[SuccessPull]
+    updated: list[SuccessPull]
+    deleted: list[SuccessPull]
+    skipped: list[SkippedPull]
+
+    error: bool
+    error_msg: str | None
 
 
 class MessageResponse(BaseModel):

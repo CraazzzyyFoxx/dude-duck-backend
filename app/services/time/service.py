@@ -4,7 +4,6 @@ import enum
 
 import dateparser
 
-from loguru import logger
 
 __all__ = ("ConversionMode", "convert_time")
 
@@ -24,7 +23,6 @@ def convert_time(
         future_time: bool = False,
 ) -> datetime.datetime:
     """Try converting a string of human-readable time to a datetime object."""
-    logger.debug(f"String passed for time conversion: {time_str}")
 
     if not conversion_mode or conversion_mode == ConversionMode.RELATIVE:
         # Relative time conversion Get any pair of <number><word> with a single optional space in between,
@@ -90,7 +88,7 @@ def convert_time(
         timezone = "UTC"
 
         time_parsed = dateparser.parse(
-            time_str, settings={"TIMEZONE": timezone}
+            time_str, settings={"TIMEZONE": timezone}, date_formats=["%d.%m.%Y", ]
         )
 
         if not time_parsed:

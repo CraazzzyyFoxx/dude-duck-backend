@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 
 from beanie import Document
 from pydantic import Field, BaseModel, ConfigDict
@@ -13,6 +14,12 @@ __all__ = (
     "OrderUpdate",
     "OrderCreate"
 )
+
+
+class OrderStatus(Enum):
+    Refund = "Refund"
+    InProgress = " In Progress"
+    Completed = "Completed"
 
 
 class SheetEntity(BaseModel):
@@ -37,9 +44,6 @@ class OrderInfo(BaseModel):
 class OrderPrice(BaseModel):
     price_dollar: float | None = None
     price_booster_dollar: float | None = None
-    price_booster_dollar_fee: float | None = None
-    price_booster_rub: float | None = None
-    price_booster_gold: float | None = None
 
 
 class OrderCredentials(BaseModel):
@@ -53,14 +57,13 @@ class OrderCreate(SheetEntity, BaseModel):
     order_id: str
 
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
-    exchange: float
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None
     screenshot: str | None = None
-    status: str | None = None  # TODO: оно здесь не надо
-    booster: str | None = None  # TODO: оно здесь не надо
-    status_paid: str | None = None  # TODO: оно здесь не надо
+    status: str = OrderStatus.InProgress
+    booster: str | None = None
+    status_paid: str | None = None
 
     info: OrderInfo
     price: OrderPrice
@@ -74,9 +77,9 @@ class OrderUpdate(BaseModel):
     shop: str | None = None
     contact: str | None = None
     screenshot: str | None = None
-    status: str | None = None  # TODO: оно здесь не надо
-    booster: str | None = None  # TODO: оно здесь не надо
-    status_paid: str | None = None  # TODO: оно здесь не надо
+    status: OrderStatus | None = None
+    booster: str | None = None
+    status_paid: str | None = None
 
     info: OrderInfo | None = None
     price: OrderPrice | None = None
@@ -93,14 +96,13 @@ class Order(SheetEntity, Document):
     order_id: str
 
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
-    exchange: float
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None
     screenshot: str | None = None
-    status: str | None = None  # TODO: оно здесь не надо
-    booster: str | None = None  # TODO: оно здесь не надо
-    status_paid: str | None = None  # TODO: оно здесь не надо
+    status: str = OrderStatus.InProgress
+    booster: str | None = None
+    status_paid: str | None = None
 
     info: OrderInfo
     price: OrderPrice
@@ -121,13 +123,3 @@ class Order(SheetEntity, Document):
 
     def __hash__(self):
         return hash(str(self.id))
-
-    def serializing_to_sheets(self):
-        data = self.model_dump()
-        if self.auth_date:
-            auth_date = self.auth_date.strftime("%d.%m.%Y")
-            data["auth_date"] = auth_date
-        if self.end_date:
-            end_date = self.end_date.strftime("%d.%m.%Y")
-            data["end_date"] = end_date
-        return data

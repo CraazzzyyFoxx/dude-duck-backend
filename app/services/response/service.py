@@ -6,12 +6,12 @@ from . import models
 
 
 async def get(response_id: PydanticObjectId) -> models.Response | None:
-    return await models.Response.find_one({"_id": response_id}, fetch_links=True)
+    return await models.Response.find_one({"_id": response_id})
 
 
 async def create(response_in: models.ResponseCreate):
-    response = models.Response(order=response_in.order_id,
-                               user=response_in.user_id,
+    response = models.Response(order_id=response_in.order_id,
+                               user_id=response_in.user_id,
                                extra=response_in.extra)
     response.created_at = datetime.utcnow()
     return await response.create()
@@ -23,16 +23,15 @@ async def delete(response_id: PydanticObjectId):
 
 
 async def get_by_order_id(order_id: PydanticObjectId) -> list[models.Response]:
-    return await models.Response.find(models.Response.order.id == order_id, fetch_links=True).to_list()
+    return await models.Response.find({"order_id": order_id}).to_list()
 
 
 async def get_by_user_id(user_id: PydanticObjectId) -> list[models.Response]:
-    return await models.Response.find(models.Response.user.id == user_id, fetch_links=True).to_list()
+    return await models.Response.find({"user_id": user_id}).to_list()
 
 
 async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.Response | None:
-    return await models.Response.find_one(models.Response.order.id == order_id,
-                                          models.Response.user.id == user_id, fetch_links=True)
+    return await models.Response.find_one({"order_id": order_id, "user_id": user_id})
 
 
 async def get_all() -> list[models.Response]:

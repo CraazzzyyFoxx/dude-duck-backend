@@ -1,0 +1,42 @@
+from beanie import PydanticObjectId
+from fastapi import APIRouter, Depends, HTTPException
+from starlette import status
+
+from app.core import enums
+from app.services.auth import flows as auth_flows
+
+
+from . import models, flows, service
+
+router = APIRouter(prefix='/settings', tags=[enums.RouteTag.SETTINGS])
+
+
+@router.get('/', response_model=models.SettingsRead)
+async def read_settings(_: auth_flows.models.User = Depends(auth_flows.current_active_superuser)):
+    return await service.get()
+
+
+@router.patch('/', response_model=models.SettingsRead)
+async def update_settings(
+        data: models.SettingsUpdate,
+        _: auth_flows.models.User = Depends(auth_flows.current_active_superuser)
+):
+    return await service.update(data)
+
+
+@router.post('/api_layer_currency', response_model=models.SettingsRead)
+async def add_api_layer_currency_token(
+        token: str,
+        _: auth_flows.models.User = Depends(auth_flows.current_active_superuser)
+):
+    await flows.add_api_layer_currency_token(token)
+    return await service.get()
+
+
+@router.delete('/api_layer_currency', response_model=models.SettingsRead)
+async def remove_api_layer_currency_token(
+        token: str,
+        _: auth_flows.models.User = Depends(auth_flows.current_active_superuser)
+):
+    await service.remove_token(token)
+    return await service.get()

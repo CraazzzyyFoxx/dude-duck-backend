@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import MongoDsn, EmailStr
+from pydantic import MongoDsn, EmailStr, RedisDsn
 from pydantic_settings import SettingsConfigDict, BaseSettings
 
 
@@ -17,7 +17,6 @@ class AppConfig(BaseSettings):
     cors_origins: list[str] = []
     use_correlation_id: bool = False
 
-    host: str
     port: int
 
     # Logging
@@ -31,7 +30,7 @@ class AppConfig(BaseSettings):
 
     # MongoDB
     mongo_name: str
-    mongo_dsn: MongoDsn
+    mongo_dsn: str
 
     # JWT
     secret: str
@@ -43,15 +42,15 @@ class AppConfig(BaseSettings):
     super_user_email: EmailStr
     super_user_password: str
 
-    username_regex: str = r"([\w{L} ()]+)"
+    username_regex: str = r"([\w{L}]+)"
 
-    accounting_precision_dollar: int = 2
-    accounting_precision_rub: int = 0
-    accounting_precision_gold: int = 0
+    # Celery
+    celery_broker_url: RedisDsn
+    celery_result_backend: RedisDsn
+    celery_sheets_sync_time: int = 60
 
 
 app = AppConfig(_env_file='.env', _env_file_encoding='utf-8')
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-TEMPLATES_DIR = BASE_DIR / "app" / "templates"
 GOOGLE_CONFIG_FILE = BASE_DIR / "google.json"

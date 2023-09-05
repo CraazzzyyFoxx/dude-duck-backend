@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from beanie import PydanticObjectId
 
 from app.core import enums
-from app.services.auth import service as auth_service
+from app.services.auth import flows as auth_flows
 from app.services.search import service as search_service
 from app.services.permissions import service as permissions_service
 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/orders", tags=[enums.RouteTag.ORDERS])
 
 
 @router.get(path="/{order_id}", response_model=schemas.OrderRead)
-async def get_order(order_id: PydanticObjectId, user=Depends(auth_service.current_active_superuser)):
+async def get_order(order_id: PydanticObjectId, user=Depends(auth_flows.current_active_superuser)):
     order = await flows.get(order_id)
     return await permissions_service.format_order(order, user)
 
@@ -23,7 +23,7 @@ async def get_order(order_id: PydanticObjectId, user=Depends(auth_service.curren
 async def update_order(
         order_id: PydanticObjectId,
         data: models.OrderUpdate,
-        user=Depends(auth_service.current_active_superuser)
+        user=Depends(auth_flows.current_active_superuser)
 ):
     order = await flows.get(order_id)
     await service.update_with_sync(order, data)
@@ -35,7 +35,7 @@ async def update_order(
 async def get_orders(
         paging: search_service.models.PaginationParams = Depends(),
         sorting: search_service.models.OrderSortingParams = Depends(),
-        user=Depends(auth_service.current_active_superuser)):
+        user=Depends(auth_flows.current_active_superuser)):
     query = {}
     if sorting.completed != search_service.models.OrderSelection.ALL:
         if sorting.completed == search_service.models.OrderSelection.Completed:

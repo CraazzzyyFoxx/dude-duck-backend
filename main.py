@@ -2,8 +2,6 @@ import os
 
 from contextlib import asynccontextmanager
 
-import uvicorn
-
 from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import ORJSONResponse
@@ -11,29 +9,34 @@ from starlette.staticfiles import StaticFiles
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from app import db
-from app.core.extensions import configure_extensions
-from app.middlewares.exception import ExceptionMiddleware
-from app.middlewares.time import TimeMiddleware
-from app.core.logging import logger
+from app import db, api
 from app.core import config
+from app.core.logging import logger
+from app.core.extensions import configure_extensions
+from app.middlewares.time import TimeMiddleware
+from app.middlewares.exception import ExceptionMiddleware
 
+from app.services.settings import service as settings_service
 from app.services.auth import service as auth_service
-from app.services.sheets import flows as sheets_flows
-from app.services.tasks import flows as tasks_flows
-from app.services.telegram.message import service as message_service
+from app.services.auth import flows as auth_flows
+from app.services.sheets.tasks import sync_orders
+from app.services.telegram import service as telegram_service
 
-from app.api import router
+
+if os.name != "nt":
+    import uvloop  # noqa
+    uvloop.install()
 
 configure_extensions()
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):  # noqa
-    client = AsyncIOMotorClient(config.app.mongo_dsn.unicode_string())
-    await init_beanie(database=getattr(client, config.app.mongo_name), document_models=db.get_beanie_models())
+    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
+    await settings_service.create()
+
     if not await auth_service.models.User.find_one({"name": config.app.super_user_username}):
-        async with auth_service.get_user_manager_context() as manager:
+        async with auth_flows.get_user_manager_context() as manager:
             user = auth_service.models.UserCreate(
                 email=config.app.super_user_email,
                 password=config.app.super_user_password,
@@ -48,11 +51,7 @@ async def lifespan(application: FastAPI):  # noqa
             password = user_dict.pop("password")
             user_dict["hashed_password"] = manager.password_helper.hash(password)
             await auth_service.models.User.model_validate(user_dict).create()
-
-    await sheets_flows.GoogleSheetsServiceManager.init()
-    tasks_flows.sync_data.start()
-    # await tasks_flows.sync_data()
-    await message_service.MessageService.init()
+    await telegram_service.TelegramService.init()
     logger.info("Application... Online!")
     yield
 
@@ -71,7 +70,7 @@ common_doc_settings = {
 }
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.include_router(router)
+app.include_router(api.router)
 app.add_middleware(ExceptionMiddleware)
 app.add_middleware(TimeMiddleware)
 
@@ -97,18 +96,3 @@ async def overridden_swagger():
     swagger_settings = common_doc_settings.copy()
     swagger_settings["swagger_favicon_url"] = swagger_settings.pop("favicon_url")
     return get_swagger_ui_html(**swagger_settings)
-
-
-if __name__ == '__main__':
-    if os.name != "nt":
-        import uvloop  # noqa
-
-        uvloop.install()
-
-    uvicorn.run(
-        "main:app",
-        host=config.app.host,
-        port=config.app.port,
-        ssl_keyfile='key.pem',
-        ssl_certfile='cert.pem'
-    )

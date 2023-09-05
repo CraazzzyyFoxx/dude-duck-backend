@@ -7,39 +7,35 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-uvicorn = "^0.23.0"
+uvicorn = {extras = ["standard"], version = "^0.23.2"}
 pydantic = {extras = ["email"], version = "^2.0.3"}
 python-dotenv = "^1.0.0"
 dateparser = "^1.1.7"
 loguru = "^0.7.0"
 sentry-sdk = {extras = ["fastapi"], version = "^1.28.1"}
-fastapi = "^0.100.0"
+fastapi = "^0.103.0"
 uvloop = {version = "^0.17.0", platform="linux"}
-gspread-asyncio = "^1.9.0"
-google-api-python-client = "^2.94.0"
 pydantic-extra-types = "^2.0.0"
 phonenumbers = "^8.13.17"
 beanie = "^1.20.0"
-fastapi-users = {extras = ["beanie"], version = "^12.1.0"}
+fastapi-users = {extras = ["beanie"], version = "^12.1.2"}
 pydantic-settings = "^2.0.2"
 httpx = "^0.24.1"
 orjson = "^3.9.4"
-apscheduler = {git = "https://github.com/agronholm/apscheduler.git"}
-setuptools = "^68.0.0"
-slowapi = "^0.1.8"
-lru-cache = "^0.2.3"
 deepdiff = "^6.3.1"
-lru-dict = "^1.2.0"
-locust = "^2.16.1"
 flower = "^2.0.1"
-aioredis = "^2.0.1"
+redis = "^5.0.0"
+asgiref = "^3.7.2"
+gunicorn = "^21.2.0"
+gspread = "^5.10.0"
+setuptools = "^65.1.2"
+celery = "^5.3.1"
 
 
 
-[tool.aerich]
-tortoise_orm = "config.tortoise"
-location = "./migrations"
-src_folder = "./."
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.5.1"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

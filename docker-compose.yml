@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+#  mongo-express:
+#    image: mongo-express
+#    restart: always
+#    ports:
+#      - "8081:8081"
+#    environment:
+#      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+#      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+#      ME_CONFIG_MONGODB_URL: mongodb://root:root@mongo:27017/
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=root
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+  app:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT}
+    ports:
+      - "${PORT}:${PORT}"
+  worker:
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info
+    volumes:
+      - ./app:/app
+    environment:
+      - MONGO_DSN=mongodb://gen_user:T0H9>x,d={{^7!@154.194.52.163:27017/dudeduck?authSource=admin&directConnection=true
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_SHEETS_SYNC_TIME=300
+    depends_on:
+      - redis
+  flower:
+    build: .
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - worker

@@ -24,7 +24,7 @@ class OrderReadMeta(BaseModel):
 
     date: datetime.datetime
     screenshot: str | None = None
-    status: str | None = None  # TODO: оно здесь не надо
+    status: str | None = None
 
     info: OrderInfo
 
@@ -33,12 +33,10 @@ class OrderReadMeta(BaseModel):
 
 
 class OrderReadBase(OrderReadMeta):
-    exchange: float
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None
-    booster: str | None = None  # TODO: оно здесь не надо
-    status_paid: str | None = None  # TODO: оно здесь не надо
+    booster: str | None
 
     credentials: OrderCredentials
     price: OrderPrice
@@ -49,5 +47,6 @@ class OrderRead(OrderReadBase):
 
 
 class OrderReadUser(OrderReadMeta):
+    id: PydanticObjectId
     price: OrderPriceUser
     credentials: OrderCredentials | None = None

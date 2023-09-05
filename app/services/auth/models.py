@@ -1,10 +1,11 @@
 import datetime
 import enum
+import re
 
 from fastapi_users_db_beanie import BeanieBaseUserDocument
 from fastapi_users_db_beanie.access_token import BeanieBaseAccessTokenDocument
 
-from pydantic import EmailStr, Field, constr, BaseModel, HttpUrl, model_validator
+from pydantic import EmailStr, Field, constr, BaseModel, HttpUrl, model_validator, field_validator
 from pydantic_core import Url
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -14,6 +15,7 @@ from beanie import PydanticObjectId
 from fastapi_users import schemas
 
 from app.core import config
+from app.services.sheets.models import SheetEntity
 
 __all__ = (
     "UserRead",
@@ -60,7 +62,7 @@ class UserRead(schemas.BaseUser[PydanticObjectId]):
     created_at: datetime.datetime
 
 
-class UserReadSheets(schemas.BaseUser[PydanticObjectId]):
+class UserReadSheets(schemas.BaseUser[PydanticObjectId], SheetEntity):
     name: str
     telegram: str
     phone: PhoneNumber | None
@@ -71,7 +73,7 @@ class UserReadSheets(schemas.BaseUser[PydanticObjectId]):
 
 
 class UserCreate(schemas.BaseUserCreate):
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20, pattern=config.app.username_regex)
+    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
     telegram: str
     phone: PhoneNumber | None = None
     bank: str | None = None
@@ -86,6 +88,25 @@ class UserCreate(schemas.BaseUserCreate):
             raise ValueError("When filling in the phone number, you must also fill in the name of the bank")
 
         return self
+
+    @field_validator('name')
+    def username_validate(cls, v: str):
+        regex = re.fullmatch(config.app.username_regex, v)
+        if not regex:
+            raise ValueError("Only Latin, Cyrillic and numbers can be used in the username")
+        return v
+
+    @field_validator('discord')
+    def discord_validate(cls, v: str) -> str:
+        if v.startswith("@"):
+            v = v.replace("@", "")
+            if len(v.replace(" ", "")) != len(v):
+                raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
+        if "#" in v:
+            name, dis = v.strip("#")
+            if len(dis) != 4:
+                raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
+        return v
 
 
 class UserUpdate(schemas.BaseUserUpdate):
@@ -113,7 +134,7 @@ class AccessTokenAPI(BeanieBaseAccessTokenDocument):
 
 
 class User(BeanieBaseUserDocument):
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20, pattern=config.app.username_regex)
+    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
     telegram: str
     phone: PhoneNumber | None = None
     bank: str | None = None

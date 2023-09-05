@@ -8,10 +8,10 @@
 __pycache__
 .db/
 .data/
-.logs/
+logs/
 poetry.lock
 
 .DS_Store
 .env
 .ruff_cache
-google.json
+

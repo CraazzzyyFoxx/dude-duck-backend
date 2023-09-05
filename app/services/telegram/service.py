@@ -1,20 +1,21 @@
+import httpx
+from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
-from httpx import Limits, AsyncClient, TimeoutException, HTTPError
+from httpx import TimeoutException, HTTPError
 from loguru import logger
 
 from app.core import config
 
 
-class ChannelServiceMeta:
+class TelegramServiceMeta:
     __slots__ = ("client",)
 
     def __init__(self):
-        self.client = self._build_client()
+        self.client = httpx.AsyncClient(verify=False)
 
     @staticmethod
-    def _build_client() -> AsyncClient:
-        limits = Limits(max_connections=20, max_keepalive_connections=10)
-        return AsyncClient(limits=limits, http1=True, verify=False)
+    def _build_client() -> httpx.AsyncClient:
+        return httpx.AsyncClient()
 
     async def init(self) -> None:
         if self.client.is_closed:
@@ -24,10 +25,11 @@ class ChannelServiceMeta:
         if self.client.is_closed:
             logger.debug("This HTTPXRequest is already shut down. Returning.")
             return
+
         await self.client.aclose()
 
 
-ChannelService = ChannelServiceMeta()
+TelegramService = TelegramServiceMeta()
 
 
 async def request(
@@ -35,14 +37,19 @@ async def request(
         method: str,
         data: dict | None = None):
     try:
-        response = await ChannelService.client.request(
+        response = await TelegramService.client.request(
             method=method,
             url=f"{config.app.frontend_url}/api/{endpoint}",
             json=jsonable_encoder(data),
             headers={"Authorization": "Bearer " + config.app.frontend_token}
         )
-        return response
     except TimeoutException as err:
         logger.exception(err)
     except HTTPError as err:
         logger.exception(err)
+    else:
+        if response.status_code not in (200, 201, 404):
+            raise HTTPException(status_code=500, detail=[
+                {"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}
+            ])
+        return response

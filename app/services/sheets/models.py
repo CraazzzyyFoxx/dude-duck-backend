@@ -8,7 +8,10 @@ __all__ = (
     "OrderSheetParse",
     "OrderSheetParseCreate",
     "OrderSheetParseUpdate",
-    "allowed_types"
+    "allowed_types",
+    "SheetEntity",
+    "OrderSheetParseRead",
+    "OrderReadSheets"
 )
 
 from app.services.orders.schemas import OrderReadBase
@@ -52,17 +55,26 @@ class OrderSheetParse(Document):
     start: int = Field(default=2, gt=1)
     items: list[OrderSheetParseItem]
 
-    default: typing.Literal["order", "booster"] | None = Field(default=None)
+    is_user: bool
 
     class Settings:
         use_state_management = True
         state_management_save_previous = True
 
 
+class OrderSheetParseRead(BaseModel):
+    spreadsheet: str
+    sheet_id: int
+    start: int
+    items: list[OrderSheetParseItem]
+
+    is_user: bool
+
+
 class OrderSheetParseUpdate(BaseModel):
     start: int = Field(default=None, gt=1)
     items: list[OrderSheetParseItem] = Field(default=None)
-    default: typing.Literal["order", "booster"] | None = Field(default=None)
+    is_user: bool | None = Field(default=None)
 
 
 class OrderSheetParseCreate(BaseModel):
@@ -70,7 +82,7 @@ class OrderSheetParseCreate(BaseModel):
     sheet_id: int
     start: int = Field(default=2, gt=1)
     items: list[OrderSheetParseItem]
-    default: typing.Literal["order", "booster"] | None = Field(default=None)
+    is_user: bool = False
 
 
 class OrderReadSheets(OrderReadBase, SheetEntity):

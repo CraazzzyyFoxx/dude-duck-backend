@@ -30,26 +30,6 @@ class APIValidationError(BaseModel):
         )
 
 
-class BotErrorMessage(BaseModel):
-    error: str = Field(
-        ...,
-        description="Message describing the error",
-        examples=["Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"],
-    )
-
-
-class InternalServerErrorMessage(BaseModel):
-    error: str = Field(
-        ...,
-        description="Message describing the internal server error",
-        examples=[
-            (
-                "An internal server error occurred during the process."
-            )
-        ],
-    )
-
-
 class GoogleSheetsParserError(BaseModel):
     model: str
     spreadsheet: str

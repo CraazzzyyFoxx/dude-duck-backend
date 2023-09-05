@@ -6,6 +6,10 @@ from beanie.odm.operators.find.comparison import In
 
 from app.core import config
 from app.services.auth import flows as auth_flows
+from app.services.auth import models as auth_models
+from app.services.settings import service as settings_service
+from app.services.currency import flows as currency_flows
+from app.services.orders import models as order_models
 
 from . import models
 
@@ -18,8 +22,8 @@ async def get(order_id: PydanticObjectId) -> models.UserOrder | None:
 
 
 async def create(user_order_in: models.UserOrderCreate):
-    user_order = models.UserOrder(order=user_order_in.order_id,
-                                  user=user_order_in.user_id,
+    user_order = models.UserOrder(order_id=user_order_in.order_id,
+                                  user_id=user_order_in.user_id,
                                   dollars=user_order_in.dollars,
                                   completed=user_order_in.completed,
                                   paid=user_order_in.paid,
@@ -36,21 +40,15 @@ async def delete(user_order_id: PydanticObjectId):
 
 
 async def get_by_order_id(order_id: PydanticObjectId):
-    return await models.UserOrder.find(models.UserOrder.order.id == order_id, fetch_links=True).to_list()
-
-
-async def get_by_order_id_without_prefetch(order_id: PydanticObjectId):
-    return await models.UserOrder.find(models.UserOrder.order.id == order_id).to_list()
+    return await models.UserOrder.find({"order_id": order_id}).to_list()
 
 
 async def get_by_user_id(user_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find(models.UserOrder.user.id == user_id, fetch_links=True).to_list()
+    return await models.UserOrder.find({"user_id": user_id}).to_list()
 
 
 async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.UserOrder | None:
-    return await models.UserOrder.find_one(models.UserOrder.user.id == user_id,
-                                           models.UserOrder.order.id == order_id,
-                                           fetch_links=True)
+    return await models.UserOrder.find_one({"order_id": order_id, "user_id": user_id})
 
 
 async def get_all() -> list[models.UserOrder]:
@@ -58,16 +56,7 @@ async def get_all() -> list[models.UserOrder]:
 
 
 async def get_by_sheet_prefetched(spreadsheet: str, sheet: int) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"order.spreadsheet": spreadsheet, "order.sheet_id": sheet},
-                                       fetch_links=True).to_list()
-
-
-async def get_by_user_and_status(
-        user_id: PydanticObjectId,
-        status: models.OrderStatus
-) -> list[models.Order]:
-    data = await models.UserOrder.find({"user.id": user_id}).to_list()
-    return await models.Order.find({"_id": {"$in": [d.order.id for d in data]}, "status": status}).to_list()
+    return await models.UserOrder.find({"spreadsheet": spreadsheet, "sheet": sheet}).to_list()
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate):
@@ -77,20 +66,30 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
     for field in user_order_data:
         if field in update_data:
             if field == "paid":
-                setattr(user_order, "completed", True)
-                setattr(user_order, "paid_time", datetime.utcnow())
+                if update_data[field]:
+                    setattr(user_order, "completed", True)
+                    setattr(user_order, "completed_at", datetime.utcnow())
+                    setattr(user_order, "paid_time", datetime.utcnow())
+                else:
+                    setattr(user_order, "paid_time", None)
+            if field == "completed":
+                if update_data[field]:
+                    setattr(user_order, "completed", True)
+                    setattr(user_order, "completed_at", datetime.utcnow())
+                else:
+                    setattr(user_order, "completed_at", None)
             setattr(user_order, field, update_data[field])
 
     await user_order.save_changes()
     return user_order
 
 
-async def check_user_total_orders(user: auth_flows.models.User) -> bool:
-    count = await models.UserOrder.find({"user._id": user.id, "completed": False}, fetch_links=True).count()
+async def check_user_total_orders(user: auth_models.User) -> bool:
+    count = await models.UserOrder.find({"user_id": user.id, "completed": False}).count()
     return bool(count < user.max_orders)
 
 
-async def can_user_pick(user: auth_flows.models.User) -> bool:
+async def can_user_pick(user: auth_models.User) -> bool:
     if not user.is_verified:
         return False
     if not await check_user_total_orders(user):
@@ -98,29 +97,70 @@ async def can_user_pick(user: auth_flows.models.User) -> bool:
     return True
 
 
-async def update_booster_price(old, new):
+async def update_booster_price(old: order_models.Order, new: order_models.Order):
     boosters = await get_by_order_id(new.id)
     if not boosters:
         return
-    delta = (new.price.price_booster_dollar_fee - old.price.price_booster_dollar_fee) / len(boosters)
+    old_price = await usd_to_currency(old.price.price_booster_dollar, old.date)
+    new_price = await usd_to_currency(new.price.price_booster_dollar, new.date)
+    delta = (new_price - old_price) / len(boosters)
     for booster in boosters:
         booster.dollars += delta
         await booster.save_changes()
 
 
-def calculate_price_dollars(price: float):
-    return round(price, config.app.accounting_precision_dollar)
+async def usd_to_currency(
+        dollars: float,
+        date: datetime,
+        currency: str = "USD",
+        *,
+        with_round: bool = False,
+        with_fee: bool = False
+) -> float:
+    settings = await settings_service.get()
+    if currency == "USD":
+        price = dollars
+    else:
+        currency_db = await currency_flows.get(date)
+        price = dollars * currency_db.quotes[currency]
+    if with_fee:
+        price *= settings.accounting_fee
+    if with_round:
+        return round(price, settings.get_precision(currency))
+    else:
+        return price
 
 
-def calculate_price_rub(price: float, exchange: float):
-    return int(round(price * exchange, config.app.accounting_precision_rub))
+async def currency_to_usd(
+        wallet: float,
+        date: datetime,
+        currency: str = "USD",
+        *,
+        with_round: bool = False,
+        with_fee: bool = False
+) -> float:
+    settings = await settings_service.get()
+    if currency == "USD":
+        price = wallet
+    else:
+        currency_db = await currency_flows.get(date)
+        price = wallet / currency_db.quotes[currency]
+    if with_fee:
+        price = price * (1 - settings.accounting_fee)
+    if with_round:
+        return round(price, settings.get_precision(currency))
+    else:
+        return price
 
 
-def calculate_price_gold(price: float, exchange: float):
-    return round(price * exchange, config.app.accounting_precision_gold)
+async def apply_round(wallet: float, currency: str = "USD"):
+    settings = await settings_service.get()
+    return round(wallet, settings.get_precision(currency))
 
 
 def boosters_from_str(string: str) -> dict[str, int | None]:
+    if string is None:
+        return {}
     resp = {}
     boosters = BOOSTER_REGEX.findall(string.lower())
     for booster in boosters:
@@ -134,55 +174,57 @@ def boosters_from_str(string: str) -> dict[str, int | None]:
     return resp
 
 
-def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth_flows.models.User]):
+async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth_models.User]):
     if len(users) == 1:
         return users[0].name
     resp = []
     for d in data:
         for booster in users:
             if booster.id == d.user.id:
-                resp.append(f"{booster.name}({calculate_price_rub(d.dollars, order.exchange)})")
+                price = await usd_to_currency(d.dollars, order.date, currency='RUB', with_round=True)
+                resp.append(f"{booster.name}({price})")
     return ' + '.join(resp)
 
 
 async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
     users = await auth_flows.models.User.find(In(auth_flows.models.User.id, [d.user.id for d in data])).to_list()
-    return _boosters_to_str(order, data, users)
+    return await _boosters_to_str(order, data, users)
 
 
-def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: list[auth_flows.models.User]) -> str:
+async def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: list[auth_models.User]) -> str:
     users = []
     search = [d.user.id for d in data]
     for user_in in users_in:
         if user_in.id in search:
             users.append(user_in)
-    return _boosters_to_str(order, data, users)
+    return await _boosters_to_str(order, data, users)
 
 
-async def boosters_from_order(order) -> None:
-    if order.booster is None:
-        return
-    completed = True if order.status == "Completed" else False
-    paid = True if order.status_paid == "Paid" else False
-    boosters = boosters_from_str(order.booster)
-    for booster, price in boosters.items():
-        if user := await auth_flows.get_booster_by_name(booster):
-            dollars = order.price.price_booster_dollar_fee / len(boosters) if not price else price / order.exchange
-            b = models.UserOrderCreate(order_id=order.id, user_id=user.id,
-                                       dollars=dollars, completed=completed, paid=paid)
-            await create(b)
-
-
-async def boosters_from_order_sync(order, users_in: list[auth_flows.models.User]) -> None:
-    if order.booster is None:
-        return
+async def _boosters_from_order(order: order_models.Order, users_in: list[auth_models.User]):
     completed = True if order.status == "Completed" else False
     paid = True if order.status_paid == "Paid" else False
     boosters = boosters_from_str(order.booster)
     for booster, price in boosters.items():
         for user in users_in:
             if user.name == booster:
-                dollars = order.price.price_booster_dollar_fee / len(boosters) if not price else price / order.exchange
-                b = models.UserOrderCreate(order_id=order.id, user_id=user.id,
-                                           dollars=dollars, completed=completed, paid=paid)
-                await create(b)
+                x = await get_by_order_id_user_id(order.id, user.id)
+                if x is None:
+                    if price is None:
+                        dollars = await usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+                        dollars /= len(boosters)
+                    else:
+                        dollars = await currency_to_usd(price, order.date, currency="RUB")
+                    b = models.UserOrderCreate(
+                        order_id=order.id, user_id=user.id, dollars=dollars, completed=completed, paid=paid
+                    )
+                    await create(b)
+                    break
+
+
+async def boosters_from_order(order) -> None:
+    users = await auth_flows.service.get_all()
+    return await _boosters_from_order(order, users)
+
+
+async def boosters_from_order_sync(order, users: list[auth_models.User]) -> None:
+    return await _boosters_from_order(order, users)

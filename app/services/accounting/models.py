@@ -1,13 +1,9 @@
 import datetime
-import enum
 
 from pydantic import BaseModel, Field, model_validator, HttpUrl, constr, field_validator, ConfigDict
-from beanie import Document, Link, PydanticObjectId
+from beanie import Document, PydanticObjectId
 from pymongo import IndexModel
 
-from app.services.auth.models import User, UserRead
-from app.services.orders.models import Order
-from app.services.orders.schemas import OrderRead
 
 __all__ = (
     "UserOrder",
@@ -19,24 +15,21 @@ __all__ = (
 )
 
 
-class OrderStatus(str, enum.Enum):
-    Completed = "Completed"
-    InProgress = "In Progress"
-    Refund = "Refund"
-
-
 class UserOrder(Document, BaseModel):
-    order: Link[Order]
-    user: Link[User]
+    order_id: PydanticObjectId
+    user_id: PydanticObjectId
     dollars: float
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)
     paid_time: datetime.datetime | None = Field(default=None)
     method_payment: str | None = Field(default="$")
 
+    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    completed_at: datetime.datetime | None = None
+
     class Settings:
         indexes = [
-            IndexModel(["order", "user"], unique=True),
+            IndexModel(["order_id", "user_id"], unique=True),
         ]
         use_state_management = True
         state_management_save_previous = True
@@ -83,21 +76,13 @@ class ManageBoosterForm(BaseModel):
 class UserOrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    order: PydanticObjectId = Field(serialization_alias="order_id")
-    user: PydanticObjectId = Field(serialization_alias="user_id")
+    order_id: PydanticObjectId
+    user_id: PydanticObjectId
     dollars: float
     completed: bool
     paid: bool
     paid_time: datetime.datetime | None
     method_payment: str
-
-    @field_validator("order", mode="before")
-    def order_id_resolver(cls, v):
-        return v.id
-
-    @field_validator("user", mode="before")
-    def user_id_resolver(cls, v):
-        return v.id
 
 
 class SheetBoosterOrderEntityCreate(BaseModel):

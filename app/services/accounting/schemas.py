@@ -24,11 +24,6 @@ class AccountingReportSheetsForm(BaseModel):
     first_sort: FirstSort
     second_sort: SecondSort
 
-    # @model_validator(mode='after')
-    # def spreadsheet_sheet_together(self):
-    #     if self.spreadsheet is not None or self.sheet_id is not None:
-    #         raise ValueError("Spreadsheet and sheet_id are related, you must specify them together")
-
     @model_validator(mode='after')
     def spreadsheet_sheet_together(self):
         if self.sheet_id is not None and self.spreadsheet is None:
@@ -72,3 +67,9 @@ class UserOrderRead(BaseModel):
     @field_validator("user", mode="before")
     def user_id_resolver(cls, v):
         return v.id
+
+
+class OrderBoosterCreate(BaseModel):
+    user_id: PydanticObjectId
+    dollars: float
+    method_payment: str
