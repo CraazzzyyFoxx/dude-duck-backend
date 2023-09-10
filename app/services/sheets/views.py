@@ -1,6 +1,11 @@
+import datetime
+
+from lxml.builder import ElementMaker
+from lxml.etree import tostring
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
+from starlette.responses import Response
 
 from app.core import enums
 from app.services.auth import flows as auth_flows
@@ -11,11 +16,20 @@ from app.services.preorders import models as preorders_schemes
 from app.services.preorders import flows as preorders_flows
 from app.services.search import service as search_service
 from app.services.accounting import flows as accounting_flows
-from app.services.telegram.message import flows as message_flows
+from app.services.currency import flows as currency_flows
 
 from . import models, flows
 
 router = APIRouter(prefix='/sheets', tags=[enums.RouteTag.SHEETS])
+
+
+@router.get('/currency')
+async def fetch_order_from_sheets(date: datetime.date):
+    E = ElementMaker()
+    wallet = (await currency_flows.get(date)).quotes["RUB"]
+    wallet_str = str(wallet).replace(".", ",")
+    the_doc = E.root(E.USD(wallet_str))
+    return Response(content=tostring(the_doc, pretty_print=True), media_type="text/xml")
 
 
 @router.post('/orders', response_model=orders_schemas.OrderRead | preorders_schemes.PreOrderRead)
@@ -23,6 +37,7 @@ async def fetch_order_from_sheets(
         data: models.SheetEntity,
         user: auth_flows.models.User = Depends(auth_flows.current_active_superuser_api)
 ):
+
     model = await flows.get_order_from_sheets(data, user)
     if model.shop_order_id:
         return await orders_flows.create(model)

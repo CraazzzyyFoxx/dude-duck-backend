@@ -51,9 +51,8 @@ async def get_response(
         order_id: PydanticObjectId,
         user=Depends(auth_flows.resolve_user)
 ):
-    order = await order_flows.get(order_id)
     user = await auth_service.get(user.id)
-    return await flows.get_by_order_id_user_id(order.id, user.id)
+    return await flows.get_by_order_id_user_id(order_id, user.id)
 
 
 @router.delete('/{order_id}/{user_id}', response_model=models.ResponseRead)
@@ -62,9 +61,8 @@ async def remove_response(
         user_id: PydanticObjectId,
         _=Depends(auth_flows.current_active_superuser)
 ):
-    order = await order_flows.get(order_id)
     user = await auth_service.get(user_id)
-    resp = await flows.get_by_order_id_user_id(order.id, user.id)
+    resp = await flows.get_by_order_id_user_id(order_id, user.id)
     await service.delete(resp.id)
     return resp
 

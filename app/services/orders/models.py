@@ -12,14 +12,21 @@ __all__ = (
     "OrderInfo",
     "OrderCredentials",
     "OrderUpdate",
-    "OrderCreate"
+    "OrderCreate",
+    "OrderStatus",
+    "OrderPaidStatus"
 )
 
 
 class OrderStatus(Enum):
     Refund = "Refund"
-    InProgress = " In Progress"
+    InProgress = "In Progress"
     Completed = "Completed"
+
+
+class OrderPaidStatus(Enum):
+    Paid = "Paid"
+    NotPaid = "Not Paid"
 
 
 class SheetEntity(BaseModel):
@@ -34,7 +41,7 @@ class OrderInfo(BaseModel):
     server: str | None = None
     category: str | None = None
     character_class: str | None = None
-    nickname: str | None = None
+    platform: str | None = None
     game: str | None = None
     purchase: str | None = None
     comment: str | None = None
@@ -48,9 +55,11 @@ class OrderPrice(BaseModel):
 
 class OrderCredentials(BaseModel):
     battle_tag: str | None = None
+    nickname: str | None = None
     login: str | None = None
     password: str | None = None
     vpn: str | None = None
+    discord: str | None = None
 
 
 class OrderCreate(SheetEntity, BaseModel):
@@ -61,9 +70,10 @@ class OrderCreate(SheetEntity, BaseModel):
     shop_order_id: str | int | None = None
     contact: str | None = None
     screenshot: str | None = None
-    status: str = OrderStatus.InProgress
     booster: str | None = None
-    status_paid: str | None = None
+
+    status: OrderStatus
+    status_paid: OrderPaidStatus
 
     info: OrderInfo
     price: OrderPrice
@@ -77,9 +87,10 @@ class OrderUpdate(BaseModel):
     shop: str | None = None
     contact: str | None = None
     screenshot: str | None = None
-    status: OrderStatus | None = None
     booster: str | None = None
-    status_paid: str | None = None
+
+    status: OrderStatus | None = None
+    status_paid: OrderPaidStatus | None = None
 
     info: OrderInfo | None = None
     price: OrderPrice | None = None
@@ -100,9 +111,10 @@ class Order(SheetEntity, Document):
     shop_order_id: str | int | None = None
     contact: str | None = None
     screenshot: str | None = None
-    status: str = OrderStatus.InProgress
     booster: str | None = None
-    status_paid: str | None = None
+
+    status: OrderStatus
+    status_paid: OrderPaidStatus
 
     info: OrderInfo
     price: OrderPrice

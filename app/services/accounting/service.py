@@ -29,6 +29,8 @@ async def create(user_order_in: models.UserOrderCreate):
                                   paid=user_order_in.paid,
                                   method_payment=user_order_in.method_payment
                                   )
+    if user_order_in.completed:
+        user_order.completed_at = datetime.utcnow()
     if user_order_in.paid:
         user_order.paid_time = datetime.utcnow()
     return await user_order.create()
@@ -201,8 +203,8 @@ async def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: li
 
 
 async def _boosters_from_order(order: order_models.Order, users_in: list[auth_models.User]):
-    completed = True if order.status == "Completed" else False
-    paid = True if order.status_paid == "Paid" else False
+    completed = True if order.status == order_models.OrderStatus.Completed else False
+    paid = True if order.status_paid == order_models.OrderPaidStatus.Paid else False
     boosters = boosters_from_str(order.booster)
     for booster, price in boosters.items():
         for user in users_in:

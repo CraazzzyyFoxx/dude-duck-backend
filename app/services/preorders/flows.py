@@ -10,6 +10,7 @@ from app.services.sheets import service as sheets_service
 from app.services.tasks import service as tasks_service
 from app.services.settings import service as settings_service
 from app.services.telegram.message import service as message_service
+from app.services.permissions import service as permissions_service
 
 from . import service, models
 
@@ -60,4 +61,4 @@ async def delete(
     creds = await auth_service.get_first_superuser()
     sheets_service.clear_row(creds.google, parser, order.row_id)
     await service.to_archive(order.id)
-    await message_service.pull_preorder_delete(order)
+    await message_service.pull_preorder_delete(await permissions_service.format_preorder(order))

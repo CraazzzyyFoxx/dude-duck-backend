@@ -1,7 +1,7 @@
 import typing
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ValidationError
 from starlette import status
 
 
@@ -9,7 +9,6 @@ class ValidationErrorDetail(BaseModel):
     location: str
     message: str
     error_type: str
-    context: dict[str, typing.Any] | None = None
 
 
 class APIValidationError(BaseModel):
@@ -21,9 +20,8 @@ class APIValidationError(BaseModel):
             errors=[
                 ValidationErrorDetail(
                     location=" -> ".join(map(str, err["loc"])),
-                    message=err["msg"],
-                    error_type=err["type"],
-                    context=err.get("ctx"),
+                    message=str(err["msg"]),
+                    error_type=str(err["type"]),
                 )
                 for err in exc.errors()
             ],
@@ -47,10 +45,9 @@ class GoogleSheetsParserError(BaseModel):
             error: ValidationError
     ):
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                             detail=cls(model=repr(model),
-                                        spreadsheet=spreadsheet,
-                                        sheet_id=sheet_id,
-                                        row_id=row_id,
-                                        error=APIValidationError.from_pydantic(error)).model_dump()
+                             detail=[{"msg": cls(model=repr(model),
+                                                 spreadsheet=spreadsheet,
+                                                 sheet_id=sheet_id,
+                                                 row_id=row_id,
+                                                 error=APIValidationError.from_pydantic(error)).model_dump_json()}]
                              )
-

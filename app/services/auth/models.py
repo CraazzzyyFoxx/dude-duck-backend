@@ -49,7 +49,7 @@ class AdminGoogleToken(BaseModel):
 
 
 class UserRead(schemas.BaseUser[PydanticObjectId]):
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20, pattern=config.app.username_regex)
+    name: str
     telegram: str
     phone: PhoneNumber | None
     bank: str | None
@@ -73,51 +73,46 @@ class UserReadSheets(schemas.BaseUser[PydanticObjectId], SheetEntity):
 
 
 class UserCreate(schemas.BaseUserCreate):
+    email: EmailStr
+    password: str = Field(min_length=6)
     name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
     telegram: str
-    phone: PhoneNumber | None = None
-    bank: str | None = None
-    bankcard: PaymentCardNumber | None = None
-    binance: EmailStr | None = None
-    discord: str | None = None
-    language: UserLanguage = UserLanguage.EN
+    discord: str
 
-    @model_validator(mode='after')
-    def check_passwords_match(self) -> 'UserCreate':
-        if self.phone and not self.bank:
-            raise ValueError("When filling in the phone number, you must also fill in the name of the bank")
-
-        return self
-
-    @field_validator('name')
+    @field_validator('name', mode="after")
     def username_validate(cls, v: str):
         regex = re.fullmatch(config.app.username_regex, v)
         if not regex:
             raise ValueError("Only Latin, Cyrillic and numbers can be used in the username")
         return v
 
-    @field_validator('discord')
+    @field_validator('discord', mode="after")
     def discord_validate(cls, v: str) -> str:
         if v.startswith("@"):
-            v = v.replace("@", "")
             if len(v.replace(" ", "")) != len(v):
                 raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
-        if "#" in v:
+        elif "#" in v:
             name, dis = v.strip("#")
             if len(dis) != 4:
                 raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
+        else:
+            raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
         return v
 
 
 class UserUpdate(schemas.BaseUserUpdate):
     language: UserLanguage | None = None
+
+
+class UserUpdateAdmin(schemas.BaseUserUpdate):
     phone: PhoneNumber | None = None
     bank: str | None = None
     bankcard: PaymentCardNumber | None = None
     binance: EmailStr | None = None
+    max_orders: int
 
     @model_validator(mode='after')
-    def check_passwords_match(self) -> 'UserCreate':
+    def check_passwords_match(self) -> 'UserUpdateAdmin':
         if self.phone and not self.bank:
             raise ValueError("When filling in the phone number, you must also fill in the name of the bank")
 

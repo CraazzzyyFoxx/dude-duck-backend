@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from beanie import PydanticObjectId
-from loguru import logger
 
 from app.services.auth import service as auth_service
 from app.services.sheets import flows as sheets_flows
@@ -69,7 +68,7 @@ async def update(order: models.Order, user_order_in: models.OrderUpdate):
     old = order.model_copy(deep=True)
     update_price = False
     order_data = dict(order)
-    update_data = user_order_in.model_dump()
+    update_data = user_order_in.model_dump(exclude_none=True)
     for field in order_data:
         if field in update_data:
             if isinstance(update_data[field], dict):
@@ -97,5 +96,5 @@ async def to_archive(order_id: PydanticObjectId):
 
 
 async def create(order_in: models.OrderCreate) -> models.Order:
-    order = models.Order(**order_in.model_dump())
+    order = models.Order.model_validate(order_in)
     return await order.create()

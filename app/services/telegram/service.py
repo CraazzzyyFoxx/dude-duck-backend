@@ -45,8 +45,14 @@ async def request(
         )
     except TimeoutException as err:
         logger.exception(err)
+        raise HTTPException(status_code=500, detail=[
+            {"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}
+        ])
     except HTTPError as err:
         logger.exception(err)
+        raise HTTPException(status_code=500, detail=[
+            {"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}
+        ])
     else:
         if response.status_code not in (200, 201, 404):
             raise HTTPException(status_code=500, detail=[

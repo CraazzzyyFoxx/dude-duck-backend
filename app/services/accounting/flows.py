@@ -133,18 +133,17 @@ async def create_user_report(user: User) -> models.UserAccountReport:
     total, total_rub, paid, paid_rub, not_paid, not_paid_rub, not_paid_orders, paid_orders = 0, 0, 0, 0, 0, 0, 0, 0
 
     for payment in payments:
-        dollar = await service.apply_round(payment.dollars, "USD")
         rub = await service.usd_to_currency(
-            payment.dollars, orders_map.get(payment.order_id).date, "RUB", with_fee=True, with_round=True
+            payment.dollars, orders_map.get(payment.order_id).date, "RUB", with_round=True
         )
-        total += dollar
+        total += payment.dollars
         total_rub += rub
         if payment.paid:
-            paid += dollar
+            paid += payment.dollars
             paid_orders += 1
             paid_rub += rub
         else:
-            not_paid += dollar
+            not_paid += payment.dollars
             not_paid_orders += 1
             not_paid_rub += rub
 
@@ -191,7 +190,7 @@ async def close_order(user: auth_models.User, order: order_service.models.Order,
             f = True
     if not f:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=[{"msg": f"You don't have access to the order"}])
+                            detail=[{"msg": "You don't have access to the order"}])
 
     await order_service.update_with_sync(order, order_service.models.OrderUpdate(
         screenshot=str(data.url), end_date=datetime.utcnow()))

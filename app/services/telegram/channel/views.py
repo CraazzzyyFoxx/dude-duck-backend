@@ -39,7 +39,7 @@ async def read_order_channel(channel_id: PydanticObjectId):
 
 @router.post('', response_model=models.ChannelRead)
 async def create_order_channel(channel: models.ChannelCreate):
-    response = await service_request(f'channel', 'POST', data=channel.model_dump())
+    response = await service_request('channel', 'POST', data=channel.model_dump())
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

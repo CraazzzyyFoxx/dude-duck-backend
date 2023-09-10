@@ -210,6 +210,30 @@ def send_deleted_order_notify(
     asyncio.create_task(request(data))
 
 
+def send_sent_preorder_notify(
+        order: preorder_models.PreOrderRead,
+        payload: models.OrderResponse
+):
+    data = build_payload(type=models.MessageEnum.SENT_PREORDER, preorder=order, payload=payload)
+    asyncio.create_task(request(data))
+
+
+def send_edited_preorder_notify(
+        order: preorder_models.PreOrderRead,
+        payload: models.OrderResponse
+):
+    data = build_payload(type=models.MessageEnum.EDITED_PREORDER, preorder=order, payload=payload)
+    asyncio.create_task(request(data))
+
+
+def send_deleted_preorder_notify(
+        order: preorder_models.PreOrderRead,
+        payload: models.OrderResponse
+):
+    data = build_payload(type=models.MessageEnum.DELETED_PREORDER, preorder=order, payload=payload)
+    asyncio.create_task(request(data))
+
+
 def send_response_chose_notify(
         order: order_schemas.OrderReadUser,
         user: auth_models.User,

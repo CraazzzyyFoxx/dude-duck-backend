@@ -7,7 +7,6 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import ORJSONResponse
 from starlette.staticfiles import StaticFiles
 from beanie import init_beanie
-from motor.motor_asyncio import AsyncIOMotorClient
 
 from app import db, api
 from app.core import config
@@ -19,7 +18,6 @@ from app.middlewares.exception import ExceptionMiddleware
 from app.services.settings import service as settings_service
 from app.services.auth import service as auth_service
 from app.services.auth import flows as auth_flows
-from app.services.sheets.tasks import sync_orders
 from app.services.telegram import service as telegram_service
 
 
@@ -44,7 +42,8 @@ async def lifespan(application: FastAPI):  # noqa
                 telegram="None",
                 is_superuser=True,
                 is_active=True,
-                is_verified=True
+                is_verified=True,
+                discord='none'
             )
             await manager.validate_password(user.password, user)
             user_dict = user.create_update_dict_superuser()

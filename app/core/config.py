@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import MongoDsn, EmailStr, RedisDsn
+from pydantic import EmailStr, RedisDsn
 from pydantic_settings import SettingsConfigDict, BaseSettings
 
 
@@ -9,7 +9,7 @@ class AppConfig(BaseSettings):
 
     # Application
     project_name: str = "Dude Duck CRM"
-    project_version: str = "0.0.1"
+    project_version: str = "1.0.0"
     debug: bool = True
 
     # CORS_ORIGINS is a JSON-formatted list of origins
@@ -51,6 +51,3 @@ class AppConfig(BaseSettings):
 
 
 app = AppConfig(_env_file='.env', _env_file_encoding='utf-8')
-
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-GOOGLE_CONFIG_FILE = BASE_DIR / "google.json"

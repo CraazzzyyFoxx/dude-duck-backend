@@ -1,4 +1,3 @@
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi.responses import ORJSONResponse
 from loguru import logger
@@ -31,7 +30,6 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                 content={"detail": [{"msg": "Unknown", "loc": ["Unknown"], "type": "Unknown"}]},
             )
         except ValueError:
-            logger.exception("What!?")
             response = ORJSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={"detail": [{"msg": "Unknown", "loc": ["Unknown"], "type": "Unknown"}]},

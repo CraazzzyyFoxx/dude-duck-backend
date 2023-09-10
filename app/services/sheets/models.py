@@ -1,7 +1,7 @@
 import typing
 
 from pydantic import BaseModel, ConfigDict, field_validator, Field
-from beanie import Document, Indexed
+from beanie import Document, Indexed, PydanticObjectId
 
 __all__ = (
     "OrderSheetParseItem",
@@ -63,6 +63,7 @@ class OrderSheetParse(Document):
 
 
 class OrderSheetParseRead(BaseModel):
+    id: PydanticObjectId
     spreadsheet: str
     sheet_id: int
     start: int

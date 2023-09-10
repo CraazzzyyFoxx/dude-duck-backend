@@ -42,13 +42,13 @@ class APILogger:
 
     @classmethod
     def customize_logging(
-        cls,
-        filepath: Path,
-        level: str,
-        rotation: str,
-        retention: str,
-        compression: str,
-        log_format: str,
+            cls,
+            filepath: Path,
+            level: str,
+            rotation: str,
+            retention: str,
+            compression: str,
+            log_format: str,
     ):
         loguru_logger.remove()
         loguru_logger.add(
@@ -67,7 +67,10 @@ class APILogger:
             level=level.upper(),
             format=log_format,
         )
-        logging.basicConfig(handlers=[InterceptHandler()], level=config.app.log_level if not config.app.debug else "DEBUG")
+        logging.basicConfig(
+            handlers=[InterceptHandler()],
+            level=config.app.log_level if not config.app.debug else "DEBUG"
+        )
         # logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
         # for _log in ("uvicorn", "uvicorn.error", "fastapi"):
         #     _logger = logging.getLogger(_log)

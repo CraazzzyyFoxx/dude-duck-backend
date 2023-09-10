@@ -1,4 +1,4 @@
-from typing import Optional
+import typing
 
 import jwt
 
@@ -114,7 +114,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
     async def on_after_request_verify(self, user: models.User, token: str, request: Request | None = None):
         message_service.send_request_verify(user, token)
 
-    async def on_after_verify(self, user: models.User, request: Optional[Request] = None) -> None:
+    async def on_after_verify(self, user: models.User, request: Request | None = None) -> None:
         message_service.send_verified_notify(user)
 
     async def on_after_login(self, user: models.User, request: Request | None = None, response: Response | None = None):
@@ -123,6 +123,26 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
     async def on_after_register(self, user: models.User, request: Request | None = None):
         logger.info(f"User {user.id} has registered.")
         message_service.send_registered_notify(user)
+
+    async def on_after_forgot_password(
+            self, user: models.User, token: str, request: Request | None = None
+    ) -> None:
+        logger.warning(token)
+
+    async def on_after_update(
+            self,
+            user: models.User,
+            update_dict: str | typing.Any,
+            request: Request | None = None,
+    ) -> None:
+        parser = await sheets_service.get_default_booster()
+        creds = await service.get_first_superuser()
+        tasks_service.create_or_update_booster.delay(
+            creds.google.model_dump_json(),
+            parser.model_dump_json(),
+            str(user.id),
+            models.UserRead.model_validate(user).model_dump()
+        )
 
 
 async def get_user_db():

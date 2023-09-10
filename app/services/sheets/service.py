@@ -175,6 +175,8 @@ def parse_row(
     data_for_valid = {}
     for getter in parser.items:
         value = row[getter.row]
+        # if getter.type == "float" and isinstance(value, str):
+        #     value = value.replace(',', '.')
         data_for_valid[getter.name] = value if value not in ["", " "] else None
     try:
         valid_model = generate_model(parser)(**data_for_valid)
@@ -183,7 +185,6 @@ def parse_row(
             logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
             logger.error(errors.APIValidationError.from_pydantic(error))
             raise error
-            # return
         else:
             return
     validated_data = valid_model.model_dump()
@@ -247,7 +248,7 @@ def parse_all_data(
     t = time.time()
     resp = []
     for row_id, row in enumerate(rows_in, parser_in.start):
-        data = parse_row(parser_in, model, row_id, row, is_raise=False)
+        data = parse_row(parser_in, model, row_id, row, is_raise=True)
         if data:
             resp.append(data)
     logger.info(f"Parsing data from spreadsheet={spreadsheet} sheet_id={sheet_id} completed in {time.time() - t}")

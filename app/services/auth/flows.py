@@ -8,7 +8,8 @@ from starlette import status
 from app.services.auth.manager import get_user_manager
 from . import models, utils, service
 
-fastapi_users = FastAPIUsers[models.User, PydanticObjectId](get_user_manager, [utils.auth_backend_api, utils.auth_backend_db])
+fastapi_users = (FastAPIUsers[models.User, PydanticObjectId]
+                 (get_user_manager, [utils.auth_backend_api, utils.auth_backend_db]))
 current_active_user = fastapi_users.current_user(
     active=True,
     get_enabled_backends=utils.get_enabled_backends

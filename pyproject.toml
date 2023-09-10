@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "Dude Duck TG bot"
+name = "DudeDuck Orders CRM"
 version = "2.1"
 description = ""
 authors = ["CraazzzyyFoxx <craazzzyyfoxx@gmail.com>"]
@@ -13,7 +13,7 @@ python-dotenv = "^1.0.0"
 dateparser = "^1.1.7"
 loguru = "^0.7.0"
 sentry-sdk = {extras = ["fastapi"], version = "^1.28.1"}
-fastapi = "^0.103.0"
+fastapi = "^0.103.1"
 uvloop = {version = "^0.17.0", platform="linux"}
 pydantic-extra-types = "^2.0.0"
 phonenumbers = "^8.13.17"
@@ -30,11 +30,20 @@ gunicorn = "^21.2.0"
 gspread = "^5.10.0"
 setuptools = "^65.1.2"
 celery = "^5.3.1"
+lxml = "^4.9.3"
 
 
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.5.1"
+ruff = "^0.0.287"
+
+
+[tool.ruff]
+line-length = 120
+
+[mypy]
+plugins = "pydantic.mypy"
 
 [build-system]
 requires = ["poetry-core"]

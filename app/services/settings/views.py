@@ -1,6 +1,5 @@
-from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, HTTPException
-from starlette import status
+from fastapi import APIRouter, Depends
+
 
 from app.core import enums
 from app.services.auth import flows as auth_flows

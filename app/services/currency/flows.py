@@ -1,12 +1,12 @@
-from datetime import datetime
+from datetime import datetime, date
 
-from . import models, service
+from . import service
 
 
-async def get(date: datetime):
-    currency = await service.get_by_date(date)
+async def get(currency_date: datetime | date):
+    currency = await service.get_by_date(currency_date)
     if currency is None:
-        data = await service.get_currency_historical(date)
+        data = await service.get_currency_historical(currency_date)
         await service.create(data)
-        return await service.get_by_date(date)
+        return await service.get_by_date(currency_date)
     return currency

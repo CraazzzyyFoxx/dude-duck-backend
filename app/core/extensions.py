@@ -1,7 +1,5 @@
-import logging
-
 import sentry_sdk
-from sentry_sdk.integrations.logging import LoggingIntegration
+
 from sentry_sdk.integrations.loguru import LoguruIntegration
 from sentry_sdk.integrations.stdlib import StdlibIntegration
 from sentry_sdk.integrations.excepthook import ExcepthookIntegration
@@ -11,16 +9,11 @@ from sentry_sdk.integrations.modules import ModulesIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.httpx import HttpxIntegration
 from sentry_sdk.integrations.pymongo import PyMongoIntegration
-
 from loguru import logger
 
 from app.core import config
 
-
-sentry_logging = LoggingIntegration(
-    level=logging.INFO,  # Capture info and above as breadcrumbs
-    event_level=logging.ERROR,  # Send errors as events
-)
+sentry_logging = LoguruIntegration(level=20, event_level=40)
 
 
 def configure_extensions():
@@ -37,7 +30,6 @@ def configure_extensions():
                 FastApiIntegration(),
                 HttpxIntegration(),
                 PyMongoIntegration(),
-                LoguruIntegration(),
                 sentry_logging,
             ],
             environment="development",

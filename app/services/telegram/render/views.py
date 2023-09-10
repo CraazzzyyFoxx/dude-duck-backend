@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from beanie import PydanticObjectId
 from starlette import status
 
 from app.core import enums
@@ -26,9 +25,9 @@ async def get_renders(
     return response.json()
 
 
-@router.get('/{render_id}', response_model=models.RenderConfigRead)
-async def read_order_render(render_id: PydanticObjectId):
-    response = await service_request(f'render/{render_id}', 'GET')
+@router.get('/{name}', response_model=models.RenderConfigRead)
+async def read_order_render(name: str):
+    response = await service_request(f'render/{name}', 'GET')
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -39,7 +38,7 @@ async def read_order_render(render_id: PydanticObjectId):
 
 @router.post('', response_model=models.RenderConfigRead)
 async def create_order_render(render: models.RenderConfigCreate):
-    response = await service_request(f'render', 'POST', data=render.model_dump())
+    response = await service_request('render', 'POST', data=render.model_dump())
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -48,9 +47,9 @@ async def create_order_render(render: models.RenderConfigCreate):
     return response.json()
 
 
-@router.delete('/{render_id}', response_model=models.RenderConfigRead)
-async def delete_order_render(render_id: PydanticObjectId):
-    response = await service_request(f'render/{render_id}', 'DELETE')
+@router.delete('/{name}', response_model=models.RenderConfigRead)
+async def delete_order_render(name: str):
+    response = await service_request(f'render/{name}', 'DELETE')
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -59,9 +58,9 @@ async def delete_order_render(render_id: PydanticObjectId):
     return response.json()
 
 
-@router.patch('/{render_id}', response_model=models.RenderConfigRead)
-async def update_order_render(render_id: PydanticObjectId, data: models.RenderConfigUpdate):
-    response = await service_request(f'render/{render_id}', 'PATCH', data=data.model_dump())
+@router.patch('/{name}', response_model=models.RenderConfigRead)
+async def update_order_render(name: str, data: models.RenderConfigUpdate):
+    response = await service_request(f'render/{name}', 'PATCH', data=data.model_dump())
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

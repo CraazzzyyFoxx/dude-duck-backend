@@ -9,4 +9,5 @@ from app.services.currency.models import Currency
 
 
 def get_beanie_models():
-    return [User, AccessToken, AccessTokenAPI, Order, OrderSheetParse, UserOrder, Response, PreOrder, Settings, Currency]
+    return [User, AccessToken, AccessTokenAPI, Order,
+            OrderSheetParse, UserOrder, Response, PreOrder, Settings, Currency]

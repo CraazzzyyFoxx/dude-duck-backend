@@ -53,7 +53,7 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     preorder_time_alive: int | None = None
 
-    accounting_precision_dollar: int | None = Field(ge=0)
-    accounting_precision_rub: int | None = Field(ge=0)
-    accounting_precision_gold: int | None = Field(ge=0)
-    accounting_fee: float | None = Field(ge=0, le=1)
+    accounting_precision_dollar: int | None = Field(ge=0, default=None)
+    accounting_precision_rub: int | None = Field(ge=0, default=None)
+    accounting_precision_gold: int | None = Field(ge=0, default=None)
+    accounting_fee: float | None = Field(ge=0, le=1, default=None)

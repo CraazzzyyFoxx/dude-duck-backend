@@ -11,6 +11,7 @@ from app.services.auth import flows as auth_flows
 from app.services.auth import service as auth_service
 from app.services.auth import manager as auth_manager
 from app.services.auth import utils as auth_utils
+from app.services.auth import models as auth_models
 from app.services.accounting import service as accounting_service
 from app.services.accounting import models as accounting_models
 from app.services.search import service as search_service
@@ -28,13 +29,49 @@ async def get_me(user=Depends(auth_flows.resolve_user)):
     return auth_service.models.UserRead.model_validate(user)
 
 
-@router.patch("/{user_id}", response_model=auth_service.models.UserRead)
+@router.get("", response_model=search_service.models.Paginated[auth_models.UserRead])
+async def get_users(
+        paging: search_service.models.PaginationParams = Depends(),
+        sorting: search_service.models.SortingParams = Depends(),
+        _: auth_flows.models.User = Depends(auth_flows.current_active_superuser)
+):
+    return await search_service.paginate(auth_models.User.find({}), paging, sorting)
+
+
+@router.patch("/@me", response_model=auth_service.models.UserRead)
 async def update_user(user_update: auth_service.models.UserUpdate, request: Request,
-                      user=Depends(auth_flows.resolve_user),
+                      user=Depends(auth_flows.current_active_verified),
                       user_manager: auth_manager.UserManager = Depends(auth_flows.get_user_manager)):
     try:
         user = await user_manager.update(
-            user_update, user, safe=False, request=request
+            user_update, user, safe=True, request=request
+        )
+        return auth_service.models.UserRead.model_validate(user, from_attributes=True)
+    except exceptions.InvalidPasswordException as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": ErrorCode.UPDATE_USER_INVALID_PASSWORD,
+                "reason": e.reason,
+            },
+        )
+    except exceptions.UserAlreadyExists:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=ErrorCode.UPDATE_USER_EMAIL_ALREADY_EXISTS,
+        )
+
+
+@router.patch("/{user_id}", response_model=auth_service.models.UserRead)
+async def update_user(user_update: auth_service.models.UserUpdateAdmin, request: Request,
+                      user_id: PydanticObjectId,
+                      _=Depends(auth_flows.current_active_superuser),
+                      user_manager: auth_manager.UserManager = Depends(auth_flows.get_user_manager)):
+    user = await auth_flows.get_user(user_id)
+
+    try:
+        user = await user_manager.update(
+            user_update, user, safe=True, request=request
         )
         return auth_service.models.UserRead.model_validate(user, from_attributes=True)
     except exceptions.InvalidPasswordException as e:
@@ -62,32 +99,27 @@ async def delete_user(
     return None
 
 
-@router.post("/{user_id}/google-token", status_code=201,
-             dependencies=[Depends(auth_flows.current_active_superuser)],
-             response_model=auth_service.models.AdminGoogleToken
-             )
-async def add_google_token(file: UploadFile, user=Depends(auth_flows.resolve_user)):
+@router.post("/@me/google-token", status_code=201, response_model=auth_service.models.AdminGoogleToken)
+async def add_google_token(file: UploadFile, user=Depends(auth_flows.current_active_superuser)):
     token = auth_service.models.AdminGoogleToken.model_validate_json(await file.read())
     user.google = token
     await user.save_changes()
     return user.google
 
 
-@router.get("/{user_id}/google-token",
-            dependencies=[Depends(auth_flows.current_active_superuser)],
-            response_model=auth_service.models.AdminGoogleToken)
-async def read_google_token(user=Depends(auth_flows.resolve_user)):
+@router.get("/@me/google-token", response_model=auth_service.models.AdminGoogleToken)
+async def read_google_token(user=Depends(auth_flows.current_active_superuser)):
     if user.google is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=[{"msg": "Google Service account doesn't setup."}])
     return user.google
 
 
-@router.post("/{user_id}/generate-api-token",
-             dependencies=[Depends(auth_flows.current_active_superuser)])
+@router.post("/@me/generate-api-token")
 async def generate_api_token(
-        user=Depends(auth_flows.resolve_user),
-        strategy=Depends(auth_utils.auth_backend_api.get_strategy)):
+        user=Depends(auth_flows.current_active_superuser),
+        strategy=Depends(auth_utils.auth_backend_api.get_strategy)
+):
     response = await auth_utils.auth_backend_api.login(strategy, user)
     return response
 

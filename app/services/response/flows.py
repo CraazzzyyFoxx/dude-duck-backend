@@ -16,9 +16,9 @@ from . import models, service
 async def order_available(
         order: order_models.Order
 ) -> bool:
-    if order.status != "In Progress":
+    if order.status != order_models.OrderStatus.InProgress:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=[{"msg": "Someone has already taken the order or it has been deleted."}])
+                            detail=[{"msg": "You cannot respond to a completed order."}])
     responses = await service.get_by_order_id(order.id)
     for response in responses:
         if response.approved:
@@ -100,7 +100,6 @@ async def approve_preorder_response(
         else:
             await service.update(resp, models.ResponseUpdate(approved=False, closed=True))
 
-    messages_service.send_response_chose_notify(await permissions_service.format_preorder(order), user, len(responds))
     return await service.get_by_order_id_user_id(order.id, user.id)
 
 

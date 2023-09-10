@@ -75,7 +75,6 @@ async def get_currency_historical(date: datetime) -> models.CurrencyApiLayer:
         raise RuntimeError("API Layer currency request limit exceeded.")
     json = response.json()
     if json["success"] is False:
-        print(date)
         raise RuntimeError(json)
     await used_token(token)
     return models.CurrencyApiLayer.model_validate(json)

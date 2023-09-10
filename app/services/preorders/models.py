@@ -11,7 +11,14 @@ __all__ = (
     "PreOrder",
     "PreOrderUpdate",
     "PreOrderCreate",
+    "PreOrderPriceUser"
 )
+
+
+class PreOrderPriceUser(BaseModel):
+    price_booster_dollar_fee: float | None = None
+    price_booster_rub: float | None = None
+    price_booster_gold: float | None = None
 
 
 class PreOrderCreate(BaseModel):
@@ -19,12 +26,12 @@ class PreOrderCreate(BaseModel):
     order_id: str
 
     info: order_models.OrderInfo
-    price: order_models.OrderPrice
+    price: PreOrderPriceUser
 
 
 class PreOrderUpdate(BaseModel):
     info: order_models.OrderInfo | None = None
-    price: order_models.OrderPrice | None = None
+    price: PreOrderPriceUser | None = None
 
 
 class PreOrder(sheets_models.SheetEntity, Document):
@@ -33,6 +40,8 @@ class PreOrder(sheets_models.SheetEntity, Document):
 
     info: order_models.OrderInfo
     price: order_models.OrderPrice
+    status: order_models.OrderStatus
+    status_paid: order_models.OrderPaidStatus
 
     archive: bool = Field(default=False)
 
@@ -53,4 +62,4 @@ class PreOrderRead(BaseModel):
     date: datetime.datetime
 
     info: order_models.OrderInfo
-    price: order_models.OrderPrice
+    price: PreOrderPriceUser

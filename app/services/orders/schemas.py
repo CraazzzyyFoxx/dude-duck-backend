@@ -10,7 +10,7 @@ __all__ = (
     "OrderReadUser",
 )
 
-from .models import OrderInfo, OrderPrice, OrderCredentials
+from .models import OrderInfo, OrderPrice, OrderCredentials, OrderPaidStatus, OrderStatus
 
 
 class OrderPriceUser(BaseModel):
@@ -23,23 +23,25 @@ class OrderReadMeta(BaseModel):
     order_id: str
 
     date: datetime.datetime
-    screenshot: str | None = None
-    status: str | None = None
+    screenshot: str | None
 
+    status: OrderStatus
     info: OrderInfo
 
-    auth_date: datetime.datetime | None = None
-    end_date: datetime.datetime | None = None
+    auth_date: datetime.datetime | None
+    end_date: datetime.datetime | None
 
 
 class OrderReadBase(OrderReadMeta):
-    shop: str | None = None
-    shop_order_id: str | int | None = None
-    contact: str | None = None
+    shop: str | None
+    shop_order_id: str | int | None
+    contact: str | None
     booster: str | None
 
-    credentials: OrderCredentials
+    status_paid: OrderPaidStatus
+
     price: OrderPrice
+    credentials: OrderCredentials
 
 
 class OrderRead(OrderReadBase):
@@ -48,5 +50,6 @@ class OrderRead(OrderReadBase):
 
 class OrderReadUser(OrderReadMeta):
     id: PydanticObjectId
+
     price: OrderPriceUser
     credentials: OrderCredentials | None = None

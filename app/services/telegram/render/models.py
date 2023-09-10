@@ -11,9 +11,9 @@ class RenderConfigCreate(BaseModel):
 
 
 class RenderConfigUpdate(BaseModel):
-    binary: str
-    allow_separator_top: bool
-    separator: str
+    binary: str | None = None
+    allow_separator_top: bool | None = None
+    separator: str | None = None
 
 
 class RenderConfigRead(BaseModel):
