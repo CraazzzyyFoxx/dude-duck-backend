@@ -9,7 +9,7 @@ services :
     build:
       context: .
       dockerfile: Dockerfile
-    command: gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT}
+    command: gunicorn main:app --root-path=/api/v1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT}
     ports:
       - "${PORT}:${PORT}"
   worker:
