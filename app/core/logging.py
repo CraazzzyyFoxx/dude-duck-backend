@@ -69,7 +69,7 @@ class APILogger:
         )
         logging.basicConfig(
             handlers=[InterceptHandler()],
-            level=config.app.log_level if not config.app.debug else "DEBUG"
+            level=config.app.log_level.upper() if not config.app.debug else "DEBUG"
         )
         # logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
         # for _log in ("uvicorn", "uvicorn.error", "fastapi"):

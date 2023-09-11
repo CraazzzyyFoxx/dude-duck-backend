@@ -20,7 +20,7 @@ class AppConfig(BaseSettings):
     port: int
 
     # Logging
-    log_level: int = 20
+    log_level: str = "info"
     logs_root_path: str = f"{Path.cwd()}/logs"
     sentry_dsn: str | None = None
 
