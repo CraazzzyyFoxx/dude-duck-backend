@@ -29,7 +29,6 @@ class AppConfig(BaseSettings):
     frontend_url: str
 
     # MongoDB
-    mongo_name: str
     mongo_dsn: str
 
     # JWT
@@ -47,7 +46,7 @@ class AppConfig(BaseSettings):
     # Celery
     celery_broker_url: RedisDsn
     celery_result_backend: RedisDsn
-    celery_sheets_sync_time: int = 60
+    celery_sheets_sync_time: int = 300
 
 
 app = AppConfig(_env_file='.env', _env_file_encoding='utf-8')

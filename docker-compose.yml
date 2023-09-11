@@ -1,21 +1,15 @@
 version: '3.8'
 
-services:
+services :
   redis:
     image: redis:alpine
     restart: always
-    ports:
-      - "6379:6379"
-    environment:
-      - REDIS_PASSWORD=root
-      - REDIS_PORT=6379
-      - REDIS_DATABASES=16
   app:
     restart: always
     build:
       context: .
       dockerfile: Dockerfile
-    command: gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT}
+    command: gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT}
     ports:
       - "${PORT}:${PORT}"
   worker:
@@ -26,19 +20,16 @@ services:
     command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info
     volumes:
       - ./app:/app
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     depends_on:
       - redis
-  flower:
-    build: .
-    command: celery --broker=redis://redis:6379/0 flower --port=5555
-    ports:
-      - "5555:5555"
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    depends_on:
-      - redis
-      - worker
+#  flower:
+#    build: .
+#    command: celery --broker=redis://redis:6379/0 flower --port=5555
+#    ports:
+#      - "5555:5555"
+#    environment:
+#      - CELERY_BROKER_URL=redis://redis:6379/0
+#      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+#    depends_on:
+#      - redis
+#      - worker
