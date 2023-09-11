@@ -3,7 +3,6 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import ORJSONResponse
 from starlette.staticfiles import StaticFiles
 from beanie import init_beanie
@@ -54,8 +53,12 @@ async def lifespan(application: FastAPI):  # noqa
     logger.info("Application... Online!")
     yield
 
+app = FastAPI(openapi_url="")
+app.add_middleware(ExceptionMiddleware)
+app.add_middleware(TimeMiddleware)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-app = FastAPI(
+api_app = FastAPI(
     title="DudeDuck CRM Backend",
     lifespan=lifespan,
     root_path="/api/v1",
@@ -63,16 +66,7 @@ app = FastAPI(
     default_response_class=ORJSONResponse,
 )
 
-common_doc_settings = {
-    "openapi_url": app.openapi_url,  # noqa
-    "title": f"{app.title} - Documentation",  # noqa
-    "favicon_url": "/static/favicon.ico",
-}
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.include_router(api.router)
-app.add_middleware(ExceptionMiddleware)
-app.add_middleware(TimeMiddleware)
+api_app.include_router(api.router)
 
 if config.app.cors_origins:
     from fastapi.middleware.cors import CORSMiddleware
@@ -90,9 +84,4 @@ if config.app.use_correlation_id:
 
     app.add_middleware(CorrelationMiddleware)
 
-
-@app.get("/docs", include_in_schema=False)
-async def overridden_swagger():
-    swagger_settings = common_doc_settings.copy()
-    swagger_settings["swagger_favicon_url"] = swagger_settings.pop("favicon_url")
-    return get_swagger_ui_html(**swagger_settings)
+app.mount("/api/v1", app=api_app)
