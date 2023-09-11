@@ -11,7 +11,7 @@ from app.services.telegram.views import router as telegram_router
 from app.services.settings.views import router as settings_router
 
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router)
 
 api_router = APIRouter()

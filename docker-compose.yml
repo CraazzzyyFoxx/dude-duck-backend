@@ -9,7 +9,7 @@ services :
     build:
       context: .
       dockerfile: Dockerfile
-    command: uvicorn main:app --root-path /api/v1 --host 0.0.0.0 --port ${PORT}
+    command: uvicorn main:app --host 0.0.0.0 --port ${PORT}
     ports:
       - "${PORT}:${PORT}"
   worker:
