@@ -12,7 +12,6 @@ logs/
 poetry.lock
 
 .DS_Store
-.env
 .ruff_cache
 .mypy_cache
 
