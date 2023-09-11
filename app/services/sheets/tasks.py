@@ -27,7 +27,7 @@ async def sync_data_from(
     for order in orders_db:
         s_order = orders.get(order.order_id, None)
         if s_order is None:
-            await order_service.to_archive(order.id)
+            await order_service.d(order.id)
         else:
             orders.pop(s_order.order_id)
             changes = DeepDiff(order.model_dump(exclude={'id', "revision_id", "archive"}),
