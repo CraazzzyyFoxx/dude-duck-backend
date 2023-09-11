@@ -5,7 +5,6 @@ from app.core import enums
 from app.services.auth import flows as auth_flows
 from app.services.orders import flows as orders_flows
 from app.services.preorders import flows as preorders_flows
-from app.services.preorders import models as preorder_models
 from app.services.permissions import service as permissions_service
 
 from . import models, flows

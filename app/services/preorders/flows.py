@@ -1,5 +1,4 @@
 from fastapi import HTTPException
-from motor.motor_asyncio import AsyncIOMotorClient
 from starlette import status
 from beanie import PydanticObjectId, init_beanie
 
@@ -51,8 +50,7 @@ async def create(
 async def delete(
         order_id: PydanticObjectId
 ):
-    client = AsyncIOMotorClient(config.app.mongo_dsn)
-    await init_beanie(database=getattr(client, config.app.mongo_name), document_models=db.get_beanie_models())
+    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
     order = await service.get(PydanticObjectId(order_id))
     if not order:
         return
