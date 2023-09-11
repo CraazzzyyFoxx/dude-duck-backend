@@ -14,7 +14,7 @@ from app.services.settings.views import router as settings_router
 router = APIRouter()
 router.include_router(auth_router)
 
-api_router = APIRouter(prefix="/api/v1")
+api_router = APIRouter()
 api_router.include_router(settings_router)
 api_router.include_router(users_router)
 api_router.include_router(orders_router)
