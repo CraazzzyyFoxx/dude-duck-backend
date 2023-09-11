@@ -43,7 +43,7 @@ async def lifespan(application: FastAPI):  # noqa
                 is_superuser=True,
                 is_active=True,
                 is_verified=True,
-                discord='none'
+                discord='@system'
             )
             await manager.validate_password(user.password, user)
             user_dict = user.create_update_dict_superuser()
