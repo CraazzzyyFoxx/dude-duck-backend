@@ -58,7 +58,7 @@ async def lifespan(application: FastAPI):  # noqa
 app = FastAPI(
     title="DudeDuck CRM Backend",
     lifespan=lifespan,
-    root_path="api/v1",
+    root_path="/api/v1",
     debug=False,
     default_response_class=ORJSONResponse,
 )
