@@ -21,7 +21,7 @@ async def format_order(order: order_models.Order, _: auth_service.models.User = 
 
 async def format_preorder(order: preorder_models.PreOrder, _: auth_service.models.User = None):
     data = dict(order)
-    if order.price.price_dollar is not None:
+    if order.price.price_booster_dollar is not None:
         price = preorder_models.PreOrderPriceUser(
             price_booster_dollar_fee=await accounting_service.usd_to_currency(
                 order.price.price_booster_dollar, order.date, with_fee=True
