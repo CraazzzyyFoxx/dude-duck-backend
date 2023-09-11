@@ -91,8 +91,8 @@ if config.app.use_correlation_id:
     app.add_middleware(CorrelationMiddleware)
 
 
-@app.get("/docs", include_in_schema=False)
-async def overridden_swagger():
-    swagger_settings = common_doc_settings.copy()
-    swagger_settings["swagger_favicon_url"] = swagger_settings.pop("favicon_url")
-    return get_swagger_ui_html(**swagger_settings)
+# @app.get("/docs", include_in_schema=False)
+# async def overridden_swagger():
+#     swagger_settings = common_doc_settings.copy()
+#     swagger_settings["swagger_favicon_url"] = swagger_settings.pop("favicon_url")
+#     return get_swagger_ui_html(**swagger_settings)
