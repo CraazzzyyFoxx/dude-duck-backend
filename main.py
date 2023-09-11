@@ -19,9 +19,9 @@ from app.services.auth import service as auth_service
 from app.services.auth import flows as auth_flows
 from app.services.telegram import service as telegram_service
 
-
 if os.name != "nt":
     import uvloop  # noqa
+
     uvloop.install()
 
 configure_extensions()
@@ -53,18 +53,13 @@ async def lifespan(application: FastAPI):  # noqa
     logger.info("Application... Online!")
     yield
 
-app = FastAPI(openapi_url="")
+
+app = FastAPI(openapi_url="", lifespan=lifespan, default_response_class=ORJSONResponse, debug=config.app.debug)
 app.add_middleware(ExceptionMiddleware)
 app.add_middleware(TimeMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-api_app = FastAPI(
-    title="DudeDuck CRM Backend",
-    lifespan=lifespan,
-    root_path="/api/v1",
-    debug=False,
-    default_response_class=ORJSONResponse,
-)
+api_app = FastAPI(title="DudeDuck CRM Backend", root_path="/api/v1", debug=config.app.debug, )
 
 api_app.include_router(api.router)
 
