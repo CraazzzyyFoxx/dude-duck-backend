@@ -51,7 +51,7 @@ async def delete(
         order_id: PydanticObjectId
 ):
     await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
-    order = await service.get(PydanticObjectId(order_id))
+    order = await service.get(order_id)
     if not order:
         return
     parser = await sheets_service.get_by_spreadsheet_sheet(order.spreadsheet, order.sheet_id)

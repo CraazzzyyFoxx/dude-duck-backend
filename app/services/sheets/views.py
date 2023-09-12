@@ -24,7 +24,7 @@ router = APIRouter(prefix='/sheets', tags=[enums.RouteTag.SHEETS])
 
 
 @router.get('/currency')
-async def fetch_order_from_sheets(date: datetime.date):
+async def get_currency_for_sheet(date: datetime.date):
     E = ElementMaker()
     wallet = (await currency_flows.get(date)).quotes["RUB"]
     wallet_str = str(wallet).replace(".", ",")
