@@ -43,11 +43,8 @@ class PreOrder(sheets_models.SheetEntity, Document):
     status: order_models.OrderStatus
     status_paid: order_models.OrderPaidStatus
 
-    archive: bool = Field(default=False)
-
     class Settings:
         use_state_management = True
-        state_management_save_previous = True
         bson_encoders = {
             Url: lambda x: str(x),
         }

@@ -112,16 +112,20 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
         return user
 
     async def on_after_request_verify(self, user: models.User, token: str, request: Request | None = None):
+        user = models.UserRead.model_validate(user)
         message_service.send_request_verify(user, token)
 
     async def on_after_verify(self, user: models.User, request: Request | None = None) -> None:
+        user = models.UserRead.model_validate(user)
         message_service.send_verified_notify(user)
 
     async def on_after_login(self, user: models.User, request: Request | None = None, response: Response | None = None):
+        user = models.UserRead.model_validate(user)
         message_service.send_logged_notify(user)
 
     async def on_after_register(self, user: models.User, request: Request | None = None):
         logger.info(f"User {user.id} has registered.")
+        user = models.UserRead.model_validate(user)
         message_service.send_registered_notify(user)
 
     async def on_after_forgot_password(

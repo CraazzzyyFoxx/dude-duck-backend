@@ -18,7 +18,7 @@ from . import models, service
 
 
 async def sync_data_from(
-        cfg: models.OrderSheetParse,
+        cfg: models.OrderSheetParseRead,
         orders: dict[str, models.OrderReadSheets],
         users: list[auth_models.User],
         orders_db: list[order_models.Order]
@@ -27,18 +27,19 @@ async def sync_data_from(
     for order in orders_db:
         s_order = orders.get(order.order_id, None)
         if s_order is None:
-            await order_service.d(order.id)
+            await order_service.delete(order.id)
         else:
             orders.pop(s_order.order_id)
-            changes = DeepDiff(order.model_dump(exclude={'id', "revision_id", "archive"}),
+            changes = DeepDiff(order.model_dump(exclude={'id', "revision_id"}),
                                s_order.model_dump(exclude={'id', "revision_id"}))
             if changes:
                 s_order.booster = None
                 await order_service.update(order, s_order)  # type: ignore
             await accounting_service.boosters_from_order_sync(order, users)
     for order_s in orders.values():
-        order = await order_service.create(order_s)  # type: ignore
-        await accounting_service.boosters_from_order_sync(order, users)
+        if order_s.shop_order_id is not None:
+            order = await order_service.create(order_s)  # type: ignore
+            await accounting_service.boosters_from_order_sync(order, users)
 
     logger.info(f"Syncing data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
                 f"completed in {time.time() - t}")
@@ -46,7 +47,7 @@ async def sync_data_from(
 
 async def sync_data_to(
         creds: auth_models.AdminGoogleToken,
-        cfg: models.OrderSheetParse,
+        cfg: models.OrderSheetParseRead,
         orders: dict[str, models.OrderReadSheets],
         users: list[auth_models.User],
 ):
@@ -77,11 +78,11 @@ async def sync_data_to(
 
 
 async def sync_orders():
-    # TODO: синхронизирует преореды -_-, а не нада
     await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
     super_user = await auth_flows.get_booster_by_name(config.app.super_user_username)
     cfgs = await service.get_all_not_default_booster()
     for cfg in cfgs:
+        cfg = models.OrderSheetParseRead.model_validate(cfg)
         orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id)
         users = await auth_service.models.User.find_all().to_list()
         orders = service.get_all_data(super_user.google, models.OrderReadSheets, cfg)

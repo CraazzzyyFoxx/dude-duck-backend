@@ -4,7 +4,7 @@ from . import models
 
 
 async def get(order_id: PydanticObjectId) -> models.PreOrder | None:
-    return await models.PreOrder.find_one({"_id": order_id, "archive": False})
+    return await models.PreOrder.find_one({"_id": order_id})
 
 
 async def get_all() -> list[models.PreOrder]:
@@ -21,7 +21,7 @@ async def get_all_by_sheet_entity(spreadsheet: str, sheet: int, row_id: int) -> 
 
 
 async def get_order_id(order_id: str) -> models.PreOrder | None:
-    return await models.PreOrder.find_one({"order_id": order_id, "archive": False})
+    return await models.PreOrder.find_one({"order_id": order_id})
 
 
 async def update(order: models.PreOrder, user_order_in: models.PreOrderUpdate):
@@ -50,11 +50,5 @@ async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
 
 async def delete(order_id: PydanticObjectId):
     order = await get(order_id)
-    await order.delete()
-
-
-async def to_archive(order_id: PydanticObjectId):
-    order = await get(order_id)
     if order:
-        order.archive = True
-        await order.save_changes()
+        await order.delete()

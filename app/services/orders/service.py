@@ -11,11 +11,11 @@ from . import models
 
 
 async def get(order_id: PydanticObjectId) -> models.Order | None:
-    return await models.Order.find_one({"_id": order_id, "archive": False})
+    return await models.Order.find_one({"_id": order_id})
 
 
 async def get_order_id(order_id: str) -> models.Order | None:
-    return await models.Order.find_one({"order_id": order_id, "archive": False})
+    return await models.Order.find_one({"order_id": order_id})
 
 
 async def get_all() -> list[models.Order]:
@@ -23,16 +23,16 @@ async def get_all() -> list[models.Order]:
 
 
 async def get_all_by_sheet(spreadsheet: str, sheet: int) -> list[models.Order]:
-    return await models.Order.find({"spreadsheet": spreadsheet, "sheet_id": sheet, "archive": False}).to_list()
+    return await models.Order.find({"spreadsheet": spreadsheet, "sheet_id": sheet}).to_list()
 
 
 async def get_all_by_sheet_entity(spreadsheet: str, sheet: int, row_id: int) -> list[models.Order]:
     return await models.Order.find(
-        {"spreadsheet": spreadsheet, "sheet_id": sheet, "row_id": row_id, "archive": False}).to_list()
+        {"spreadsheet": spreadsheet, "sheet_id": sheet, "row_id": row_id}).to_list()
 
 
 async def get_all_from_datetime_range(start: datetime, end: datetime) -> list[models.Order]:
-    return await models.Order.find({"$gte": {"date": start}, "$lte": {"date": end}, "archive": False}).to_list()
+    return await models.Order.find({"$gte": {"date": start}, "$lte": {"date": end}}).to_list()
 
 
 async def get_by_ids(ids: list[PydanticObjectId]):
@@ -46,7 +46,7 @@ async def get_all_from_datetime_range_by_sheet(
         end: datetime
 ) -> list[models.Order]:
     return await models.Order.find(
-        {"spreadsheet": spreadsheet, "sheet": sheet, "$gte": {"date": start}, "$lte": {"date": end}, "archive": False}
+        {"spreadsheet": spreadsheet, "sheet": sheet, "$gte": {"date": start}, "$lte": {"date": end}}
     ).to_list()
 
 
@@ -89,10 +89,9 @@ async def update(order: models.Order, user_order_in: models.OrderUpdate):
     return order
 
 
-async def to_archive(order_id: PydanticObjectId):
+async def delete(order_id: PydanticObjectId):
     order = await get(order_id)
     await order.delete()
-    # await update(order, models.OrderUpdate(archive=True))
 
 
 async def create(order_in: models.OrderCreate) -> models.Order:

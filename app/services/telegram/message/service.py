@@ -19,18 +19,25 @@ async def request(data: dict):
 def build_payload(
         type: models.MessageEnum,
         *,
+        order_id: str | None = None,
+
         order: order_schemas.OrderReadUser | None = None,
         preorder: preorder_models.PreOrderRead | None = None,
+        pull_payload: models.OrderResponse | None = None,
+
         categories: list[str] | None = None,
         configs: list[str] | None = None,
+
         is_preorder: bool | None = None,
-        user: auth_models.User | None = None,
-        response: response_models.Response | None = None,
+
+        user: auth_models.UserRead | None = None,
         token: str | None = None,
+
+        response: response_models.Response | None = None,
+        responses: int | None = None,
+
         url: str | None = None,
         message: str | None = None,
-        payload: models.OrderResponse | None = None,
-        total: int | None = None,
 ) -> dict:
     pass
 
@@ -42,7 +49,7 @@ def build_payload(
     payload = {}
     kwargs["order"] = kwargs["order"] if kwargs.get("order") else None
     kwargs["preorder"] = kwargs["preorder"] if kwargs.get("preorder") else None
-    kwargs["user"] = auth_models.UserRead(**kwargs["user"].model_dump()) if kwargs.get("user") else None
+    kwargs["user"] = kwargs["user"] if kwargs.get("user") else None
     if kwargs.get("response"):
         kwargs["response"] = response_models.ResponseRead(**kwargs["response"].model_dump())
     for kwarg in kwargs:
@@ -102,7 +109,7 @@ async def pull_preorder_delete(
 
 def send_preorder_response_admin(
         order: preorder_models.PreOrderRead,
-        user: auth_models.User,
+        user: auth_models.UserRead,
         response: response_models.Response
 ):
     data = build_payload(
@@ -117,7 +124,7 @@ def send_preorder_response_admin(
 
 def send_response_admin(
         order: order_schemas.OrderReadUser,
-        user: auth_models.User,
+        user: auth_models.UserRead,
         response: response_models.Response
 ):
     data = build_payload(
@@ -131,7 +138,7 @@ def send_response_admin(
 
 
 def send_response_approve(
-        user: auth_models.User,
+        user: auth_models.UserRead,
         order: order_schemas.OrderReadUser,
         response: response_models.Response
 ):
@@ -140,7 +147,7 @@ def send_response_approve(
 
 
 def send_response_decline(
-        user: auth_models.User,
+        user: auth_models.UserRead,
         order: order_schemas.OrderReadUser
 ):
     data = build_payload(type=models.MessageEnum.RESPONSE_ORDER_DECLINED, order=order, user=user)
@@ -148,7 +155,7 @@ def send_response_decline(
 
 
 def send_request_verify(
-        user: auth_models.User,
+        user: auth_models.UserRead,
         token: str
 ):
     data = build_payload(type=models.MessageEnum.REQUEST_VERIFY, user=user, token=token)
@@ -156,14 +163,14 @@ def send_request_verify(
 
 
 def send_verified_notify(
-        user: auth_models.User
+        user: auth_models.UserRead
 ):
     data = build_payload(type=models.MessageEnum.VERIFIED, user=user)
     asyncio.create_task(request(data))
 
 
 def send_order_close_notify(
-        user: auth_models.User,
+        user: auth_models.UserRead,
         order: order_schemas.OrderReadUser,
         url: str,
         message: str
@@ -173,79 +180,79 @@ def send_order_close_notify(
 
 
 def send_logged_notify(
-        user: auth_models.User
+        user: auth_models.UserRead
 ):
     data = build_payload(type=models.MessageEnum.LOGGED, user=user)
     asyncio.create_task(request(data))
 
 
 def send_registered_notify(
-        user: auth_models.User
+        user: auth_models.UserRead
 ):
     data = build_payload(type=models.MessageEnum.REGISTERED, user=user)
     asyncio.create_task(request(data))
 
 
 def send_sent_order_notify(
-        order: order_schemas.OrderReadUser,
+        order_id: str,
         payload: models.OrderResponse
 ):
-    data = build_payload(type=models.MessageEnum.SENT_ORDER, order=order, payload=payload)
+    data = build_payload(type=models.MessageEnum.SENT_ORDER, order_id=order_id, pull_payload=payload)
     asyncio.create_task(request(data))
 
 
 def send_edited_order_notify(
-        order: order_schemas.OrderReadUser,
+        order_id: str,
         payload: models.OrderResponse
 ):
-    data = build_payload(type=models.MessageEnum.EDITED_ORDER, order=order, payload=payload)
+    data = build_payload(type=models.MessageEnum.EDITED_ORDER, order_id=order_id, pull_payload=payload)
     asyncio.create_task(request(data))
 
 
 def send_deleted_order_notify(
-        order: order_schemas.OrderReadUser,
+        order_id: str,
         payload: models.OrderResponse
 ):
-    data = build_payload(type=models.MessageEnum.DELETED_ORDER, order=order, payload=payload)
+    data = build_payload(type=models.MessageEnum.DELETED_ORDER, order_id=order_id, pull_payload=payload)
     asyncio.create_task(request(data))
 
 
 def send_sent_preorder_notify(
-        order: preorder_models.PreOrderRead,
+        order_id: str,
         payload: models.OrderResponse
 ):
-    data = build_payload(type=models.MessageEnum.SENT_PREORDER, preorder=order, payload=payload)
+    data = build_payload(type=models.MessageEnum.SENT_PREORDER, order_id=order_id, pull_payload=payload)
     asyncio.create_task(request(data))
 
 
 def send_edited_preorder_notify(
-        order: preorder_models.PreOrderRead,
+        order_id: str,
         payload: models.OrderResponse
 ):
-    data = build_payload(type=models.MessageEnum.EDITED_PREORDER, preorder=order, payload=payload)
+    data = build_payload(type=models.MessageEnum.EDITED_PREORDER, order_id=order_id, pull_payload=payload)
     asyncio.create_task(request(data))
 
 
 def send_deleted_preorder_notify(
-        order: preorder_models.PreOrderRead,
+        order_id: str,
         payload: models.OrderResponse
 ):
-    data = build_payload(type=models.MessageEnum.DELETED_PREORDER, preorder=order, payload=payload)
+    data = build_payload(type=models.MessageEnum.DELETED_PREORDER, order_id=order_id, pull_payload=payload)
     asyncio.create_task(request(data))
 
 
 def send_response_chose_notify(
         order: order_schemas.OrderReadUser,
-        user: auth_models.User,
-        total: int
+        user: auth_models.UserRead,
+        responses: int
 ):
-    data = build_payload(type=models.MessageEnum.RESPONSE_CHOSE, order=order, user=user, total=total)
+    data = build_payload(type=models.MessageEnum.RESPONSE_CHOSE, order=order, user=user, responses=responses)
     asyncio.create_task(request(data))
 
 
 def send_order_paid_notify(
         order: order_schemas.OrderReadUser,
-        user: auth_models.User
+        user: auth_models.UserRead
 ):
     data = build_payload(type=models.MessageEnum.ORDER_PAID, order=order, user=user)
     asyncio.create_task(request(data))

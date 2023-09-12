@@ -123,15 +123,13 @@ class Order(SheetEntity, Document):
     auth_date: datetime.datetime | None = None
     end_date: datetime.datetime | None = None
 
-    archive: bool = False
-
     class Settings:
         use_state_management = True
         state_management_save_previous = True
         bson_encoders = {
             Url: lambda x: str(x),
         }
-        indexes = [IndexModel(["order_id", "archive"], unique=True)]
+        indexes = [IndexModel("order_id", unique=True)]
 
     def __hash__(self):
         return hash(str(self.id))

@@ -3,7 +3,7 @@ from fastapi import HTTPException
 
 from starlette import status
 
-from app.services.auth import service as auth_service
+from app.services.auth import models as auth_models
 from app.services.accounting import flows as accounting_flows
 from app.services.telegram.message import service as messages_service
 from app.services.orders import models as order_models
@@ -29,7 +29,7 @@ async def order_available(
 
 async def is_already_respond(
         order: order_models.Order,
-        user: auth_service.models.User
+        user: auth_models.User
 ):
     response = await service.get_by_order_id_user_id(order.id, user.id)
     if response is not None:
@@ -40,7 +40,7 @@ async def is_already_respond(
 
 
 async def create_response(
-        user: auth_service.models.User,
+        user: auth_models.User,
         order: order_models.Order,
         response: models.ResponseExtra
 ):
@@ -48,23 +48,26 @@ async def create_response(
     await is_already_respond(order, user)
     await accounting_flows.can_user_pick_order(user, order)
     resp = await service.create(models.ResponseCreate(extra=response, order_id=order.id, user_id=user.id))
+    user = auth_models.UserRead.model_validate(user)
     messages_service.send_response_admin(await permissions_service.format_order(order), user, resp)
     return resp
 
 
 async def create_preorder_response(
-        user: auth_service.models.User,
+        user: auth_models.User,
         order: preorder_models.PreOrder,
         response: models.ResponseExtra
 ):
     await is_already_respond(order, user)
     resp = await service.create(models.ResponseCreate(extra=response, order_id=order.id, user_id=user.id))
+
+    user = auth_models.UserRead.model_validate(user)
     messages_service.send_preorder_response_admin(await permissions_service.format_preorder(order), user, resp)
     return resp
 
 
 async def approve_response(
-        user: auth_service.models.User,
+        user: auth_models.User,
         order: order_models.Order
 ):
     await order_available(order)
@@ -74,6 +77,7 @@ async def approve_response(
 
     responds = await service.get_by_order_id(order_id=order.id)
     for resp in responds:
+        user = auth_models.UserRead.model_validate(user)
         if resp.user_id == user.id:
             await service.update(resp, models.ResponseUpdate(approved=True, closed=True))
             messages_service.send_response_approve(user, await permissions_service.format_order(order), resp)
@@ -86,7 +90,7 @@ async def approve_response(
 
 
 async def approve_preorder_response(
-        user: auth_service.models.User,
+        user: auth_models.User,
         order: preorder_models.PreOrder
 ):
     await order_available(order)
