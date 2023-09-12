@@ -58,5 +58,5 @@ async def delete(
     parser = sheets_service.models.OrderSheetParseRead.model_validate(parser.model_dump())
     creds = await auth_service.get_first_superuser()
     sheets_service.clear_row(creds.google, parser, order.row_id)
-    await service.to_archive(order.id)
+    await service.delete(order.id)
     await message_service.pull_preorder_delete(await permissions_service.format_preorder(order))

@@ -27,14 +27,12 @@ class SheetEntity(BaseModel):
 
 
 class OrderSheetParseItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     name: str
     row: int
     null: bool = Field(default=False)
     generated: bool = Field(default=False)
 
-    valid_values: list[typing.Any] = Field(examples=[["Completed", "InProgress", "Refund"]])
+    valid_values: list[typing.Any] = Field(examples=[["Completed", "In Progress", "Refund"]])
     type: str = Field(examples=allowed_types)
 
     @field_validator("type")

@@ -82,7 +82,6 @@ async def sync_orders():
     super_user = await auth_flows.get_booster_by_name(config.app.super_user_username)
     cfgs = await service.get_all_not_default_booster()
     for cfg in cfgs:
-        cfg = models.OrderSheetParseRead.model_validate(cfg)
         orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id)
         users = await auth_service.models.User.find_all().to_list()
         orders = service.get_all_data(super_user.google, models.OrderReadSheets, cfg)
