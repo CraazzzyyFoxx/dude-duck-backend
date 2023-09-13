@@ -54,7 +54,8 @@ class UserRead(schemas.BaseUser[PydanticObjectId]):
     phone: PhoneNumber | None
     bank: str | None
     bankcard: PaymentCardNumber | None
-    binance: EmailStr | None
+    binance_email: EmailStr | None
+    binance_id: int | None
     discord: str | None
     language: UserLanguage = UserLanguage.EN
 
@@ -68,7 +69,8 @@ class UserReadSheets(schemas.BaseUser[PydanticObjectId], SheetEntity):
     phone: PhoneNumber | None
     bank: str | None
     bankcard: PaymentCardNumber | None
-    binance: EmailStr | None
+    binance_email: EmailStr | None
+    binance_id: int | None
     discord: str | None
 
 
@@ -108,7 +110,8 @@ class UserUpdateAdmin(schemas.BaseUserUpdate):
     phone: PhoneNumber | None = None
     bank: str | None = None
     bankcard: PaymentCardNumber | None = None
-    binance: EmailStr | None = None
+    binance_email: EmailStr | None = None
+    binance_id: int | None = None
     max_orders: int
 
     @model_validator(mode='after')
@@ -134,7 +137,8 @@ class User(BeanieBaseUserDocument):
     phone: PhoneNumber | None = None
     bank: str | None = None
     bankcard: PaymentCardNumber | None = None
-    binance: EmailStr | None = None
+    binance_email: EmailStr | None = None
+    binance_id: int | None = None
     discord: str | None = None
     language: UserLanguage = UserLanguage.EN
 
@@ -159,10 +163,3 @@ class User(BeanieBaseUserDocument):
         }
         use_state_management = True
         state_management_save_previous = True
-
-    def serializing_to_sheets(self):
-        data = self.model_dump()
-        if self.created_at:
-            created_at = self.auth_date.strftime("%d.%m.%Y")
-            data["created_at"] = created_at
-        return data

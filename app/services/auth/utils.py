@@ -19,7 +19,7 @@ class DatabaseStrategyAPI(DatabaseStrategy):
         return access_token.token
 
 
-class HTTPBearerCustom(HTTPBearer):
+class HTTPBearerAPI(HTTPBearer):
     async def __call__(
         self, request: Request
     ) -> str | None:
@@ -33,11 +33,11 @@ class HTTPBearerCustom(HTTPBearer):
 
 
 class BearerTransportAPI(BearerTransport):
-    scheme: HTTPBearerCustom
+    scheme: HTTPBearerAPI
 
     def __init__(self, tokenUrl: str = "unknown"):
         super().__init__(tokenUrl)
-        self.scheme = HTTPBearerCustom(bearerFormat="Bearer", auto_error=False)
+        self.scheme = HTTPBearerAPI(bearerFormat="Bearer", auto_error=False)
 
 
 bearer_transport = BearerTransport(tokenUrl="auth/login")

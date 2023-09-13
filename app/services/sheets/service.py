@@ -376,7 +376,8 @@ def find_by(
         model: typing.Type[models.SheetEntity],
         creds: auth_models.AdminGoogleToken,
         parser: models.OrderSheetParseRead,
-        value):
+        value
+) -> models.SheetEntity:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -395,9 +396,21 @@ def create_or_update_booster(
     creds = auth_models.AdminGoogleToken.model_validate(creds)
     booster = find_by(auth_models.UserReadSheets, creds, parser, value)
     if booster:
-        update_row_data(creds, parser, booster.row_id, {"is_verified": True})
+        update_row_data(creds, parser, booster.row_id, user)
     else:
         create_row_data(auth_models.UserReadSheets, creds, parser, user)
+
+
+def delete_booster(
+        creds: auth_models.AdminGoogleToken,
+        parser: models.OrderSheetParseRead,
+        value: str,
+):
+    parser = models.OrderSheetParseRead.model_validate(parser)
+    creds = auth_models.AdminGoogleToken.model_validate(creds)
+    booster = find_by(auth_models.UserReadSheets, creds, parser, value)
+    if booster:
+        clear_row(creds, parser, booster.row_id)
 
 
 def clear_row(

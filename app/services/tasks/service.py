@@ -1,7 +1,6 @@
 import asyncio
 
 from celery import Celery
-from beanie import PydanticObjectId
 
 from app.core.config import app
 from app.services.sheets import service as sheets_service
@@ -15,7 +14,6 @@ celery = Celery(__name__,
                 broker=app.celery_broker_url.unicode_string(),
                 backend=app.celery_result_backend.unicode_string(),
                 broker_connection_retry_on_startup=True)
-
 
 celery.conf.beat_schedule = {
     'sync-data-every-5-minutes': {
@@ -53,6 +51,13 @@ def create_or_update_booster(creds: str, parser: str, value: str, data: dict):
     sheets_service.create_or_update_booster(creds, parser, value, data)
 
 
+@celery.task(name="delete_booster")
+def delete_booster(creds: str, parser: str, value: str):
+    parser = sheets_service.models.OrderSheetParseRead.model_validate_json(parser)
+    creds = auth_models.AdminGoogleToken.model_validate_json(creds)
+    sheets_service.delete_booster(creds, parser, value)
+
+
 @celery.task(name="delete_preorder")
 def delete_preorder(creds: str, parser: str, row_id: int):
     parser = sheets_service.models.OrderSheetParseRead.model_validate_json(parser)
@@ -61,6 +66,6 @@ def delete_preorder(creds: str, parser: str, row_id: int):
 
 
 @celery.task(name="delete_expired_preorder")
-def delete_expired_preorder(order_id: PydanticObjectId):
+def delete_expired_preorder(order_id: str):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(preorders_tasks.delete(order_id))

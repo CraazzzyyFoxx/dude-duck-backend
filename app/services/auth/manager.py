@@ -148,6 +148,16 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
             models.UserRead.model_validate(user).model_dump()
         )
 
+    async def on_after_delete(
+        self, user: models.User, request: Request | None = None,
+    ) -> None:
+        parser = await sheets_service.get_default_booster()
+        creds = await service.get_first_superuser()
+        tasks_service.delete_booster.delay(
+            creds.google.model_dump_json(),
+            parser.model_dump_json(),
+            str(user.id),
+        )
 
 async def get_user_db():
     yield BeanieUserDatabase(models.User)
