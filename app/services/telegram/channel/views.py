@@ -20,7 +20,7 @@ async def get_channels(
         sorting: search_service.models.OrderSortingParams = Depends()
 ):
     response = await service_request(
-        f'channel?page={paging.page}&per_page={paging.per_page}&sort={sorting.sort}&order={sorting.order.value}',
+        f'channel?page={paging.page}&per_page={paging.per_page}',
         'GET',
     )
     return response.json()

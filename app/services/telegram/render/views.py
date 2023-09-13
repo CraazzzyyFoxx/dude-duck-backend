@@ -19,7 +19,7 @@ async def get_renders(
         sorting: search_service.models.OrderSortingParams = Depends()
 ):
     response = await service_request(
-        f'render?page={paging.page}&per_page={paging.per_page}&sort={sorting.sort}&order={sorting.order.value}',
+        f'render?page={paging.page}&per_page={paging.per_page}',
         'GET',
     )
     return response.json()
