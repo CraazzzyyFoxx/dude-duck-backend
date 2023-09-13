@@ -269,7 +269,7 @@ def get_all_data(
         if not values_list[i]:
             break
         index = i
-    rows = sheet.get(get_range(parser, end_id=index),
+    rows = sheet.get(get_range(parser, end_id=index + 1),
                      value_render_option=ValueRenderOption.unformatted,
                      date_time_render_option=DateTimeOption.formatted_string)
     return parse_all_data(model, parser.spreadsheet, parser.sheet_id, rows, parser)
