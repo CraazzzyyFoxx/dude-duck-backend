@@ -1,4 +1,3 @@
-from beanie import PydanticObjectId
 from pydantic import BaseModel, Field
 
 
@@ -14,7 +13,7 @@ class ChannelUpdate(BaseModel):
 
 
 class ChannelRead(BaseModel):
-    id: PydanticObjectId
+    id: int
     game: str
     category: str | None
     channel_id: int

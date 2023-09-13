@@ -1,4 +1,3 @@
-from beanie import PydanticObjectId
 from pydantic import BaseModel, Field
 
 
@@ -17,7 +16,7 @@ class RenderConfigUpdate(BaseModel):
 
 
 class RenderConfigRead(BaseModel):
-    id: PydanticObjectId
+    id: int
     name: str
     lang: str
     binary: str
