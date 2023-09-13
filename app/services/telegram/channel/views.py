@@ -17,7 +17,6 @@ router = APIRouter(prefix='/channels', tags=[enums.RouteTag.CHANNELS],
 @router.get(path="", response_model=search_service.models.Paginated[models.ChannelRead])
 async def get_channels(
         paging: search_service.models.PaginationParams = Depends(),
-        sorting: search_service.models.OrderSortingParams = Depends()
 ):
     response = await service_request(
         f'channel?page={paging.page}&per_page={paging.per_page}',
