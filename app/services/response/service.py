@@ -9,7 +9,7 @@ async def get(response_id: PydanticObjectId) -> models.Response | None:
     return await models.Response.find_one({"_id": response_id})
 
 
-async def create(response_in: models.ResponseCreate):
+async def create(response_in: models.ResponseCreate) -> models.Response:
     response = models.Response(order_id=response_in.order_id,
                                user_id=response_in.user_id,
                                extra=response_in.extra)
@@ -17,7 +17,7 @@ async def create(response_in: models.ResponseCreate):
     return await response.create()
 
 
-async def delete(response_id: PydanticObjectId):
+async def delete(response_id: PydanticObjectId) -> None:
     user_order = await models.Response.get(response_id)
     await user_order.delete()
 
@@ -38,7 +38,7 @@ async def get_all() -> list[models.Response]:
     return await models.Response.find({}, fetch_links=True).to_list()
 
 
-async def update(response: models.Response, response_in: models.ResponseUpdate):
+async def update(response: models.Response, response_in: models.ResponseUpdate) -> models.Response:
     report_data = response.model_dump()
     update_data = response_in.model_dump(exclude_none=True)
 

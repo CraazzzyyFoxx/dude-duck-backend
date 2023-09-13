@@ -15,7 +15,7 @@ from app.core import config
 sentry_logging = LoguruIntegration(level=20, event_level=40)
 
 
-def configure_extensions():
+def configure_extensions() -> None:
     logger.info("Configuring extensions...")
     if config.app.sentry_dsn:
         sentry_sdk.init(

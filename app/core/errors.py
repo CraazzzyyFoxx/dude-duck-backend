@@ -43,7 +43,7 @@ class GoogleSheetsParserError(BaseModel):
             sheet_id: int,
             row_id: int,
             error: ValidationError
-    ):
+    ) -> HTTPException:
         return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                              detail=[{"msg": cls(model=repr(model),
                                                  spreadsheet=spreadsheet,

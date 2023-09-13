@@ -44,11 +44,11 @@ async def get_all() -> list[models.Currency]:
     return await models.Currency.find({}).to_list()
 
 
-def normalize_date(date: datetime):
+def normalize_date(date: datetime.datetime) -> str:
     return date.strftime("%Y-%m-%d")
 
 
-async def get_token():
+async def get_token() -> settings_models.ApiLayerCurrencyToken:
     settings = await settings_service.get()
     token = settings.api_layer_currency[0]
     for t in settings.api_layer_currency:

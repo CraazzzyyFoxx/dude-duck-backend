@@ -6,12 +6,13 @@ from starlette import status
 from starlette.middleware.base import (BaseHTTPMiddleware,
                                        RequestResponseEndpoint)
 from starlette.requests import Request
+from starlette.responses import Response
 
 
 class ExceptionMiddleware(BaseHTTPMiddleware):
     async def dispatch(
             self, request: Request, call_next: RequestResponseEndpoint
-    ) -> ORJSONResponse:
+    ) -> Response:
         try:
             response = await call_next(request)
         except RequestValidationError as e:

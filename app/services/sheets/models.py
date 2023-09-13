@@ -73,7 +73,7 @@ class OrderSheetParseRead(BaseModel):
 
 
 class OrderSheetParseUpdate(BaseModel):
-    start: int = Field(default=None, gt=1)
+    start: int = Field(default=2, gt=1)
     items: list[OrderSheetParseItem] = Field(default=None)
     is_user: bool | None = Field(default=None)
 

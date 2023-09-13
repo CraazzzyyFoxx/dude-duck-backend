@@ -10,7 +10,7 @@ from app.core import config
 class TelegramServiceMeta:
     __slots__ = ("client",)
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = httpx.AsyncClient(verify=False)
 
     @staticmethod
@@ -35,7 +35,8 @@ TelegramService = TelegramServiceMeta()
 async def request(
         endpoint: str,
         method: str,
-        data: dict | None = None):
+        data: dict | None = None
+) -> httpx.Response:
     try:
         response = await TelegramService.client.request(
             method=method,

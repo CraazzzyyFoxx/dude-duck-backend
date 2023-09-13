@@ -25,7 +25,7 @@ class AccountingReportSheetsForm(BaseModel):
     second_sort: SecondSort
 
     @model_validator(mode='after')
-    def spreadsheet_sheet_together(self):
+    def spreadsheet_sheet_together(self) -> None:
         if self.sheet_id is not None and self.spreadsheet is None:
             raise ValueError("Spreadsheet and sheet_id are related, you must specify them together")
 

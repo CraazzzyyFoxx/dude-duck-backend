@@ -5,7 +5,7 @@ from . import models
 CACHE: dict[int, models.Settings] = {}
 
 
-async def get() -> models.Settings | None:
+async def get() -> models.Settings:
     if CACHE.get(0):
         return CACHE[0]
     settings = await models.Settings.find({}).first_or_none()

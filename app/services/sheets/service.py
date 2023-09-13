@@ -246,7 +246,7 @@ def parse_all_data(
         parser_in: models.OrderSheetParseRead
 ):
     t = time.time()
-    resp = []
+    resp: list[BM] = []
     for row_id, row in enumerate(rows_in, parser_in.start):
         data = parse_row(parser_in, model, row_id, row, is_raise=True)
         if data:
