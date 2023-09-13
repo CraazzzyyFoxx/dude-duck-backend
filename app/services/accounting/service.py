@@ -148,7 +148,7 @@ async def currency_to_usd(
         currency_db = await currency_flows.get(date)
         price = wallet / currency_db.quotes[currency]
     if with_fee:
-        price = price * (1 - settings.accounting_fee)
+        price *= settings.accounting_fee
     if with_round:
         return round(price, settings.get_precision(currency))
     else:

@@ -1,5 +1,5 @@
 {
-  "spreadsheet": "Copy of B2B order",
+  "spreadsheet": "Copy B2B order",
   "sheet_id": 1683225420,
   "start": 2,
   "items": [
@@ -52,7 +52,7 @@
       "type": "str"
     },
     {
-      "name": "binance",
+      "name": "binance_email",
       "row": 6,
       "null": true,
       "generated": false,
@@ -60,8 +60,16 @@
       "type": "str"
     },
     {
-      "name": "telegram",
+      "name": "binance_id",
       "row": 7,
+      "null": true,
+      "generated": false,
+      "valid_values": [],
+      "type": "str"
+    },
+    {
+      "name": "telegram",
+      "row": 8,
       "null": false,
       "generated": false,
       "valid_values": [],
@@ -69,7 +77,7 @@
     },
     {
       "name": "discord",
-      "row": 8,
+      "row": 9,
       "null": true,
       "generated": false,
       "valid_values": [],
@@ -77,7 +85,7 @@
     },
     {
       "name": "is_verified",
-      "row": 9,
+      "row": 10,
       "null": false,
       "generated": false,
       "valid_values": [],
