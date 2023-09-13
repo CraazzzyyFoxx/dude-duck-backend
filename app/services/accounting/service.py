@@ -189,7 +189,7 @@ async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth
 
 
 async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
-    users = await auth_flows.models.User.find(In(auth_flows.models.User.id, [d.user.id for d in data])).to_list()
+    users = await auth_flows.models.User.find(In(auth_flows.models.User.id, [d.user_id for d in data])).to_list()
     return await _boosters_to_str(order, data, users)
 
 
