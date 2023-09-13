@@ -17,7 +17,6 @@ from app.middlewares.exception import ExceptionMiddleware
 from app.services.settings import service as settings_service
 from app.services.auth import service as auth_service
 from app.services.auth import flows as auth_flows
-from app.services.sheets.tasks import sync_orders
 from app.services.telegram import service as telegram_service
 
 if os.name != "nt":
@@ -51,7 +50,6 @@ async def lifespan(application: FastAPI):  # noqa
             user_dict["hashed_password"] = manager.password_helper.hash(password)
             await auth_service.models.User.model_validate(user_dict).create()
     await telegram_service.TelegramService.init()
-    await sync_orders()
     logger.info("Application... Online!")
     yield
 
