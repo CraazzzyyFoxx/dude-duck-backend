@@ -42,10 +42,18 @@ async def can_user_pick_order(user: auth_models.User, order: order_service.model
     return True
 
 
-def check_total_dollars(order: order_service.models.Order, boosters: list[models.UserOrder], price: float) -> bool:
-    if order.price.price_booster_dollar_fee < sum([b.dollars for b in boosters]) + price:
+async def check_total_dollars(
+        order: order_service.models.Order,
+        boosters: list[models.UserOrder],
+        price: float
+) -> bool:
+    p = await service.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+    total = sum([b.dollars for b in boosters]) + price
+    if p < total:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
-                            detail=[{"msg": "You are already assigned to this order"}])
+                            detail=[{"msg": f"The price for the booster is incorrect. "
+                                            f"Order price {p}, total price for boosters {total}. \n"
+                                            f"{total}>{p}"}])
     return True
 
 
@@ -63,10 +71,16 @@ async def add_booster(
         for booster in boosters:
             await service.update(booster, models.UserOrderUpdate(dollars=price))
     else:
-        check_total_dollars(order, boosters, price)
-        # TODO:
+        await check_total_dollars(order, boosters, price)
+        p = await service.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+        minus_dollars = (p - price) / len(boosters)
+        for booster in boosters:
+            await service.update(booster, models.UserOrderUpdate(dollars=booster.dollars - minus_dollars))
 
     data = await service.create(models.UserOrderCreate(order_id=order.id, user_id=user.id, dollars=price))
+
+    booster_str = await service.boosters_to_str(order, await service.get_by_order_id(order.id))
+    await order_service.update_with_sync(order, order_models.OrderUpdate(booster=booster_str))
     return data
 
 
@@ -108,6 +122,8 @@ async def update_boosters_percent(
                 )
 
     boosters = await service.get_by_order_id(order.id)
+    booster_str = await service.boosters_to_str(order, boosters)
+    await order_service.update_with_sync(order, order_models.OrderUpdate(booster=booster_str))
     return boosters
 
 
@@ -115,13 +131,16 @@ async def remove_booster(order: order_models.Order, user: User) -> bool:
     boosters = await service.get_by_order_id(order.id)
     for booster in boosters:
         if booster.user_id == user.id:
-            price_without = order.price_booster_dollar_fee - booster.dollars
-            for booster1 in boosters:
-                booster1.dollars += price_without / len(boosters)
-                await booster1.save_changes()
             await booster.delete()
+            p = await service.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+            price_without = p - booster.dollars
+            for booster1 in boosters:
+                booster1.dollars += price_without / len(boosters - 1)
+                await booster1.save_changes()
             return True
-
+    boosters = await service.get_by_order_id(order.id)
+    booster_str = await service.boosters_to_str(order, boosters)
+    await order_service.update_with_sync(order, order_models.OrderUpdate(booster=booster_str))
     return False
 
 
@@ -192,10 +211,15 @@ async def close_order(user: auth_models.User, order: order_service.models.Order,
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail=[{"msg": "You don't have access to the order"}])
 
-    await order_service.update_with_sync(order, order_service.models.OrderUpdate(
-        screenshot=str(data.url), end_date=datetime.utcnow()))
+    await order_service.update_with_sync(
+        order,
+        order_service.models.OrderUpdate(screenshot=str(data.url), end_date=datetime.utcnow())
+    )
     messages_service.send_order_close_notify(
-        user, await permissions_service.format_order(order), data.url, data.message
+        auth_models.UserRead.model_validate(user),
+        await permissions_service.format_order(order),
+        data.url,
+        data.message
     )
     return
 

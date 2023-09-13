@@ -64,11 +64,11 @@ async def update_with_sync(order: models.Order, order_in: models.OrderUpdate):
     return order
 
 
-async def update(order: models.Order, user_order_in: models.OrderUpdate):
+async def update(order: models.Order, order_in: models.OrderUpdate):
     old = order.model_copy(deep=True)
     update_price = False
     order_data = dict(order)
-    update_data = user_order_in.model_dump(exclude_none=True)
+    update_data = order_in.model_dump(exclude_none=True)
     for field in order_data:
         if field in update_data:
             if isinstance(update_data[field], dict):
