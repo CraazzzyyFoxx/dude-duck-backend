@@ -80,7 +80,12 @@ async def add_booster(
     data = await service.create(models.UserOrderCreate(order_id=order.id, user_id=user.id, dollars=price))
 
     booster_str = await service.boosters_to_str(order, await service.get_by_order_id(order.id))
-    await order_service.update_with_sync(order, order_models.OrderUpdate(booster=booster_str))
+    if not boosters:
+        await order_service.update_with_sync(
+            order, order_models.OrderUpdate(booster=booster_str,  auth_date=datetime.utcnow())
+        )
+    else:
+        await order_service.update_with_sync(order, order_models.OrderUpdate(booster=booster_str))
     return data
 
 
