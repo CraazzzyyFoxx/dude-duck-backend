@@ -7,19 +7,19 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.core.enums import RouteTag
-from app.services.auth import flows as auth_flows
-from app.services.auth import service as auth_service
-from app.services.auth import manager as auth_manager
-from app.services.auth import utils as auth_utils
-from app.services.auth import models as auth_models
-from app.services.accounting import service as accounting_service
 from app.services.accounting import models as accounting_models
-from app.services.search import service as search_service
+from app.services.accounting import service as accounting_service
+from app.services.auth import flows as auth_flows
+from app.services.auth import manager as auth_manager
+from app.services.auth import models as auth_models
+from app.services.auth import service as auth_service
+from app.services.auth import utils as auth_utils
 from app.services.orders import flows as orders_flows
 from app.services.orders import schemas as orders_schemas
+from app.services.permissions import service as permissions_service
 from app.services.preorders import flows as preorders_flows
 from app.services.preorders import models as preorders_models
-from app.services.permissions import service as permissions_service
+from app.services.search import service as search_service
 
 router = APIRouter(prefix="/users", tags=[RouteTag.USERS])
 

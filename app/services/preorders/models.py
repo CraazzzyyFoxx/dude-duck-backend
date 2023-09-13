@@ -1,7 +1,7 @@
 import datetime
 
 from beanie import Document, PydanticObjectId
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 from pydantic_core import Url
 
 from app.services.orders import models as order_models

@@ -2,7 +2,7 @@ import datetime
 from enum import Enum
 
 from beanie import Document
-from pydantic import Field, BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import Url
 from pymongo import IndexModel
 

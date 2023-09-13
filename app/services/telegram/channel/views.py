@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
 from beanie import PydanticObjectId
+from fastapi import APIRouter, Depends, HTTPException
 from starlette import status
 
 from app.core import enums
@@ -8,7 +8,6 @@ from app.services.search import service as search_service
 
 from ..service import request as service_request
 from . import models
-
 
 router = APIRouter(prefix='/channels', tags=[enums.RouteTag.CHANNELS],
                    dependencies=[Depends(auth_flows.current_active_superuser)])

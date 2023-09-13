@@ -1,22 +1,20 @@
 import os
-
 from contextlib import asynccontextmanager
 
+from beanie import init_beanie
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from starlette.staticfiles import StaticFiles
-from beanie import init_beanie
 
-from app import db, api
+from app import api, db
 from app.core import config
-from app.core.logging import logger
 from app.core.extensions import configure_extensions
-from app.middlewares.time import TimeMiddleware
+from app.core.logging import logger
 from app.middlewares.exception import ExceptionMiddleware
-
-from app.services.settings import service as settings_service
-from app.services.auth import service as auth_service
+from app.middlewares.time import TimeMiddleware
 from app.services.auth import flows as auth_flows
+from app.services.auth import service as auth_service
+from app.services.settings import service as settings_service
 from app.services.telegram import service as telegram_service
 
 if os.name != "nt":

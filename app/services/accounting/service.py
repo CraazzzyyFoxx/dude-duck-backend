@@ -7,9 +7,9 @@ from beanie.odm.operators.find.comparison import In
 from app.core import config
 from app.services.auth import flows as auth_flows
 from app.services.auth import models as auth_models
-from app.services.settings import service as settings_service
 from app.services.currency import flows as currency_flows
 from app.services.orders import models as order_models
+from app.services.settings import service as settings_service
 
 from . import models
 

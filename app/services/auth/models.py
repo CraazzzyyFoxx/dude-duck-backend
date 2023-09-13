@@ -2,17 +2,17 @@ import datetime
 import enum
 import re
 
+from beanie import PydanticObjectId
+from fastapi_users import schemas
 from fastapi_users_db_beanie import BeanieBaseUserDocument
 from fastapi_users_db_beanie.access_token import BeanieBaseAccessTokenDocument
-
-from pydantic import EmailStr, Field, constr, BaseModel, HttpUrl, model_validator, field_validator
+from pydantic import (BaseModel, EmailStr, Field, HttpUrl, constr,
+                      field_validator, model_validator)
 from pydantic_core import Url
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from pymongo import IndexModel
 from pymongo.collation import Collation
-from beanie import PydanticObjectId
-from fastapi_users import schemas
 
 from app.core import config
 from app.services.sheets.models import SheetEntity

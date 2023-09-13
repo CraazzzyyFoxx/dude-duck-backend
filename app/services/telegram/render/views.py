@@ -8,7 +8,6 @@ from app.services.search import service as search_service
 from ..service import request as service_request
 from . import models
 
-
 router = APIRouter(prefix='/render', tags=[enums.RouteTag.RENDER],
                    dependencies=[Depends(auth_flows.current_active_superuser)])
 

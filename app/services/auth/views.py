@@ -2,8 +2,7 @@ from fastapi import APIRouter
 
 from app.core.enums import RouteTag
 
-from . import utils, models, flows
-
+from . import flows, models, utils
 
 router = APIRouter(prefix="/auth", tags=[RouteTag.AUTH])
 

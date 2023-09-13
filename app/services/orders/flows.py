@@ -1,8 +1,8 @@
+from beanie import PydanticObjectId
 from fastapi import HTTPException
 from starlette import status
-from beanie import PydanticObjectId
 
-from . import service, models
+from . import models, service
 
 
 async def get(order_id: PydanticObjectId) -> models.Order:

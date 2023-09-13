@@ -1,9 +1,9 @@
 import datetime
 
-from pydantic import BaseModel, Field, model_validator, HttpUrl, constr, field_validator, ConfigDict
 from beanie import Document, PydanticObjectId
+from pydantic import (BaseModel, ConfigDict, Field, HttpUrl, constr,
+                      field_validator, model_validator)
 from pymongo import IndexModel
-
 
 __all__ = (
     "UserOrder",

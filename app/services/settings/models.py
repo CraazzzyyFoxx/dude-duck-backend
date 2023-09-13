@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field, constr
 from beanie import Document
+from pydantic import BaseModel, Field, constr
 
 
 class ApiLayerCurrencyToken(BaseModel):

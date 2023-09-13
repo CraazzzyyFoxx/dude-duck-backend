@@ -1,10 +1,9 @@
 from beanie import PydanticObjectId
 from fastapi import HTTPException
-
 from starlette import status
 
-from . import models
 from ...core import config
+from . import models
 
 
 async def get(order_id: PydanticObjectId) -> models.User:

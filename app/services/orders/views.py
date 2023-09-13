@@ -1,14 +1,14 @@
 import typing
 
-from fastapi import APIRouter, Depends
 from beanie import PydanticObjectId
+from fastapi import APIRouter, Depends
 
 from app.core import enums
 from app.services.auth import flows as auth_flows
-from app.services.search import service as search_service
 from app.services.permissions import service as permissions_service
+from app.services.search import service as search_service
 
-from . import schemas, flows, models, service
+from . import flows, models, schemas, service
 
 router = APIRouter(prefix="/orders", tags=[enums.RouteTag.ORDERS])
 

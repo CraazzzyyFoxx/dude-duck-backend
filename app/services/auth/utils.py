@@ -1,7 +1,7 @@
 from fastapi import Depends
 from fastapi.security import HTTPBearer
 from fastapi.security.utils import get_authorization_scheme_param
-from fastapi_users.authentication import BearerTransport, AuthenticationBackend
+from fastapi_users.authentication import AuthenticationBackend, BearerTransport
 from fastapi_users.authentication.strategy import DatabaseStrategy
 from fastapi_users_db_beanie.access_token import BeanieAccessTokenDatabase
 from starlette.requests import Request

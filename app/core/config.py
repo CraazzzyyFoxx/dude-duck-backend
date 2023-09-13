@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pydantic import EmailStr, RedisDsn
-from pydantic_settings import SettingsConfigDict, BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppConfig(BaseSettings):

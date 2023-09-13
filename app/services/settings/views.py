@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends
 
-
 from app.core import enums
 from app.services.auth import flows as auth_flows
 
-
-from . import models, flows, service
+from . import flows, models, service
 
 router = APIRouter(prefix='/settings', tags=[enums.RouteTag.SETTINGS])
 

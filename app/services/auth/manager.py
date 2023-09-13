@@ -1,19 +1,18 @@
 import typing
 
 import jwt
-
-from fastapi_users.jwt import generate_jwt, decode_jwt
-from loguru import logger
 from beanie import PydanticObjectId
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, exceptions
-from fastapi_users_db_beanie import ObjectIDIDMixin, BeanieUserDatabase
+from fastapi_users.jwt import decode_jwt, generate_jwt
+from fastapi_users_db_beanie import BeanieUserDatabase, ObjectIDIDMixin
+from loguru import logger
 from starlette.responses import Response
 
 from app.core import config
 from app.services.sheets import service as sheets_service
-from app.services.telegram.message import service as message_service
 from app.services.tasks import service as tasks_service
+from app.services.telegram.message import service as message_service
 
 from . import models, service
 
@@ -149,7 +148,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
         )
 
     async def on_after_delete(
-        self, user: models.User, request: Request | None = None,
+            self, user: models.User, request: Request | None = None,
     ) -> None:
         parser = await sheets_service.get_default_booster()
         creds = await service.get_first_superuser()
@@ -158,6 +157,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
             parser.model_dump_json(),
             str(user.id),
         )
+
 
 async def get_user_db():
     yield BeanieUserDatabase(models.User)

@@ -1,9 +1,8 @@
 import datetime
-import re
 import enum
+import re
 
 import dateparser
-
 
 __all__ = ("ConversionMode", "convert_time")
 

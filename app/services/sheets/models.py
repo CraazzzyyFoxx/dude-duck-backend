@@ -1,7 +1,7 @@
 import typing
 
-from pydantic import BaseModel, ConfigDict, field_validator, Field
 from beanie import Document, Indexed, PydanticObjectId
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = (
     "OrderSheetParseItem",

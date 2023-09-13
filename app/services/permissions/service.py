@@ -1,8 +1,8 @@
+from app.services.accounting import service as accounting_service
+from app.services.auth import service as auth_service
 from app.services.orders import models as order_models
 from app.services.orders import schemas as order_schemas
 from app.services.preorders import models as preorder_models
-from app.services.auth import service as auth_service
-from app.services.accounting import service as accounting_service
 
 
 async def format_order(order: order_models.Order, _: auth_service.models.User = None):

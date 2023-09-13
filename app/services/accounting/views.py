@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends
 from beanie import PydanticObjectId
+from fastapi import APIRouter, Depends
 
 from app.core import enums
 from app.services.auth import flows as auth_flows
 from app.services.orders import flows as orders_flows
 
-from . import models, flows, schemas, service
+from . import flows, models, schemas, service
 
 router = APIRouter(prefix='/accounting', tags=[enums.RouteTag.ACCOUNTING])
 

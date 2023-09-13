@@ -6,7 +6,8 @@ from fastapi_users import FastAPIUsers, exceptions
 from starlette import status
 
 from app.services.auth.manager import get_user_manager
-from . import models, utils, service
+
+from . import models, service, utils
 
 fastapi_users = (FastAPIUsers[models.User, PydanticObjectId]
                  (get_user_manager, [utils.auth_backend_api, utils.auth_backend_db]))

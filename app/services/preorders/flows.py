@@ -1,17 +1,17 @@
+from beanie import PydanticObjectId, init_beanie
 from fastapi import HTTPException
 from starlette import status
-from beanie import PydanticObjectId, init_beanie
 
 from app import db
 from app.core import config
 from app.services.auth import service as auth_service
+from app.services.permissions import service as permissions_service
+from app.services.settings import service as settings_service
 from app.services.sheets import service as sheets_service
 from app.services.tasks import service as tasks_service
-from app.services.settings import service as settings_service
 from app.services.telegram.message import service as message_service
-from app.services.permissions import service as permissions_service
 
-from . import service, models
+from . import models, service
 
 
 async def get(

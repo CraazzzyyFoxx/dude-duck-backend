@@ -1,9 +1,10 @@
-from fastapi.exceptions import RequestValidationError, HTTPException
+from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import ValidationError
 from starlette import status
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import (BaseHTTPMiddleware,
+                                       RequestResponseEndpoint)
 from starlette.requests import Request
 
 

@@ -4,8 +4,8 @@ import httpx
 from beanie import PydanticObjectId
 from fastapi import HTTPException
 
-from app.services.settings import service as settings_service
 from app.services.settings import models as settings_models
+from app.services.settings import service as settings_service
 
 from . import models
 

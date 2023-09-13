@@ -1,8 +1,8 @@
-from typing import Generic, List, TypeVar, TypedDict, Any
 from enum import Enum
+from typing import Any, Generic, List, TypedDict, TypeVar
 
-from pydantic import BaseModel, Field
 from beanie.odm.enums import SortDirection
+from pydantic import BaseModel, Field
 
 __all__ = ("Paginated", "PaginationParams", "SortingParams", "OrderSortingParams")
 

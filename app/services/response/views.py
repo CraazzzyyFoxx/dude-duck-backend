@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends
 from beanie import PydanticObjectId
+from fastapi import APIRouter, Depends
 
 from app.core.enums import RouteTag
-from app.services.orders import flows as order_flows
-from app.services.auth import service as auth_service
 from app.services.auth import flows as auth_flows
-from app.services.search import service as search_service
+from app.services.auth import service as auth_service
+from app.services.orders import flows as order_flows
 from app.services.preorders import flows as preorder_flows
+from app.services.search import service as search_service
 
-from . import models, flows, service
+from . import flows, models, service
 
 router = APIRouter(prefix='/response', tags=[RouteTag.RESPONSES])
 

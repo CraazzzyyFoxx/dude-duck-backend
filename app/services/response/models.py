@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 
-from pydantic import BaseModel, Field, ConfigDict
 from beanie import Document, PydanticObjectId
+from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
-
 
 __all__ = (
     "ResponseExtra",

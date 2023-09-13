@@ -1,7 +1,7 @@
 import httpx
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
-from httpx import TimeoutException, HTTPError
+from httpx import HTTPError, TimeoutException
 from loguru import logger
 
 from app.core import config

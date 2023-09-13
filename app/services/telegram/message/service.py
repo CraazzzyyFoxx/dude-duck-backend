@@ -1,11 +1,10 @@
-import typing
 import asyncio
+import typing
 
-from app.services.preorders import models as preorder_models
-from app.services.orders import schemas as order_schemas
 from app.services.auth import models as auth_models
+from app.services.orders import schemas as order_schemas
+from app.services.preorders import models as preorder_models
 from app.services.response import models as response_models
-
 from app.services.telegram.service import request as service_request
 
 from . import models

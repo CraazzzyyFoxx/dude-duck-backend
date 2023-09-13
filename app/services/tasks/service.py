@@ -2,13 +2,12 @@ import asyncio
 
 from celery import Celery
 
+from app.core import config
 from app.core.config import app
-from app.services.sheets import service as sheets_service
 from app.services.auth import models as auth_models
 from app.services.preorders import tasks as preorders_tasks
+from app.services.sheets import service as sheets_service
 from app.services.sheets import tasks as sheets_tasks
-
-from app.core import config
 
 celery = Celery(__name__,
                 broker=app.celery_broker_url.unicode_string(),

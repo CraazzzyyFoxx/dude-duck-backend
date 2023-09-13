@@ -1,8 +1,7 @@
+from beanie import PydanticObjectId
 from fastapi import HTTPException
-
 from pydantic import ValidationError
 from starlette import status
-from beanie import PydanticObjectId
 
 from app.core import errors
 from app.services.auth import models as auth_models

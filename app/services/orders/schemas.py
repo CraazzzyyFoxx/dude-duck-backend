@@ -10,7 +10,8 @@ __all__ = (
     "OrderReadUser",
 )
 
-from .models import OrderInfo, OrderPrice, OrderCredentials, OrderPaidStatus, OrderStatus
+from .models import (OrderCredentials, OrderInfo, OrderPaidStatus, OrderPrice,
+                     OrderStatus)
 
 
 class OrderPriceUser(BaseModel):
