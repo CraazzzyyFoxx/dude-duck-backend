@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from beanie import Document
 from pydantic import BaseModel, field_validator
@@ -12,6 +12,10 @@ class Currency(Document):
     quotes: dict[str, float]
 
     class Settings:
+        use_cache = True
+        cache_expiration_time = timedelta(days=1)
+        cache_capacity = 100
+
         indexes = [
             IndexModel(["date"], unique=True),
         ]
