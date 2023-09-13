@@ -4,6 +4,7 @@ import typing
 
 import gspread
 from beanie import PydanticObjectId
+from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
 from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
@@ -234,7 +235,7 @@ def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, 
 
     for getter in parser.items:
         if not getter.generated and data.get(getter.name) is not None:
-            row[getter.row] = data[getter.name]
+            row[getter.row] = jsonable_encoder(data[getter.name])
     return row
 
 

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from . import service, models
+from . import models, service
 
 
 async def get(currency_date: datetime | date) -> models.Currency | None:
