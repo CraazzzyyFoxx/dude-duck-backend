@@ -210,7 +210,7 @@ async def create_user_report(user: User) -> models.UserAccountReport:
 async def close_order(user: auth_models.User, order: order_service.models.Order, data: models.CloseOrderForm):
     f = False
     for price in await service.get_by_order_id(order.id):
-        if price.user_id.id == user.id:
+        if price.user_id == user.id:
             f = True
     if not f:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -223,7 +223,7 @@ async def close_order(user: auth_models.User, order: order_service.models.Order,
     messages_service.send_order_close_notify(
         auth_models.UserRead.model_validate(user),
         await permissions_service.format_order(order),
-        data.url,
+        str(data.url),
         data.message
     )
     return
