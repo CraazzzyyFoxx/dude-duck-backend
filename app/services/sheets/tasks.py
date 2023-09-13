@@ -1,7 +1,6 @@
 import time
-from typing import cast
 
-from beanie import init_beanie
+from beanie import init_beanie, PydanticObjectId
 from loguru import logger
 from deepdiff import DeepDiff
 
@@ -50,14 +49,15 @@ async def sync_data_to(
         cfg: models.OrderSheetParseRead,
         orders: dict[str, models.OrderReadSheets],
         users: list[auth_models.User],
+        orders_db: dict[PydanticObjectId, order_models.Order]
 ):
     t = time.time()
     to_sync = []
-    orders_db = await accounting_service.get_by_sheet_prefetched(cfg.spreadsheet, cfg.sheet_id)
+    user_orders_db = await accounting_service.get_by_orders([order.id for order in orders_db.values()])
     orders_db_map: dict[order_service.models.Order, list[accounting_service.models.UserOrder]] = {}
 
-    for user_order in orders_db:
-        order = cast(order_service.models.Order, user_order.order)
+    for user_order in user_orders_db:
+        order = orders_db.get(user_order.order_id)
         if orders_db_map.get(order, None):
             orders_db_map[order].append(user_order)
         else:
@@ -82,6 +82,7 @@ async def sync_orders():
     super_user = await auth_flows.get_booster_by_name(config.app.super_user_username)
     cfgs = await service.get_all_not_default_booster()
     for cfg in cfgs:
+        cfg = models.OrderSheetParseRead.model_validate(cfg, from_attributes=True)
         orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id)
         users = await auth_service.models.User.find_all().to_list()
         orders = service.get_all_data(super_user.google, models.OrderReadSheets, cfg)
@@ -89,7 +90,10 @@ async def sync_orders():
         for order in orders:
             order_dict[order.order_id] = order
         await sync_data_from(cfg, order_dict, users, orders_db)
-        order_dict = {}
-        for order in orders:
-            order_dict[order.order_id] = order
-        await sync_data_to(super_user.google, cfg, order_dict, users)
+        # order_dict = {}
+        # order_db_dict = {}
+        # for order in orders:
+        #     order_dict[order.order_id] = order
+        # for order in orders_db:
+        #     order_db_dict[order.id] = order
+        # await sync_data_to(super_user.google, cfg, order_dict, users, order_db_dict)

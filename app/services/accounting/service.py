@@ -13,7 +13,7 @@ from app.services.orders import models as order_models
 
 from . import models
 
-BOOSTER_WITH_PRICE_REGEX = re.compile(config.app.username_regex + r"(\(\d+\))", flags=re.UNICODE & re.MULTILINE)
+BOOSTER_WITH_PRICE_REGEX = re.compile(config.app.username_regex + r" ?(\(\d+\))", flags=re.UNICODE & re.MULTILINE)
 BOOSTER_REGEX = re.compile(config.app.username_regex, flags=re.UNICODE & re.MULTILINE)
 
 
@@ -57,8 +57,8 @@ async def get_all() -> list[models.UserOrder]:
     return await models.UserOrder.find({}).to_list()
 
 
-async def get_by_sheet_prefetched(spreadsheet: str, sheet: int) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"spreadsheet": spreadsheet, "sheet": sheet}).to_list()
+async def get_by_orders(orders_id: list[PydanticObjectId]) -> list[models.UserOrder]:
+    return await models.UserOrder.find({"order_id": {"$in": orders_id}}).to_list()
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate):
@@ -164,14 +164,14 @@ def boosters_from_str(string: str) -> dict[str, int | None]:
     if string is None:
         return {}
     resp = {}
-    boosters = BOOSTER_REGEX.findall(string.lower())
-    for booster in boosters:
-        data = BOOSTER_WITH_PRICE_REGEX.fullmatch("".join([d.strip() for d in booster]))
-        if data:
-            groups = data.groups()
-            resp[groups[0].strip().lower()] = int(groups[1].replace("(", "").replace(")", ""))
-        else:
-            resp[booster.strip().lower()] = None
+    boosters = BOOSTER_WITH_PRICE_REGEX.findall(string.lower())
+    if len(boosters) > 0:
+        for booster in boosters:
+            resp[booster[0].strip().lower()] = int(booster[1].replace("(", "").replace(")", ""))
+    else:
+        booster = BOOSTER_REGEX.fullmatch(string.lower())
+        if booster:
+            resp[booster[0]] = None
 
     return resp
 
@@ -195,7 +195,7 @@ async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
 
 async def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: list[auth_models.User]) -> str:
     users = []
-    search = [d.user.id for d in data]
+    search = [d.user_id for d in data]
     for user_in in users_in:
         if user_in.id in search:
             users.append(user_in)

@@ -260,7 +260,7 @@
     },
     {
       "name": "price_booster_dollar",
-      "row": 32,
+      "row": 31,
       "null": true,
       "generated": true,
       "valid_values": [],
@@ -268,7 +268,7 @@
     },
     {
       "name": "price_booster_dollar_fee",
-      "row": 33,
+      "row": 32,
       "null": true,
       "generated": true,
       "valid_values": [],

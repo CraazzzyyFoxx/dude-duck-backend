@@ -61,6 +61,8 @@ class OrderSheetParse(Document):
 
 
 class OrderSheetParseRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: PydanticObjectId
     spreadsheet: str
     sheet_id: int

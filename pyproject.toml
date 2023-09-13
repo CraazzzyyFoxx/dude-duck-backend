@@ -20,7 +20,7 @@ phonenumbers = "^8.13.17"
 beanie = "^1.20.0"
 fastapi-users = {extras = ["beanie"], version = "^12.1.2"}
 pydantic-settings = "^2.0.2"
-httpx = "^0.24.1"
+httpx = "^0.25.0"
 orjson = "^3.9.4"
 deepdiff = "^6.3.1"
 flower = "^2.0.1"
