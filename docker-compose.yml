@@ -26,7 +26,7 @@ services :
       - redis
   flower:
     build: .
-    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555
+    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --url_prefix=flower
     ports:
       - "5555:5555"
     depends_on:
