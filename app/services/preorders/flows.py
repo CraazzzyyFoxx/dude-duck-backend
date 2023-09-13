@@ -59,4 +59,5 @@ async def delete(
     creds = await auth_service.get_first_superuser()
     sheets_service.clear_row(creds.google, parser, order.row_id)
     await service.delete(order.id)
-    await message_service.pull_preorder_delete(await permissions_service.format_preorder(order))
+    payload = await message_service.pull_preorder_delete(await permissions_service.format_preorder(order))
+    await message_service.send_deleted_order_notify(order.order_id, payload)
