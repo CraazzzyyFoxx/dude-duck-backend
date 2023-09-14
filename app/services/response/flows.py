@@ -74,7 +74,7 @@ async def approve_response(
     await accounting_flows.can_user_pick_order(user, order)
     await accounting_flows.add_booster(order, user)
     await messages_service.pull_order_delete(await permissions_service.format_order(order))
-    responds = await service.get_by_order_id(order_id=order.id)
+    responds = await service.get_by_order_id(order.id)
 
     messages_service.send_response_chose_notify(
         await permissions_service.format_order(order),
@@ -84,12 +84,12 @@ async def approve_response(
     for resp in responds:
         if resp.user_id == user.id:
             await service.update(resp, models.ResponseUpdate(approved=True, closed=True))
-            user = auth_models.UserRead.model_validate(user)
-            messages_service.send_response_approve(user, await permissions_service.format_order(order), resp)
+            user_approved = auth_models.UserRead.model_validate(user)
+            messages_service.send_response_approve(user_approved, await permissions_service.format_order(order), resp)
         else:
             await service.update(resp, models.ResponseUpdate(approved=False, closed=True))
-            user = auth_models.UserRead.model_validate(await auth_service.get(resp.user_id))
-            messages_service.send_response_decline(user, await permissions_service.format_order(order))
+            user_declined = auth_models.UserRead.model_validate(await auth_service.get(resp.user_id))
+            messages_service.send_response_decline(user_declined, await permissions_service.format_order(order))
 
     return await service.get_by_order_id_user_id(order.id, user.id)
 
