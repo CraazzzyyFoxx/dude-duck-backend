@@ -74,8 +74,12 @@ async def approve_response(
     await accounting_flows.can_user_pick_order(user, order)
     await accounting_flows.add_booster(order, user)
     await messages_service.pull_order_delete(await permissions_service.format_order(order))
-
     responds = await service.get_by_order_id(order_id=order.id)
+
+    messages_service.send_response_chose_notify(
+        await permissions_service.format_order(order),
+        auth_models.UserRead.model_validate(user), len(responds)
+    )
     for resp in responds:
         if resp.user_id == user.id:
             await service.update(resp, models.ResponseUpdate(approved=True, closed=True))
@@ -86,7 +90,6 @@ async def approve_response(
             user = auth_models.UserRead.model_validate(await auth_service.get(resp.user_id))
             messages_service.send_response_decline(user, await permissions_service.format_order(order))
 
-    messages_service.send_response_chose_notify(await permissions_service.format_order(order), user, len(responds))
     return await service.get_by_order_id_user_id(order.id, user.id)
 
 
