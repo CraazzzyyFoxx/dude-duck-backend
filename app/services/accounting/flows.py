@@ -136,16 +136,17 @@ async def remove_booster(order: order_models.Order, user: User) -> bool:
     boosters = await service.get_by_order_id(order.id)
     for booster in boosters:
         if booster.user_id == user.id:
-            await booster.delete()
-            p = await service.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
-            price_without = p - booster.dollars
-            for booster1 in boosters:
-                booster1.dollars += price_without / len(boosters - 1)
-                await booster1.save_changes()
+            await service.delete(booster.id)
+            if len(boosters) > 1:
+                p = await service.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+                price_without = p - booster.dollars
+                for booster1 in boosters:
+                    booster1.dollars += price_without / len(boosters - 1)
+                    await booster1.save()
+            boosters = await service.get_by_order_id(order.id)
+            booster_str = await service.boosters_to_str(order, boosters)
+            await order_service.update_with_sync(order, order_models.OrderUpdate(booster=booster_str))
             return True
-    boosters = await service.get_by_order_id(order.id)
-    booster_str = await service.boosters_to_str(order, boosters)
-    await order_service.update_with_sync(order, order_models.OrderUpdate(booster=booster_str))
     return False
 
 
