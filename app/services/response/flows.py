@@ -2,6 +2,7 @@ from beanie import PydanticObjectId
 from fastapi import HTTPException
 from starlette import status
 
+from app.services.auth import service as auth_service
 from app.services.accounting import flows as accounting_flows
 from app.services.auth import models as auth_models
 from app.services.orders import models as order_models
@@ -76,12 +77,13 @@ async def approve_response(
 
     responds = await service.get_by_order_id(order_id=order.id)
     for resp in responds:
-        user = auth_models.UserRead.model_validate(user)
         if resp.user_id == user.id:
             await service.update(resp, models.ResponseUpdate(approved=True, closed=True))
+            user = auth_models.UserRead.model_validate(user)
             messages_service.send_response_approve(user, await permissions_service.format_order(order), resp)
         else:
             await service.update(resp, models.ResponseUpdate(approved=False, closed=True))
+            user = auth_models.UserRead.model_validate(await auth_service.get(resp.user_id))
             messages_service.send_response_decline(user, await permissions_service.format_order(order))
 
     messages_service.send_response_chose_notify(await permissions_service.format_order(order), user, len(responds))
