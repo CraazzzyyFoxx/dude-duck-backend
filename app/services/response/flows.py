@@ -78,7 +78,8 @@ async def approve_response(
 
     messages_service.send_response_chose_notify(
         await permissions_service.format_order(order),
-        auth_models.UserRead.model_validate(user), len(responds)
+        auth_models.UserRead.model_validate(user),
+        len(responds)
     )
     for resp in responds:
         if resp.user_id == user.id:
