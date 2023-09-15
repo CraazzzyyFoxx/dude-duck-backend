@@ -22,7 +22,7 @@ class UserOrder(Document, BaseModel):
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)
     paid_time: datetime.datetime | None = Field(default=None)
-    method_payment: str | None = Field(default="$")
+    method_payment: str = Field(default="$")
 
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     completed_at: datetime.datetime | None = None
@@ -41,7 +41,7 @@ class UserOrderCreate(BaseModel):
     dollars: float
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)
-    method_payment: str | None = Field(default="$")
+    method_payment: str = Field(default="$")
 
 
 class UserOrderUpdate(BaseModel):
@@ -90,7 +90,7 @@ class SheetBoosterOrderEntityCreate(BaseModel):
     percent: float = Field(gt=0, lte=1)
 
     @field_validator("percent", mode="before")
-    def percent_resolver(cls, v):
+    def percent_resolver(cls, v) -> float:
         if v > 1:
             return v / 100
         return v
@@ -101,7 +101,7 @@ class SheetUserOrderCreate(BaseModel):
 
     @model_validator(mode='after')
     def check_card_number_omitted(self) -> "SheetUserOrderCreate":  # noqa
-        total = 0
+        total: float = 0.0
 
         for item in self.items:
             total += item.percent

@@ -39,5 +39,5 @@ class CurrencyApiLayer(BaseModel):
         return data
 
     @field_validator("date", mode="before")
-    def date_validator(cls, v: str):
+    def date_validator(cls, v: str) -> datetime:
         return datetime.strptime(v, "%Y-%m-%d")

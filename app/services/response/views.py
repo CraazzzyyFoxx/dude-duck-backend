@@ -6,6 +6,7 @@ from app.services.auth import flows as auth_flows
 from app.services.auth import service as auth_service
 from app.services.orders import flows as order_flows
 from app.services.preorders import flows as preorder_flows
+from app.services.search import models as search_models
 from app.services.search import service as search_service
 
 from . import flows, models, service
@@ -13,11 +14,11 @@ from . import flows, models, service
 router = APIRouter(prefix='/response', tags=[RouteTag.RESPONSES])
 
 
-@router.get('/{order_id}', response_model=search_service.models.Paginated[models.ResponseRead])
+@router.get('/{order_id}', response_model=search_models.Paginated[models.ResponseRead])
 async def get_responses(
         order_id: PydanticObjectId,
-        paging: search_service.models.PaginationParams = Depends(),
-        sorting: search_service.models.SortingParams = Depends(),
+        paging: search_models.PaginationParams = Depends(),
+        sorting: search_models.SortingParams = Depends(),
         _=Depends(auth_flows.current_active_superuser)
 ):
     order = await order_flows.get(order_id)

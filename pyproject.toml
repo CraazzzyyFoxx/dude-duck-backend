@@ -17,7 +17,7 @@ fastapi = "^0.103.1"
 uvloop = {version = "^0.17.0", platform="linux"}
 pydantic-extra-types = "^2.0.0"
 phonenumbers = "^8.13.17"
-beanie = "^1.20.0"
+beanie = "^1.22.5"
 fastapi-users = {extras = ["beanie"], version = "^12.1.2"}
 pydantic-settings = "^2.0.2"
 httpx = "^0.25.0"
@@ -40,29 +40,30 @@ wsproto = "^1.2.0"
 mypy = "^1.5.1"
 ruff = "^0.0.287"
 isort = "^5.12.0"
+types-dateparser = "^1.1.4.10"
 
 
 
 [tool.ruff]
 line-length = 120
 
-[mypy]
-plugins = "pydantic.mypy"
-
-follow_imports = "silent"
-warn_redundant_casts = "True"
-warn_unused_ignores = "True"
-disallow_any_generics = "True"
-check_untyped_defs = "True"
-no_implicit_reexport = "True"
-
-# for strict mypy: (this is the tricky one :-))
-disallow_untyped_defs = "True"
-
-[pydantic-mypy]
-init_forbid_extra = "True"
-init_typed = "True"
-warn_required_dynamic_aliases = "True"
+#[mypy]
+#plugins = "pydantic.mypy"
+#
+#follow_imports = "silent"
+#warn_redundant_casts = "True"
+#warn_unused_ignores = "True"
+#disallow_any_generics = "True"
+#check_untyped_defs = "True"
+#no_implicit_reexport = "True"
+#
+## for strict mypy: (this is the tricky one :-))
+#disallow_untyped_defs = "True"
+#
+#[pydantic-mypy]
+#init_forbid_extra = "True"
+#init_typed = "True"
+#warn_required_dynamic_aliases = "True"
 
 [tool.isort]
 skip_glob = "**/__init__.pyi"

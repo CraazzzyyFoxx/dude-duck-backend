@@ -3,7 +3,7 @@ from starlette import status
 
 from app.core import enums
 from app.services.auth import flows as auth_flows
-from app.services.search import service as search_service
+from app.services.search import models as search_models
 
 from ..service import request as service_request
 from . import models
@@ -12,9 +12,9 @@ router = APIRouter(prefix='/render', tags=[enums.RouteTag.RENDER],
                    dependencies=[Depends(auth_flows.current_active_superuser)])
 
 
-@router.get(path="", response_model=search_service.models.Paginated[models.RenderConfigRead])
+@router.get(path="", response_model=search_models.Paginated[models.RenderConfigRead])
 async def get_renders(
-        paging: search_service.models.PaginationParams = Depends(),
+        paging: search_models.PaginationParams = Depends(),
 ):
     response = await service_request(
         f'render?page={paging.page}&per_page={paging.per_page}',

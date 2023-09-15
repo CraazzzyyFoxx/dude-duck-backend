@@ -13,7 +13,7 @@ from app.core.logging import logger
 from app.middlewares.exception import ExceptionMiddleware
 from app.middlewares.time import TimeMiddleware
 from app.services.auth import flows as auth_flows
-from app.services.auth import service as auth_service
+from app.services.auth import models as auth_models
 from app.services.settings import service as settings_service
 from app.services.telegram import service as telegram_service
 
@@ -30,9 +30,9 @@ async def lifespan(application: FastAPI):  # noqa
     await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
     await settings_service.create()
 
-    if not await auth_service.models.User.find_one({"name": config.app.super_user_username}):
+    if not await auth_models.User.find_one({"name": config.app.super_user_username}):
         async with auth_flows.get_user_manager_context() as manager:
-            user = auth_service.models.UserCreate(
+            user = auth_models.UserCreate(
                 email=config.app.super_user_email,
                 password=config.app.super_user_password,
                 name=config.app.super_user_username,
@@ -46,7 +46,7 @@ async def lifespan(application: FastAPI):  # noqa
             user_dict = user.create_update_dict_superuser()
             password = user_dict.pop("password")
             user_dict["hashed_password"] = manager.password_helper.hash(password)
-            await auth_service.models.User.model_validate(user_dict).create()
+            await auth_models.User.model_validate(user_dict).create()
     await telegram_service.TelegramService.init()
     logger.info("Application... Online!")
     yield

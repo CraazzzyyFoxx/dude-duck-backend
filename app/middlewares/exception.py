@@ -16,12 +16,14 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except RequestValidationError as e:
-            response = ORJSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                                      content={"detail": e.errors()},
-                                      )
+            response = ORJSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]}
+            )
         except ValidationError as e:
             response = ORJSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"detail": e.errors()}
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]}
             )
         except HTTPException as e:
             response = ORJSONResponse({"detail": e.detail}, status_code=e.status_code)
@@ -29,18 +31,13 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
             logger.exception("What!?")
             response = ORJSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": [{"msg": "Unknown", "loc": ["Unknown"], "type": "Unknown"}]},
-            )
-        except ValueError:
-            response = ORJSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"detail": [{"msg": "Unknown", "loc": ["Unknown"], "type": "Unknown"}]},
+                content={"detail": [{"msg": "Unknown", "code": "Unknown"}]},
             )
         except Exception:
             logger.exception("What!?")
             response = ORJSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content={"detail": [{"msg": "Unknown", "loc": ["Unknown"], "type": "Unknown"}]},
+                content={"detail": [{"msg": "Unknown", "code": "Unknown"}]},
             )
 
         return response

@@ -6,6 +6,7 @@ from app.core import config
 from app.core.config import app
 from app.services.auth import models as auth_models
 from app.services.preorders import tasks as preorders_tasks
+from app.services.sheets import models as sheets_models
 from app.services.sheets import service as sheets_service
 from app.services.sheets import tasks as sheets_tasks
 
@@ -31,37 +32,37 @@ def sync_data():
 
 @celery.task(name="update_order")
 def update_order(creds: str, parser: str, row_id: int, data: dict):
-    parser = sheets_service.models.OrderSheetParseRead.model_validate_json(parser)
-    creds = auth_models.AdminGoogleToken.model_validate_json(creds)
-    sheets_service.update_row_data(creds, parser, row_id, data)
+    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
+    creds_model = auth_models.AdminGoogleToken.model_validate_json(creds)
+    sheets_service.update_row_data(creds_model, parser_model, row_id, data)
 
 
 @celery.task(name="create_booster")
 def create_booster(creds: str, parser: str, data: dict):
-    parser = sheets_service.models.OrderSheetParseRead.model_validate_json(parser)
-    creds = auth_models.AdminGoogleToken.model_validate_json(creds)
-    sheets_service.create_row_data(auth_models.UserReadSheets, creds, parser, data)
+    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
+    creds_model = auth_models.AdminGoogleToken.model_validate_json(creds)
+    sheets_service.create_row_data(auth_models.UserReadSheets, creds_model, parser_model, data)
 
 
 @celery.task(name="create_or_update_booster")
 def create_or_update_booster(creds: str, parser: str, value: str, data: dict):
-    parser = sheets_service.models.OrderSheetParseRead.model_validate_json(parser)
-    creds = auth_models.AdminGoogleToken.model_validate_json(creds)
-    sheets_service.create_or_update_booster(creds, parser, value, data)
+    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
+    creds_model = auth_models.AdminGoogleToken.model_validate_json(creds)
+    sheets_service.create_or_update_booster(creds_model, parser_model, value, data)
 
 
 @celery.task(name="delete_booster")
 def delete_booster(creds: str, parser: str, value: str):
-    parser = sheets_service.models.OrderSheetParseRead.model_validate_json(parser)
-    creds = auth_models.AdminGoogleToken.model_validate_json(creds)
-    sheets_service.delete_booster(creds, parser, value)
+    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
+    creds_model = auth_models.AdminGoogleToken.model_validate_json(creds)
+    sheets_service.delete_booster(creds_model, parser_model, value)
 
 
 @celery.task(name="delete_preorder")
 def delete_preorder(creds: str, parser: str, row_id: int):
-    parser = sheets_service.models.OrderSheetParseRead.model_validate_json(parser)
-    creds = auth_models.AdminGoogleToken.model_validate_json(creds)
-    sheets_service.clear_row(creds, parser, row_id)
+    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
+    creds_model = auth_models.AdminGoogleToken.model_validate_json(creds)
+    sheets_service.clear_row(creds_model, parser_model, row_id)
 
 
 @celery.task(name="delete_expired_preorder")

@@ -34,7 +34,7 @@ class Settings(Document):
         use_state_management = True
         state_management_save_previous = True
 
-    def get_precision(self, currency: str):
+    def get_precision(self, currency: str) -> int:
         for cur in self.currencies:
             if cur.name == currency:
                 return cur.precision

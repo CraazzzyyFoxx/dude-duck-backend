@@ -2,7 +2,9 @@ from datetime import datetime
 from enum import Enum
 
 from beanie import PydanticObjectId
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
+
+from app.services.orders import models as order_models
 
 
 class FirstSort(str, Enum):
@@ -25,51 +27,44 @@ class AccountingReportSheetsForm(BaseModel):
     second_sort: SecondSort
 
     @model_validator(mode='after')
-    def spreadsheet_sheet_together(self) -> None:
+    def spreadsheet_sheet_together(self) -> "AccountingReportSheetsForm":
         if self.sheet_id is not None and self.spreadsheet is None:
             raise ValueError("Spreadsheet and sheet_id are related, you must specify them together")
+        return self
 
 
 class AccountingReportItem(BaseModel):
     order_id: str
+    date: datetime
     username: str
     dollars: float
     rub: float
     dollars_fee: float
-    date_end: datetime
+    end_date: datetime | None
     payment: str
     bank: str
-    status: bool
+    status: order_models.OrderStatus
+    payment_id: PydanticObjectId
 
 
 class AccountingReport(BaseModel):
     total: float
-    total_rub: float
-    users: int
     orders: int
     earned: float
     items: list[AccountingReportItem]
 
 
 class UserOrderRead(BaseModel):
-    order: PydanticObjectId = Field(serialization_alias="order_id")
-    user: PydanticObjectId = Field(serialization_alias="user_id")
+    order_id: PydanticObjectId
+    user_id: PydanticObjectId
     dollars: float
     completed: bool
     paid: bool
     paid_time: datetime | None
     method_payment: str
 
-    @field_validator("order", mode="before")
-    def order_id_resolver(cls, v):
-        return v.id
-
-    @field_validator("user", mode="before")
-    def user_id_resolver(cls, v):
-        return v.id
-
 
 class OrderBoosterCreate(BaseModel):
     user_id: PydanticObjectId
-    dollars: float
-    method_payment: str
+    dollars: float | None = None
+    method_payment: str | None = None

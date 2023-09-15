@@ -1,18 +1,20 @@
 import time
 
+from fastapi import FastAPI
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 
 
 class TimeMiddleware(BaseHTTPMiddleware):
     def __init__(
             self,
-            app,
-    ):
+            app: FastAPI,
+    ) -> None:
         super().__init__(app)
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next) -> Response:
         start_time = time.time()
         response = await call_next(request)
         process_time = time.time() - start_time

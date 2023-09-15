@@ -9,7 +9,6 @@ from app.services.auth import flows as auth_flows
 from app.services.auth import models as auth_models
 from app.services.currency import flows as currency_flows
 from app.services.orders import models as order_models
-from app.services.settings import service as settings_service
 
 from . import models
 
@@ -21,7 +20,7 @@ async def get(order_id: PydanticObjectId) -> models.UserOrder | None:
     return await models.UserOrder.find_one({"_id": order_id})
 
 
-async def create(user_order_in: models.UserOrderCreate):
+async def create(user_order_in: models.UserOrderCreate) -> models.UserOrder:
     user_order = models.UserOrder(order_id=user_order_in.order_id,
                                   user_id=user_order_in.user_id,
                                   dollars=user_order_in.dollars,
@@ -36,12 +35,12 @@ async def create(user_order_in: models.UserOrderCreate):
     return await user_order.create()
 
 
-async def delete(user_order_id: PydanticObjectId):
+async def delete(user_order_id: PydanticObjectId) -> None:
     user_order = await get(user_order_id)
     await user_order.delete()
 
 
-async def get_by_order_id(order_id: PydanticObjectId):
+async def get_by_order_id(order_id: PydanticObjectId) -> list[models.UserOrder]:
     return await models.UserOrder.find({"order_id": order_id}).to_list()
 
 
@@ -61,7 +60,7 @@ async def get_by_orders(orders_id: list[PydanticObjectId]) -> list[models.UserOr
     return await models.UserOrder.find({"order_id": {"$in": orders_id}}).to_list()
 
 
-async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate):
+async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate) -> models.UserOrder:
     user_order_data = user_order.model_dump()
     update_data = user_order_in.model_dump(exclude_none=True)
 
@@ -86,78 +85,31 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
     return user_order
 
 
+async def bulk_update_price(order_id: PydanticObjectId, price: float) -> None:
+    await models.UserOrder.find({"order_id": order_id}).update({"$set": {"dollars": price}})
+
+
+async def bulk_decrement_price(order_id: PydanticObjectId, price: float, is_dec=True) -> None:
+    if is_dec:
+        price = -price
+    await models.UserOrder.find({"order_id": order_id}).update({"$inc": {"dollars": price}})
+
+
 async def check_user_total_orders(user: auth_models.User) -> bool:
     count = await models.UserOrder.find({"user_id": user.id, "completed": False}).count()
     return bool(count < user.max_orders)
 
 
-async def can_user_pick(user: auth_models.User) -> bool:
-    if not user.is_verified:
-        return False
-    if not await check_user_total_orders(user):
-        return False
-    return True
-
-
-async def update_booster_price(old: order_models.Order, new: order_models.Order):
+async def update_booster_price(old: order_models.Order, new: order_models.Order) -> None:
     boosters = await get_by_order_id(new.id)
     if not boosters:
         return
-    old_price = await usd_to_currency(old.price.price_booster_dollar, old.date)
-    new_price = await usd_to_currency(new.price.price_booster_dollar, new.date)
+    old_price = await currency_flows.usd_to_currency(old.price.price_booster_dollar, old.date)
+    new_price = await currency_flows.usd_to_currency(new.price.price_booster_dollar, new.date)
     delta = (new_price - old_price) / len(boosters)
     for booster in boosters:
         booster.dollars += delta
         await booster.save_changes()
-
-
-async def usd_to_currency(
-        dollars: float,
-        date: datetime,
-        currency: str = "USD",
-        *,
-        with_round: bool = False,
-        with_fee: bool = False
-) -> float:
-    settings = await settings_service.get()
-    if currency == "USD":
-        price = dollars
-    else:
-        currency_db = await currency_flows.get(date)
-        price = dollars * currency_db.quotes[currency]
-    if with_fee:
-        price *= settings.accounting_fee
-    if with_round:
-        return round(price, settings.get_precision(currency))
-    else:
-        return price
-
-
-async def currency_to_usd(
-        wallet: float,
-        date: datetime,
-        currency: str = "USD",
-        *,
-        with_round: bool = False,
-        with_fee: bool = False
-) -> float:
-    settings = await settings_service.get()
-    if currency == "USD":
-        price = wallet
-    else:
-        currency_db = await currency_flows.get(date)
-        price = wallet / currency_db.quotes[currency]
-    if with_fee:
-        price *= settings.accounting_fee
-    if with_round:
-        return round(price, settings.get_precision(currency))
-    else:
-        return price
-
-
-async def apply_round(wallet: float, currency: str = "USD"):
-    settings = await settings_service.get()
-    return round(wallet, settings.get_precision(currency))
 
 
 def boosters_from_str(string: str) -> dict[str, int | None]:
@@ -176,16 +128,19 @@ def boosters_from_str(string: str) -> dict[str, int | None]:
     return resp
 
 
-async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth_models.User]):
+async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth_models.User]) -> str | None:
     if len(users) == 1:
         return users[0].name
     resp = []
+    users_map: dict[PydanticObjectId, auth_models.User] = {user.id: user for user in users}
     for d in data:
-        for booster in users:
-            if booster.id == d.user.id:
-                price = await usd_to_currency(d.dollars, order.date, currency='RUB', with_round=True)
-                resp.append(f"{booster.name}({price})")
-    return ' + '.join(resp)
+        booster = users_map.get(d.user_id, None)
+        if booster:
+            price = await currency_flows.usd_to_currency(d.dollars, order.date, currency='RUB', with_round=True)
+            resp.append(f"{booster.name}({int(price)})")
+    if resp:
+        return ' + '.join(resp)
+    return None
 
 
 async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
@@ -193,40 +148,7 @@ async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
     return await _boosters_to_str(order, data, users)
 
 
-async def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: list[auth_models.User]) -> str:
-    users = []
+async def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: list[auth_models.User]) -> str | None:
     search = [d.user_id for d in data]
-    for user_in in users_in:
-        if user_in.id in search:
-            users.append(user_in)
+    users = [user_in for user_in in users_in if user_in.id in search]
     return await _boosters_to_str(order, data, users)
-
-
-async def _boosters_from_order(order: order_models.Order, users_in: list[auth_models.User]):
-    completed = True if order.status == order_models.OrderStatus.Completed else False
-    paid = True if order.status_paid == order_models.OrderPaidStatus.Paid else False
-    boosters = boosters_from_str(order.booster)
-    for booster, price in boosters.items():
-        for user in users_in:
-            if user.name == booster:
-                x = await get_by_order_id_user_id(order.id, user.id)
-                if x is None:
-                    if price is None:
-                        dollars = await usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
-                        dollars /= len(boosters)
-                    else:
-                        dollars = await currency_to_usd(price, order.date, currency="RUB")
-                    b = models.UserOrderCreate(
-                        order_id=order.id, user_id=user.id, dollars=dollars, completed=completed, paid=paid
-                    )
-                    await create(b)
-                    break
-
-
-async def boosters_from_order(order) -> None:
-    users = await auth_flows.service.get_all()
-    return await _boosters_from_order(order, users)
-
-
-async def boosters_from_order_sync(order, users: list[auth_models.User]) -> None:
-    return await _boosters_from_order(order, users)

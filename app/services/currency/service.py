@@ -19,7 +19,7 @@ async def get(currency_id: PydanticObjectId) -> models.Currency | None:
     return await models.Currency.find_one({"_id": currency_id})
 
 
-async def create(currency_in: models.CurrencyApiLayer):
+async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
     quotes = currency_in.normalize_quotes()
     quotes["WOW"] = (await settings_service.get()).currency_wow
     currency = models.Currency(
@@ -30,9 +30,10 @@ async def create(currency_in: models.CurrencyApiLayer):
     return await currency.create()
 
 
-async def delete(currency_id: PydanticObjectId):
+async def delete(currency_id: PydanticObjectId) -> None:
     currency = await get(currency_id)
-    await currency.delete()
+    if currency is not None:
+        await currency.delete()
 
 
 async def get_by_date(date: datetime.datetime) -> models.Currency | None:
@@ -57,7 +58,7 @@ async def get_token() -> settings_models.ApiLayerCurrencyToken:
     return token
 
 
-async def used_token(token: settings_models.ApiLayerCurrencyToken):
+async def used_token(token: settings_models.ApiLayerCurrencyToken) -> None:
     settings = await settings_service.get()
     for t in settings.api_layer_currency:
         if t.token == token.token:
@@ -66,11 +67,11 @@ async def used_token(token: settings_models.ApiLayerCurrencyToken):
     await settings.save_changes()
 
 
-async def get_currency_historical(date: datetime) -> models.CurrencyApiLayer:
-    date = normalize_date(date)
+async def get_currency_historical(date: datetime.datetime) -> models.CurrencyApiLayer:
+    date_str = normalize_date(date)
     token = await get_token()
     headers = {"apikey": token.token}
-    response = await client.request("GET", f'/currency_data/historical?date={date}', headers=headers)
+    response = await client.request("GET", f'/currency_data/historical?date={date_str}', headers=headers)
     if response.status_code == 429:
         raise RuntimeError("API Layer currency request limit exceeded.")
     json = response.json()

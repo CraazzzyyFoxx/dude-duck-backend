@@ -1,16 +1,19 @@
 from beanie import PydanticObjectId
-from fastapi import HTTPException
 from starlette import status
 
-from . import models, service
+from app.core import errors
+from app.services.accounting import models as accounting_models
+from app.services.currency import flows as currency_flows
+
+from . import models, schemas, service
 
 
 async def get(order_id: PydanticObjectId) -> models.Order:
     order = await service.get(order_id)
     if not order:
-        raise HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A order with this id does not exist."}],
+            detail=[errors.DudeDuckException(msg="A order with this id does not exist.", code="not_exist")],
         )
     return order
 
@@ -18,9 +21,9 @@ async def get(order_id: PydanticObjectId) -> models.Order:
 async def get_by_order_id(order_id: str) -> models.Order:
     order = await service.get_order_id(order_id)
     if not order:
-        raise HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A order with this id does not exist."}],
+            detail=[errors.DudeDuckException(msg="A order with this id does not exist.", code="not_exist")],
         )
     return order
 
@@ -28,9 +31,51 @@ async def get_by_order_id(order_id: str) -> models.Order:
 async def create(order_in: models.OrderCreate) -> models.Order:
     order = await service.get_order_id(order_in.order_id)
     if order:
-        raise HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[{"msg": "A order with this order_id already exists."}],
+            detail=[errors.DudeDuckException(msg="A order with this id already exist.", code="already_exist")],
         )
     order = await service.create(order_in)
     return order
+
+
+async def format_order_system(order: models.Order):
+    data = dict(order)
+    booster_price = order.price.price_booster_dollar
+    price = schemas.OrderPriceSystem(
+        price_dollar=order.price.price_dollar,
+        price_booster_dollar_without_fee=booster_price,
+        price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
+        price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
+        price_booster_gold=await currency_flows.usd_to_currency(booster_price, order.date, "WOW", with_fee=True)
+    )
+    data["price"] = price
+    return schemas.OrderReadSystem.model_validate(data)
+
+
+async def format_order_perms(order: models.Order, *, has: bool = False):
+    data = dict(order)
+    booster_price = order.price.price_booster_dollar
+    price = schemas.OrderPriceUser(
+        price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
+        price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
+        price_booster_gold=await currency_flows.usd_to_currency(booster_price, order.date, "WOW", with_fee=True)
+    )
+    data["price"] = price
+    if has:
+        return schemas.OrderReadHasPerms.model_validate(data)
+    return schemas.OrderReadNoPerms.model_validate(data)
+
+
+async def format_order_active(order: models.Order, order_active: accounting_models.UserOrder):
+    data = dict(order)
+    booster_price = order_active.dollars
+
+    price = schemas.OrderPriceUser(
+        price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date),
+        price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB"),
+        price_booster_gold=await currency_flows.usd_to_currency(booster_price, order.date, "WOW")
+    )
+    data["price"] = price
+    data["paid_time"] = order_active.paid_time
+    return schemas.OrderReadActive.model_validate(data)

@@ -6,7 +6,7 @@ from . import service
 
 
 async def create_order_message(
-        order: order_schemas.OrderReadUser,
+        order: order_schemas.OrderReadSystem,
         categories: list[str],
         config_names: list[str]
 ):
@@ -16,7 +16,7 @@ async def create_order_message(
 
 
 async def update_order_message(
-        order: order_schemas.OrderReadUser,
+        order: order_schemas.OrderReadSystem,
         config_names: list[str]
 ):
     messages = await service.pull_order_edit(order, config_names)
@@ -25,7 +25,7 @@ async def update_order_message(
 
 
 async def delete_order_message(
-        order: order_schemas.OrderReadUser,
+        order: order_schemas.OrderReadSystem,
 ):
     messages = await service.pull_order_delete(order)
     message_service.send_deleted_order_notify(order.order_id, messages)
@@ -33,7 +33,7 @@ async def delete_order_message(
 
 
 async def create_preorder_message(
-        order: preorder_models.PreOrderRead,
+        order: preorder_models.PreOrderReadSystem,
         categories: list[str],
         config_names: list[str]
 ):
@@ -43,7 +43,7 @@ async def create_preorder_message(
 
 
 async def update_preorder_message(
-        order: preorder_models.PreOrderRead,
+        order: preorder_models.PreOrderReadSystem,
         config_names: list[str]
 ):
     messages = await service.pull_preorder_edit(order, config_names)
@@ -52,7 +52,7 @@ async def update_preorder_message(
 
 
 async def delete_preorder_message(
-        order: preorder_models.PreOrderRead
+        order: preorder_models.PreOrderReadSystem
 ):
     messages = await service.pull_preorder_delete(order)
     message_service.send_deleted_order_notify(order.order_id, messages)

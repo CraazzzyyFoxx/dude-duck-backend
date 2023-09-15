@@ -5,6 +5,21 @@ from pydantic import BaseModel, ValidationError
 from starlette import status
 
 
+class DudeDuckException(BaseModel):
+    msg: str
+    code: str
+
+
+class DudeDuckHTTPException(HTTPException):
+    def __init__(
+            self,
+            status_code: int,
+            detail: list[DudeDuckException],
+            headers: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(status_code=status_code, detail=[e.model_dump_json() for e in detail], headers=headers)
+
+
 class ValidationErrorDetail(BaseModel):
     location: str
     message: str
@@ -43,11 +58,15 @@ class GoogleSheetsParserError(BaseModel):
             sheet_id: int,
             row_id: int,
             error: ValidationError
-    ) -> HTTPException:
-        return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                             detail=[{"msg": cls(model=repr(model),
-                                                 spreadsheet=spreadsheet,
-                                                 sheet_id=sheet_id,
-                                                 row_id=row_id,
-                                                 error=APIValidationError.from_pydantic(error)).model_dump_json()}]
-                             )
+    ) -> DudeDuckHTTPException:
+        msg = cls(
+            model=repr(model),
+            spreadsheet=spreadsheet,
+            sheet_id=sheet_id,
+            row_id=row_id,
+            error=APIValidationError.from_pydantic(error)
+        )
+        return DudeDuckHTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=[DudeDuckException(msg=msg.model_dump_json(), code="unprocessable_entity")]
+        )

@@ -49,8 +49,8 @@ class OrderInfo(BaseModel):
 
 
 class OrderPrice(BaseModel):
-    price_dollar: float | None = None
-    price_booster_dollar: float | None = None
+    price_dollar: float
+    price_booster_dollar: float
 
 
 class OrderCredentials(BaseModel):
@@ -63,14 +63,15 @@ class OrderCredentials(BaseModel):
 
 
 class OrderCreate(SheetEntity, BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     order_id: str
 
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None
+
     screenshot: str | None = None
-    booster: str | None = None
 
     status: OrderStatus
     status_paid: OrderPaidStatus
@@ -85,9 +86,10 @@ class OrderCreate(SheetEntity, BaseModel):
 
 class OrderUpdate(BaseModel):
     shop: str | None = None
+    shop_order_id: str | int | None = None
     contact: str | None = None
+
     screenshot: str | None = None
-    booster: str | None = None
 
     status: OrderStatus | None = None
     status_paid: OrderPaidStatus | None = None
@@ -99,8 +101,6 @@ class OrderUpdate(BaseModel):
     auth_date: datetime.datetime | None = None
     end_date: datetime.datetime | None = None
 
-    archive: bool = False
-
 
 class Order(SheetEntity, Document):
     model_config = ConfigDict(from_attributes=True)
@@ -110,8 +110,8 @@ class Order(SheetEntity, Document):
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None
+
     screenshot: str | None = None
-    booster: str | None = None
 
     status: OrderStatus
     status_paid: OrderPaidStatus
@@ -131,5 +131,5 @@ class Order(SheetEntity, Document):
         }
         indexes = [IndexModel("order_id", unique=True)]
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(str(self.id))

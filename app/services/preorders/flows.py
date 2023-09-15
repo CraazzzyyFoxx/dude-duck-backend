@@ -5,6 +5,7 @@ from starlette import status
 from app import db
 from app.core import config
 from app.services.auth import service as auth_service
+from app.services.currency import flows as currency_flows
 from app.services.permissions import service as permissions_service
 from app.services.settings import service as settings_service
 from app.services.sheets import service as sheets_service
@@ -54,10 +55,42 @@ async def delete(
     order = await service.get(order_id)
     if not order:
         return
-    parser = await sheets_service.get_by_spreadsheet_sheet(order.spreadsheet, order.sheet_id)
-    parser = sheets_service.models.OrderSheetParseRead.model_validate(parser.model_dump())
-    creds = await auth_service.get_first_superuser()
-    sheets_service.clear_row(creds.google, parser, order.row_id)
+    if not order.has_response:
+        parser = await sheets_service.get_by_spreadsheet_sheet(order.spreadsheet, order.sheet_id)
+        parser = sheets_service.models.OrderSheetParseRead.model_validate(parser.model_dump())
+        creds = await auth_service.get_first_superuser()
+        sheets_service.clear_row(creds.google, parser, order.row_id)
+
     await service.delete(order.id)
     payload = await message_service.pull_preorder_delete(await permissions_service.format_preorder(order))
     await message_service.send_deleted_order_notify(order.order_id, payload)
+
+
+async def format_preorder_system(order: models.PreOrder):
+    data = dict(order)
+    booster_price = order.price.price_booster_dollar
+    if booster_price:
+        price = models.PreOrderPriceSystem(
+            price_dollar=order.price.price_dollar,
+            price_booster_dollar_without_fee=booster_price,
+            price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
+            price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True)
+        )
+    else:
+        price = models.PreOrderPriceSystem(price_dollar=order.price.price_dollar)
+    data["price"] = price
+    return models.PreOrderReadSystem.model_validate(data)
+
+
+async def format_preorder_perms(order: models.PreOrder):
+    data = dict(order)
+    booster_price = order.price.price_booster_dollar
+    if booster_price:
+        price = models.PreOrderPriceUser(
+            price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
+            price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True)
+        )
+    else:
+        price = models.PreOrderPriceUser()
+    data["price"] = price
+    return models.PreOrderReadUser.model_validate(data)

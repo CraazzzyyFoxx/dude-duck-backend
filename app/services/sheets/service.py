@@ -1,6 +1,7 @@
 import datetime
 import time
 import typing
+from typing import Callable
 
 import gspread
 from beanie import PydanticObjectId
@@ -38,8 +39,8 @@ BM = typing.TypeVar("BM", bound=BaseModel)
 _CACHE: dict = {}
 
 
-def enum_parse(field, extra):
-    def decorator(v: str, ):
+def enum_parse(field, extra) -> Callable[[str], str]:
+    def decorator(v: str) -> str:
         if v not in extra:
             raise ValueError(f"The {field} must be [{' | '.join(extra)}]")
         return v
@@ -126,7 +127,7 @@ def n2a(n: int):
     return '' if n < 0 else n2a(d - 1) + chr(m + 65)  # chr(65) = 'A'
 
 
-def get_range(parser: models.OrderSheetParseRead, *, row_id: int = None, end_id: int = 0):
+def get_range(parser: models.OrderSheetParseRead, *, row_id: int | None = None, end_id: int = 0):
     columns = 0
     start = 100000000000000
     for p in parser.items:
@@ -135,7 +136,7 @@ def get_range(parser: models.OrderSheetParseRead, *, row_id: int = None, end_id:
             columns = row_p
         if row_p < start:
             start = row_p
-    if row_id:
+    if row_id is not None:
         return f"{n2a(start)}{row_id}:{n2a(columns)}{row_id}"
     return f"{n2a(start)}{parser.start}:{n2a(columns)}{end_id}"
 
@@ -187,7 +188,7 @@ def parse_row(
             logger.error(errors.APIValidationError.from_pydantic(error))
             raise error
         else:
-            return
+            return None
     validated_data = valid_model.model_dump()
     model_fields = []
     containers = {}
@@ -216,7 +217,7 @@ def parse_row(
             raise error
             # return
         else:
-            return
+            return None
 
 
 def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, typing.Any]:
@@ -243,13 +244,13 @@ def parse_all_data(
         model: typing.Type[models.SheetEntity],
         spreadsheet: str,
         sheet_id: int,
-        rows_in: list[list],
+        rows_in: list[list[typing.Any]],
         parser_in: models.OrderSheetParseRead
-):
+) -> list[BM]:
     t = time.time()
     resp: list[BM] = []
     for row_id, row in enumerate(rows_in, parser_in.start):
-        data = parse_row(parser_in, model, row_id, row, is_raise=True)
+        data = parse_row(parser_in, model, row_id, row, is_raise=False)
         if data:
             resp.append(data)
     logger.info(f"Parsing data from spreadsheet={spreadsheet} sheet_id={sheet_id} completed in {time.time() - t}")
@@ -260,7 +261,7 @@ def get_all_data(
         creds: auth_models.AdminGoogleToken,
         model: typing.Type[models.SheetEntity],
         parser: models.OrderSheetParseRead
-):
+) -> list[BM]:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -280,7 +281,7 @@ def update_rows_data(
         creds: auth_models.AdminGoogleToken,
         parser: models.OrderSheetParseRead,
         data: list[tuple[int, dict]]
-):
+) -> None:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -302,7 +303,7 @@ def clear_rows_data(
         creds: auth_models.AdminGoogleToken,
         parser: models.OrderSheetParseRead,
         row_id: int
-):
+) -> None:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -339,7 +340,7 @@ def update_row_data(
         parser: models.OrderSheetParseRead,
         row_id: int,
         data: dict
-):
+) -> None:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -357,7 +358,7 @@ def create_row_data(
         creds: auth_models.AdminGoogleToken,
         parser: models.OrderSheetParseRead,
         data: dict
-):
+) -> BM:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -406,7 +407,7 @@ def delete_booster(
         creds: auth_models.AdminGoogleToken,
         parser: models.OrderSheetParseRead,
         value: str,
-):
+) -> None:
     parser = models.OrderSheetParseRead.model_validate(parser)
     creds = auth_models.AdminGoogleToken.model_validate(creds)
     booster = find_by(auth_models.UserReadSheets, creds, parser, value)
@@ -418,7 +419,7 @@ def clear_row(
         creds: auth_models.AdminGoogleToken,
         parser: models.OrderSheetParseRead,
         row_id: int
-):
+) -> None:
     parser = models.OrderSheetParseRead.model_validate(parser)
     creds = auth_models.AdminGoogleToken.model_validate(creds)
     clear_rows_data(creds, parser, row_id)

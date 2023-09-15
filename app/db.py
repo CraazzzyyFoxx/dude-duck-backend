@@ -8,6 +8,6 @@ from app.services.settings.models import Settings
 from app.services.sheets.models import OrderSheetParse
 
 
-def get_beanie_models():
+def get_beanie_models() -> list:
     return [User, AccessToken, AccessTokenAPI, Order,
             OrderSheetParse, UserOrder, Response, PreOrder, Settings, Currency]

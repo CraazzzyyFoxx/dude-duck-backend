@@ -3,18 +3,8 @@ import typing
 from beanie import Document, Indexed, PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-__all__ = (
-    "OrderSheetParseItem",
-    "OrderSheetParse",
-    "OrderSheetParseCreate",
-    "OrderSheetParseUpdate",
-    "allowed_types",
-    "SheetEntity",
-    "OrderSheetParseRead",
-    "OrderReadSheets"
-)
-
-from app.services.orders.schemas import OrderReadBase
+from app.services.orders import models as order_models
+from app.services.orders import schemas as order_schemas
 
 allowed_types = ["int", "str", "timedelta", "datetime", "SecretStr", "EmailStr", "HttpUrl", "float", 'PhoneNumber',
                  'PaymentCardNumber', 'bool']
@@ -36,7 +26,7 @@ class OrderSheetParseItem(BaseModel):
     type: str = Field(examples=allowed_types)
 
     @field_validator("type")
-    def validate_type(cls, v: str):
+    def validate_type(cls, v: str) -> str:
         if '|' in v:
             vs = v.split("|")
         else:
@@ -74,7 +64,7 @@ class OrderSheetParseRead(BaseModel):
 
 class OrderSheetParseUpdate(BaseModel):
     start: int = Field(default=2, gt=1)
-    items: list[OrderSheetParseItem] = Field(default=None)
+    items: list[OrderSheetParseItem] = Field(default=[])
     is_user: bool | None = Field(default=None)
 
 
@@ -86,5 +76,6 @@ class OrderSheetParseCreate(BaseModel):
     is_user: bool = False
 
 
-class OrderReadSheets(OrderReadBase, SheetEntity):
-    pass
+class OrderReadSheets(order_schemas.OrderReadSystemBase, SheetEntity):
+    booster: str | None = None
+    price: order_models.OrderPrice

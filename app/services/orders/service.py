@@ -32,11 +32,32 @@ async def get_all_by_sheet_entity(spreadsheet: str, sheet: int, row_id: int) -> 
 
 
 async def get_all_from_datetime_range(start: datetime, end: datetime) -> list[models.Order]:
-    return await models.Order.find({"$gte": {"date": start}, "$lte": {"date": end}}).to_list()
+    return await models.Order.find({"date": {"$gte": start, "$lte": end}}).to_list()
 
 
-async def get_by_ids(ids: list[PydanticObjectId]):
+async def get_by_ids(ids: list[PydanticObjectId]) -> list[models.Order]:
     return await models.Order.find({"_id": {"$in": ids}}).to_list()
+
+
+async def get_by_ids_datetime_range(ids: list[PydanticObjectId], start: datetime, end: datetime) -> list[models.Order]:
+    return await models.Order.find({"_id": {"$in": ids}, "date": {"$gte": start, "$lte": end}}).to_list()
+
+
+async def get_by_ids_datetime_range_by_sheet(
+        ids: list[PydanticObjectId],
+        spreadsheet: str,
+        sheet: int,
+        start: datetime,
+        end: datetime
+) -> list[models.Order]:
+    return await models.Order.find(
+        {
+            "spreadsheet": spreadsheet,
+            "sheet": sheet,
+            "_id": {"$in": ids},
+            "date": {"$gte": start, "$lte": end}
+        }
+    ).to_list()
 
 
 async def get_all_from_datetime_range_by_sheet(
@@ -46,11 +67,11 @@ async def get_all_from_datetime_range_by_sheet(
         end: datetime
 ) -> list[models.Order]:
     return await models.Order.find(
-        {"spreadsheet": spreadsheet, "sheet": sheet, "$gte": {"date": start}, "$lte": {"date": end}}
+        {"spreadsheet": spreadsheet, "sheet": sheet, "date": {"$gte": start, "$lte": end}}
     ).to_list()
 
 
-async def update_with_sync(order: models.Order, order_in: models.OrderUpdate):
+async def update_with_sync(order: models.Order, order_in: models.OrderUpdate) -> models.Order:
     order = await update(order, order_in)
     parser = await sheets_flows.service.get_by_spreadsheet_sheet(order.spreadsheet, order.sheet_id)
     user = await auth_service.get_first_superuser()
@@ -64,7 +85,7 @@ async def update_with_sync(order: models.Order, order_in: models.OrderUpdate):
     return order
 
 
-async def update(order: models.Order, order_in: models.OrderUpdate):
+async def update(order: models.Order, order_in: models.OrderUpdate) -> models.Order:
     old = order.model_copy(deep=True)
     update_price = False
     order_data = dict(order)
@@ -89,7 +110,7 @@ async def update(order: models.Order, order_in: models.OrderUpdate):
     return order
 
 
-async def delete(order_id: PydanticObjectId):
+async def delete(order_id: PydanticObjectId) -> None:
     order = await get(order_id)
     await order.delete()
 
@@ -97,3 +118,8 @@ async def delete(order_id: PydanticObjectId):
 async def create(order_in: models.OrderCreate) -> models.Order:
     order = models.Order.model_validate(order_in)
     return await order.create()
+
+
+async def bulk_create(orders_in: list[models.OrderCreate]) -> list[PydanticObjectId]:
+    data = await models.Order.insert_many([models.Order.model_validate(order_in) for order_in in orders_in])
+    return data.inserted_ids

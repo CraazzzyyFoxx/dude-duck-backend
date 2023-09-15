@@ -1,41 +1,34 @@
-import typing
-
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends
 
 from app.core import enums
 from app.services.auth import flows as auth_flows
-from app.services.permissions import service as permissions_service
 from app.services.search import service as search_service
 
-from . import flows, models, schemas, service
+from . import flows, models, schemas
 
 router = APIRouter(prefix="/orders", tags=[enums.RouteTag.ORDERS])
 
 
-@router.get(path="/{order_id}", response_model=schemas.OrderRead)
-async def get_order(order_id: PydanticObjectId, user=Depends(auth_flows.current_active_superuser)):
+@router.get(path="/{order_id}", response_model=schemas.OrderReadNoPerms)
+async def get_order(order_id: PydanticObjectId, _=Depends(auth_flows.current_active_verified)):
     order = await flows.get(order_id)
-    return await permissions_service.format_order(order, user)
+    return await flows.format_order_perms(order)
 
 
-@router.patch(path="/{order_id}", response_model=typing.Union[schemas.OrderRead])
-async def update_order(
-        order_id: PydanticObjectId,
-        data: models.OrderUpdate,
-        user=Depends(auth_flows.current_active_superuser)
-):
-    order = await flows.get(order_id)
-    await service.update_with_sync(order, data)
-    return await permissions_service.format_order(order, user)
+# @router.get(path="/{order_id}/all", response_model=schemas.OrderReadNoPerms)
+# async def get_order_all(order_id: PydanticObjectId, user=Depends(auth_flows.current_active_verified)):
+#     order = await flows.get(order_id)
+#     await permissions_flows.has_access_to_order(order, user)
+#     return await flows.format_order_perms(order, has=True)
 
 
-@router.get(path="",
-            response_model=search_service.models.Paginated[schemas.OrderRead])
+@router.get(path="", response_model=search_service.models.Paginated[schemas.OrderReadNoPerms])
 async def get_orders(
         paging: search_service.models.PaginationParams = Depends(),
         sorting: search_service.models.OrderSortingParams = Depends(),
-        user=Depends(auth_flows.current_active_superuser)):
+        _=Depends(auth_flows.current_active_verified)
+):
     query = {}
     if sorting.completed != search_service.models.OrderSelection.ALL:
         if sorting.completed == search_service.models.OrderSelection.Completed:
@@ -43,5 +36,5 @@ async def get_orders(
         else:
             query = models.Order.status == sorting.completed
     data = await search_service.paginate(models.Order.find(query), paging, sorting)
-    data["results"] = [await permissions_service.format_order(order, user) for order in data["results"]]
+    data["results"] = [await flows.format_order_perms(order) for order in data["results"]]
     return data

@@ -17,7 +17,7 @@ class ConversionMode(int, enum.Enum):
 def convert_time(
         time_str: str,
         *,
-        now: datetime.datetime = None,
+        now: datetime.datetime | None = None,
         conversion_mode: ConversionMode | None = None,
         future_time: bool = False,
 ) -> datetime.datetime:

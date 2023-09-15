@@ -16,12 +16,21 @@ __all__ = (
 
 
 class PreOrderPriceUser(BaseModel):
-    price_booster_dollar_fee: float | None = None
+    price_booster_dollar: float | None = None
     price_booster_rub: float | None = None
     price_booster_gold: float | None = None
 
 
-class PreOrderCreate(BaseModel):
+class PreOrderPriceSystem(BaseModel):
+    price_dollar: float
+    price_booster_dollar_without_fee: float | None = None
+
+    price_booster_dollar: float | None = None
+    price_booster_rub: float | None = None
+    price_booster_gold: float | None = None
+
+
+class PreOrderCreate(sheets_models.SheetEntity):
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     order_id: str
 
@@ -32,6 +41,7 @@ class PreOrderCreate(BaseModel):
 class PreOrderUpdate(BaseModel):
     info: order_models.OrderInfo | None = None
     price: PreOrderPriceUser | None = None
+    has_response: bool | None = None
 
 
 class PreOrder(sheets_models.SheetEntity, Document):
@@ -40,8 +50,9 @@ class PreOrder(sheets_models.SheetEntity, Document):
 
     info: order_models.OrderInfo
     price: order_models.OrderPrice
-    status: order_models.OrderStatus
-    status_paid: order_models.OrderPaidStatus
+    status: order_models.OrderStatus  # TODO: Убрать, нужен для обратной совместимости с обычным заказом
+
+    has_response: bool = Field(default=False)
 
     class Settings:
         use_state_management = True
@@ -53,10 +64,18 @@ class PreOrder(sheets_models.SheetEntity, Document):
         return hash(str(self.id))
 
 
-class PreOrderRead(BaseModel):
+class PreOrderReadSystem(BaseModel):
     id: PydanticObjectId
     order_id: str
     date: datetime.datetime
+
+    info: order_models.OrderInfo
+    price: PreOrderPriceUser
+
+
+class PreOrderReadUser(BaseModel):
+    id: PydanticObjectId
+    order_id: str
 
     info: order_models.OrderInfo
     price: PreOrderPriceUser
