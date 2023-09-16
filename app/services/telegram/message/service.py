@@ -172,12 +172,12 @@ def send_verified_notify(
 
 def send_order_close_notify(
         user: auth_models.UserRead,
-        order: order_schemas.OrderReadSystem,
+        order_id: PydanticObjectId,
         url: str,
         message: str
 ) -> None:
     data = build_payload(
-        message_type=models.MessageEnum.REQUEST_CLOSE_ORDER, user=user, order=order, url=url, message=message
+        message_type=models.MessageEnum.REQUEST_CLOSE_ORDER, user=user, order_id=order_id, url=url, message=message
     )
     asyncio.create_task(request(data))
 
@@ -197,7 +197,7 @@ def send_registered_notify(
 
 
 def send_sent_order_notify(
-        order_id: str,
+        order_id: PydanticObjectId,
         payload: models.OrderResponse
 ) -> None:
     data = build_payload(message_type=models.MessageEnum.SENT_ORDER, order_id=order_id, pull_payload=payload)
@@ -205,7 +205,7 @@ def send_sent_order_notify(
 
 
 def send_edited_order_notify(
-        order_id: str,
+        order_id: PydanticObjectId,
         payload: models.OrderResponse
 ) -> None:
     data = build_payload(message_type=models.MessageEnum.EDITED_ORDER, order_id=order_id, pull_payload=payload)
@@ -213,7 +213,7 @@ def send_edited_order_notify(
 
 
 def send_deleted_order_notify(
-        order_id: str,
+        order_id: PydanticObjectId,
         payload: models.OrderResponse
 ) -> None:
     data = build_payload(message_type=models.MessageEnum.DELETED_ORDER, order_id=order_id, pull_payload=payload)
@@ -221,11 +221,13 @@ def send_deleted_order_notify(
 
 
 def send_response_chose_notify(
-        order: order_schemas.OrderReadSystem,
+        order_id: PydanticObjectId,
         user: auth_models.UserRead,
         responses: int
 ) -> None:
-    data = build_payload(message_type=models.MessageEnum.RESPONSE_CHOSE, order=order, user=user, responses=responses)
+    data = build_payload(
+        message_type=models.MessageEnum.RESPONSE_CHOSE, order_id=order_id, user=user, responses=responses
+    )
     asyncio.create_task(request(data))
 
 

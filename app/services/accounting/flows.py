@@ -336,7 +336,7 @@ async def close_order(user: auth_models.User, order: order_service.models.Order,
     new_order = await order_service.update_with_sync(order, update_model)
     messages_service.send_order_close_notify(
         auth_models.UserRead.model_validate(user),
-        await order_flows.format_order_system(new_order),
+        order.order_id,
         str(data.url),
         data.message
     )
