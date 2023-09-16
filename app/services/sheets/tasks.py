@@ -23,9 +23,6 @@ async def boosters_from_order_sync(
         users_in: list[auth_models.User]
 ) -> None:
     boosters_db = await accounting_service.get_by_order_id(order_id)
-    if boosters_db:
-        return
-
     completed = True if order.status == order_models.OrderStatus.Completed else False
     paid = True if order.status_paid == order_models.OrderPaidStatus.Paid else False
     boosters_db_map = {d.user_id: d for d in boosters_db}
