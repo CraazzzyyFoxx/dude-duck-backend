@@ -138,20 +138,20 @@ def send_response_admin(
 
 def send_response_approve(
         user: auth_models.UserRead,
-        order: order_schemas.OrderReadSystem,
+        order_id: str,
         response: response_models.ResponseRead
 ) -> None:
     data = build_payload(
-        message_type=models.MessageEnum.RESPONSE_ORDER_APPROVED, order=order, user=user, response=response
+        message_type=models.MessageEnum.RESPONSE_ORDER_APPROVED, order_id=order_id, user=user, response=response
     )
     asyncio.create_task(request(data))
 
 
 def send_response_decline(
         user: auth_models.UserRead,
-        order: order_schemas.OrderReadSystem
+        order_id: str
 ) -> None:
-    data = build_payload(message_type=models.MessageEnum.RESPONSE_ORDER_DECLINED, order_id=order.order_id, user=user)
+    data = build_payload(message_type=models.MessageEnum.RESPONSE_ORDER_DECLINED, order_id=order_id, user=user)
     asyncio.create_task(request(data))
 
 

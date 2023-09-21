@@ -39,7 +39,7 @@ async def order_available(
 async def is_already_respond(
         order_id: PydanticObjectId,
         user: auth_models.User
-):
+) -> bool:
     response = await service.get_by_order_id_user_id(order_id, user.id)
     if response is not None:
         raise errors.DudeDuckHTTPException(
@@ -56,7 +56,7 @@ async def create_response(
         user: auth_models.User,
         order: order_models.Order,
         response: models.ResponseExtra
-):
+) -> models.Response:
     await order_available(order)
     await is_already_respond(order.id, user)
     await accounting_flows.can_user_pick_order(user, order)
@@ -71,7 +71,7 @@ async def create_preorder_response(
         user: auth_models.User,
         order: preorder_models.PreOrder,
         response: models.ResponseExtra
-):
+) -> models.Response:
     await is_already_respond(order.id, user)
     resp = await service.create(models.ResponseCreate(extra=response, order_id=order.id, user_id=user.id))
 
@@ -84,7 +84,7 @@ async def create_preorder_response(
 async def approve_response(
         user: auth_models.User,
         order: order_models.Order
-):
+) -> models.Response:
     await order_available(order)
     await accounting_flows.can_user_pick_order(user, order)
     await accounting_flows.add_booster(order, user)
@@ -96,18 +96,19 @@ async def approve_response(
         auth_models.UserRead.model_validate(user, from_attributes=True),
         len(responds)
     )
-    order_read = await order_flows.format_order_system(order)
     for resp in responds:
         if resp.user_id == user.id:
             await service.update(resp, models.ResponseUpdate(approved=True, closed=True))
             user_approved = auth_models.UserRead.model_validate(user, from_attributes=True)
-            messages_service.send_response_approve(user_approved, order_read, models.ResponseRead.model_validate(resp))
+            messages_service.send_response_approve(
+                user_approved, order.order_id, models.ResponseRead.model_validate(resp)
+            )
         else:
             await service.update(resp, models.ResponseUpdate(approved=False, closed=True))
             user_declined = auth_models.UserRead.model_validate(
                 await auth_service.get(resp.user_id), from_attributes=True
             )
-            messages_service.send_response_decline(user_declined, order_read)
+            messages_service.send_response_decline(user_declined, order.order_id)
 
     return await service.get_by_order_id_user_id(order.id, user.id)
 
@@ -115,7 +116,7 @@ async def approve_response(
 async def approve_preorder_response(
         user: auth_models.User,
         order: preorder_models.PreOrder
-):
+) -> models.Response:
     await messages_service.pull_preorder_delete(await preorder_flows.format_preorder_system(order))
 
     responds = await service.get_by_order_id(order_id=order.id)
