@@ -138,7 +138,7 @@ def send_response_admin(
 
 def send_response_approve(
         user: auth_models.UserRead,
-        order_id: str,
+        order_id: PydanticObjectId,
         response: response_models.ResponseRead
 ) -> None:
     data = build_payload(
