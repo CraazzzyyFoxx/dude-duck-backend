@@ -57,7 +57,12 @@ app.add_middleware(ExceptionMiddleware)
 app.add_middleware(TimeMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-api_app = FastAPI(title="DudeDuck CRM Backend", root_path="/api/v1", debug=config.app.debug, )
+api_app = FastAPI(
+    title="DudeDuck CRM Backend",
+    root_path="/api/v1",
+    debug=config.app.debug,
+    default_response_class=ORJSONResponse
+)
 
 api_app.include_router(api.router)
 
