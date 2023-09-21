@@ -101,7 +101,7 @@ async def approve_response(
             await service.update(resp, models.ResponseUpdate(approved=True, closed=True))
             user_approved = auth_models.UserRead.model_validate(user, from_attributes=True)
             messages_service.send_response_approve(
-                user_approved, order.order_id, models.ResponseRead.model_validate(resp)
+                user_approved, order.order.id, models.ResponseRead.model_validate(resp)
             )
         else:
             await service.update(resp, models.ResponseUpdate(approved=False, closed=True))
