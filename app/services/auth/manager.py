@@ -21,8 +21,9 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
     reset_password_token_secret = config.app.secret
     verification_token_secret = config.app.secret
 
-    async def create(self, user_create: models.UserCreate, safe: bool = False, request: Request | None = None
-                     ) -> models.User:
+    async def create(
+        self, user_create: models.UserCreate, safe: bool = False, request: Request | None = None
+    ) -> models.User:
         await self.validate_password(user_create.password, user_create)
 
         existing_user = await self.user_db.get_by_email(user_create.email)
@@ -32,11 +33,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
         if existing_user is not None:
             raise exceptions.UserAlreadyExists()
 
-        user_dict = (
-            user_create.create_update_dict()
-            if safe
-            else user_create.create_update_dict_superuser()
-        )
+        user_dict = user_create.create_update_dict() if safe else user_create.create_update_dict_superuser()
         password = user_dict.pop("password")
         user_dict["hashed_password"] = self.password_helper.hash(password)
 
@@ -46,7 +43,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
         tasks_service.create_booster.delay(
             creds.google.model_dump_json(),
             parser.model_dump_json(),
-            models.UserRead.model_validate(created_user).model_dump()
+            models.UserRead.model_validate(created_user).model_dump(),
         )
         await self.on_after_register(created_user, request)
         return created_user
@@ -61,7 +58,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
             "sub": str(user.id),
             "email": user.email,
             "aud": self.verification_token_audience,
-            "telegram_username": user.telegram
+            "telegram_username": user.telegram,
         }
         token = generate_jwt(
             token_data,
@@ -105,7 +102,7 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
             creds.google.model_dump_json(),
             parser.model_dump_json(),
             user.email,
-            models.UserRead.model_validate(user).model_dump()
+            models.UserRead.model_validate(user).model_dump(),
         )
         await self.on_after_verify(user, request)
         return user
@@ -127,16 +124,14 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
         user = models.UserRead.model_validate(user)
         message_service.send_registered_notify(user)
 
-    async def on_after_forgot_password(
-            self, user: models.User, token: str, request: Request | None = None
-    ) -> None:
+    async def on_after_forgot_password(self, user: models.User, token: str, request: Request | None = None) -> None:
         logger.warning(token)
 
     async def on_after_update(
-            self,
-            user: models.User,
-            update_dict: str | typing.Any,
-            request: Request | None = None,
+        self,
+        user: models.User,
+        update_dict: str | typing.Any,
+        request: Request | None = None,
     ) -> None:
         parser = await sheets_service.get_default_booster()
         creds = await service.get_first_superuser()
@@ -144,11 +139,13 @@ class UserManager(ObjectIDIDMixin, BaseUserManager[models.User, PydanticObjectId
             creds.google.model_dump_json(),
             parser.model_dump_json(),
             str(user.id),
-            models.UserRead.model_validate(user).model_dump()
+            models.UserRead.model_validate(user).model_dump(),
         )
 
     async def on_after_delete(
-            self, user: models.User, request: Request | None = None,
+        self,
+        user: models.User,
+        request: Request | None = None,
     ) -> None:
         parser = await sheets_service.get_default_booster()
         creds = await service.get_first_superuser()

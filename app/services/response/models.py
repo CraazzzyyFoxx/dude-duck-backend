@@ -4,13 +4,7 @@ from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
-__all__ = (
-    "ResponseExtra",
-    "Response",
-    "ResponseUpdate",
-    "ResponseCreate",
-    "ResponseRead"
-)
+__all__ = ("ResponseExtra", "Response", "ResponseUpdate", "ResponseCreate", "ResponseRead")
 
 
 class ResponseExtra(BaseModel):

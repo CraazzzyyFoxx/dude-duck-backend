@@ -1,30 +1,29 @@
 import asyncio
-import logging
 
 from celery import Celery
-from celery.signals import setup_logging
 
 from app.core import config
 from app.core.config import app
-from app.core.logging import InterceptHandler
 from app.services.auth import models as auth_models
 from app.services.preorders import tasks as preorders_tasks
 from app.services.sheets import models as sheets_models
 from app.services.sheets import service as sheets_service
 from app.services.sheets import tasks as sheets_tasks
 
-celery = Celery(__name__,
-                broker=app.celery_broker_url.unicode_string(),
-                backend=app.celery_result_backend.unicode_string(),
-                broker_connection_retry_on_startup=True)
+celery = Celery(
+    __name__,
+    broker=app.celery_broker_url.unicode_string(),
+    backend=app.celery_result_backend.unicode_string(),
+    broker_connection_retry_on_startup=True,
+)
 
 celery.conf.beat_schedule = {
-    'sync-data-every-5-minutes': {
-        'task': 'sync_data',
-        'schedule': config.app.celery_sheets_sync_time,
+    "sync-data-every-5-minutes": {
+        "task": "sync_data",
+        "schedule": config.app.celery_sheets_sync_time,
     },
 }
-celery.conf.timezone = 'UTC'
+celery.conf.timezone = "UTC"
 
 
 @celery.task(allow_async=True, name="sync_data")

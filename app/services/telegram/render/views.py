@@ -8,24 +8,27 @@ from app.services.search import models as search_models
 from ..service import request as service_request
 from . import models
 
-router = APIRouter(prefix='/render', tags=[enums.RouteTag.RENDER],
-                   dependencies=[Depends(auth_flows.current_active_superuser)])
+router = APIRouter(
+    prefix="/render",
+    tags=[enums.RouteTag.RENDER],
+    dependencies=[Depends(auth_flows.current_active_superuser)],
+)
 
 
 @router.get(path="", response_model=search_models.Paginated[models.RenderConfigRead])
 async def get_renders(
-        paging: search_models.PaginationParams = Depends(),
+    paging: search_models.PaginationParams = Depends(),
 ):
     response = await service_request(
-        f'render?page={paging.page}&per_page={paging.per_page}',
-        'GET',
+        f"render?page={paging.page}&per_page={paging.per_page}",
+        "GET",
     )
     return response.json()
 
 
-@router.get('/{name}', response_model=models.RenderConfigRead)
+@router.get("/{name}", response_model=models.RenderConfigRead)
 async def read_order_render(name: str):
-    response = await service_request(f'render/{name}', 'GET')
+    response = await service_request(f"render/{name}", "GET")
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -34,9 +37,9 @@ async def read_order_render(name: str):
     return response.json()
 
 
-@router.post('', response_model=models.RenderConfigRead)
+@router.post("", response_model=models.RenderConfigRead)
 async def create_order_render(render: models.RenderConfigCreate):
-    response = await service_request('render', 'POST', data=render.model_dump())
+    response = await service_request("render", "POST", data=render.model_dump())
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -45,9 +48,9 @@ async def create_order_render(render: models.RenderConfigCreate):
     return response.json()
 
 
-@router.delete('/{name}', response_model=models.RenderConfigRead)
+@router.delete("/{name}", response_model=models.RenderConfigRead)
 async def delete_order_render(name: str):
-    response = await service_request(f'render/{name}', 'DELETE')
+    response = await service_request(f"render/{name}", "DELETE")
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -56,9 +59,9 @@ async def delete_order_render(name: str):
     return response.json()
 
 
-@router.patch('/{name}', response_model=models.RenderConfigRead)
+@router.patch("/{name}", response_model=models.RenderConfigRead)
 async def update_order_render(name: str, data: models.RenderConfigUpdate):
-    response = await service_request(f'render/{name}', 'PATCH', data=data.model_dump())
+    response = await service_request(f"render/{name}", "PATCH", data=data.model_dump())
     if response.status_code == 404:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

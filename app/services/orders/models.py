@@ -14,7 +14,7 @@ __all__ = (
     "OrderUpdate",
     "OrderCreate",
     "OrderStatus",
-    "OrderPaidStatus"
+    "OrderPaidStatus",
 )
 
 
@@ -36,13 +36,13 @@ class SheetEntity(BaseModel):
 
 
 class OrderInfo(BaseModel):
-    boost_type: str | None = None
+    boost_type: str
     region_fraction: str | None = None
     server: str | None = None
     category: str | None = None
     character_class: str | None = None
     platform: str | None = None
-    game: str | None = None
+    game: str
     purchase: str | None = None
     comment: str | None = None
     eta: str | None = None

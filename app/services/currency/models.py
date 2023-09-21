@@ -22,7 +22,6 @@ class Currency(Document):
 
 
 class CurrencyApiLayer(BaseModel):
-
     success: bool
     historical: bool
     date: datetime

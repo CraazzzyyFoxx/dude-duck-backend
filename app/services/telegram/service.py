@@ -32,31 +32,30 @@ class TelegramServiceMeta:
 TelegramService = TelegramServiceMeta()
 
 
-async def request(
-        endpoint: str,
-        method: str,
-        data: dict | None = None
-) -> httpx.Response:
+async def request(endpoint: str, method: str, data: dict | None = None) -> httpx.Response:
     try:
         response = await TelegramService.client.request(
             method=method,
             url=f"{config.app.frontend_url}/api/{endpoint}",
             json=jsonable_encoder(data),
-            headers={"Authorization": "Bearer " + config.app.frontend_token}
+            headers={"Authorization": "Bearer " + config.app.frontend_token},
         )
     except TimeoutException as err:
         logger.exception(err)
-        raise HTTPException(status_code=500, detail=[
-            {"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}
-        ])
+        raise HTTPException(
+            status_code=500,
+            detail=[{"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}],
+        )
     except HTTPError as err:
         logger.exception(err)
-        raise HTTPException(status_code=500, detail=[
-            {"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}
-        ])
+        raise HTTPException(
+            status_code=500,
+            detail=[{"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}],
+        )
     else:
         if response.status_code not in (200, 201, 404):
-            raise HTTPException(status_code=500, detail=[
-                {"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}
-            ])
+            raise HTTPException(
+                status_code=500,
+                detail=[{"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}],
+            )
         return response

@@ -9,5 +9,15 @@ from app.services.sheets.models import OrderSheetParse
 
 
 def get_beanie_models() -> list:
-    return [User, AccessToken, AccessTokenAPI, Order,
-            OrderSheetParse, UserOrder, Response, PreOrder, Settings, Currency]
+    return [
+        User,
+        AccessToken,
+        AccessTokenAPI,
+        Order,
+        OrderSheetParse,
+        UserOrder,
+        Response,
+        PreOrder,
+        Settings,
+        Currency,
+    ]

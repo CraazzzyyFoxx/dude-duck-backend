@@ -52,8 +52,10 @@ async def delete(spreadsheet: str, sheet_id: int):
 
 async def get_order_from_sheets(data: models.SheetEntity, user: auth_models.User):
     if not user.google:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=[{"msg": "Google Service account doesn't setup."}])
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=[{"msg": "Google Service account doesn't setup."}],
+        )
     parser = await get_by_spreadsheet_sheet(data.spreadsheet, data.sheet_id)
     try:
         model = service.get_row_data(orders_models.Order, user.google, parser, data.row_id)

@@ -22,16 +22,16 @@ from . import models
 
 type_map = {
     "int": int,
-    'str': str,
-    'float': float,
-    'bool': bool,
-    'timedelta': datetime.timedelta,
-    'datetime': datetime.datetime,
-    'SecretStr': SecretStr,
-    'EmailStr': EmailStr,
-    'HttpUrl': HttpUrl,
-    'PhoneNumber': PhoneNumber,
-    'PaymentCardNumber': PaymentCardNumber
+    "str": str,
+    "float": float,
+    "bool": bool,
+    "timedelta": datetime.timedelta,
+    "datetime": datetime.datetime,
+    "SecretStr": SecretStr,
+    "EmailStr": EmailStr,
+    "HttpUrl": HttpUrl,
+    "PhoneNumber": PhoneNumber,
+    "PaymentCardNumber": PaymentCardNumber,
 }
 
 BM = typing.TypeVar("BM", bound=BaseModel)
@@ -63,8 +63,8 @@ def parse_timedelta(v: str) -> typing.Any:
 
 
 def get_type(type_name: str, null: bool):
-    if '|' in type_name:
-        names = type_name.split('|')
+    if "|" in type_name:
+        names = type_name.split("|")
         return get_type(names[0].strip(), False) | get_type(names[1].strip(), null)
 
     if null:
@@ -124,7 +124,7 @@ async def update(parser: models.OrderSheetParse, parser_in: models.OrderSheetPar
 
 def n2a(n: int):
     d, m = divmod(n, 26)  # 26 is the number of ASCII letters
-    return '' if n < 0 else n2a(d - 1) + chr(m + 65)  # chr(65) = 'A'
+    return "" if n < 0 else n2a(d - 1) + chr(m + 65)  # chr(65) = 'A'
 
 
 def get_range(parser: models.OrderSheetParseRead, *, row_id: int | None = None, end_id: int = 0):
@@ -152,11 +152,11 @@ def generate_model(parser: models.OrderSheetParseRead):
         field_type = getter.type
         _fields[getter.name] = (get_type(field_type, getter.null), None if getter.null else ...)
         if getter.valid_values:
-            _validators[f"{name}_parse"] = (field_validator(name, mode="before")(enum_parse(name, getter.valid_values)))
+            _validators[f"{name}_parse"] = field_validator(name, mode="before")(enum_parse(name, getter.valid_values))
         elif field_type == "datetime":
-            _validators[f"{name}_parse"] = (field_validator(name, mode="before")(parse_datetime))
+            _validators[f"{name}_parse"] = field_validator(name, mode="before")(parse_datetime)
         elif field_type == "timedelta":
-            _validators[f"{name}_parse"] = (field_validator(name, mode="before")(parse_timedelta))
+            _validators[f"{name}_parse"] = field_validator(name, mode="before")(parse_timedelta)
 
     check_model = create_model(f"CheckModel{parser.id}", **_fields, __validators__=_validators)  # type: ignore
     _CACHE[parser.id] = check_model
@@ -164,14 +164,14 @@ def generate_model(parser: models.OrderSheetParseRead):
 
 
 def parse_row(
-        parser: models.OrderSheetParse | models.OrderSheetParseRead,
-        model: typing.Type[models.SheetEntity],
-        row_id: int,
-        row: list[typing.Any],
-        *,
-        is_raise: bool = True
+    parser: models.OrderSheetParse | models.OrderSheetParseRead,
+    model: typing.Type[models.SheetEntity],
+    row_id: int,
+    row: list[typing.Any],
+    *,
+    is_raise: bool = True,
 ) -> BM | None:
-    for i in range(len(parser.items) - len(row)):
+    for _ in range(len(parser.items) - len(row)):
         row.append(None)
 
     data_for_valid = {}
@@ -241,11 +241,11 @@ def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, 
 
 
 def parse_all_data(
-        model: typing.Type[models.SheetEntity],
-        spreadsheet: str,
-        sheet_id: int,
-        rows_in: list[list[typing.Any]],
-        parser_in: models.OrderSheetParseRead
+    model: typing.Type[models.SheetEntity],
+    spreadsheet: str,
+    sheet_id: int,
+    rows_in: list[list[typing.Any]],
+    parser_in: models.OrderSheetParseRead,
 ) -> list[BM]:
     t = time.time()
     resp: list[BM] = []
@@ -258,9 +258,9 @@ def parse_all_data(
 
 
 def get_all_data(
-        creds: auth_models.AdminGoogleToken,
-        model: typing.Type[models.SheetEntity],
-        parser: models.OrderSheetParseRead
+    creds: auth_models.AdminGoogleToken,
+    model: typing.Type[models.SheetEntity],
+    parser: models.OrderSheetParseRead,
 ) -> list[BM]:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
@@ -271,16 +271,18 @@ def get_all_data(
         if not values_list[i]:
             break
         index = i
-    rows = sheet.get(get_range(parser, end_id=index + 1),
-                     value_render_option=ValueRenderOption.unformatted,
-                     date_time_render_option=DateTimeOption.formatted_string)
+    rows = sheet.get(
+        get_range(parser, end_id=index + 1),
+        value_render_option=ValueRenderOption.unformatted,
+        date_time_render_option=DateTimeOption.formatted_string,
+    )
     return parse_all_data(model, parser.spreadsheet, parser.sheet_id, rows, parser)
 
 
 def update_rows_data(
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        data: list[tuple[int, dict]]
+    creds: auth_models.AdminGoogleToken,
+    parser: models.OrderSheetParseRead,
+    data: list[tuple[int, dict]],
 ) -> None:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
@@ -295,51 +297,46 @@ def update_rows_data(
     sheet.batch_update(
         data_range,
         response_value_render_option=ValueRenderOption.formatted,
-        response_date_time_render_option=DateTimeOption.formatted_string
+        response_date_time_render_option=DateTimeOption.formatted_string,
     )
 
 
-def clear_rows_data(
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        row_id: int
-) -> None:
+def clear_rows_data(creds: auth_models.AdminGoogleToken, parser: models.OrderSheetParseRead, row_id: int) -> None:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
     data_range = []
     for item in parser.items:
         if not item.generated:
-            data_range.append({"range": f"{n2a(item.row)}{row_id}", "values": [['']]})
+            data_range.append({"range": f"{n2a(item.row)}{row_id}", "values": [[""]]})
     sheet.batch_update(
         data_range,
         response_value_render_option=ValueRenderOption.formatted,
-        response_date_time_render_option=DateTimeOption.formatted_string
+        response_date_time_render_option=DateTimeOption.formatted_string,
     )
 
 
 def get_row_data(
-        model: typing.Type[models.SheetEntity],
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        row_id: int,
-        *,
-        is_raise=True
+    model: typing.Type[models.SheetEntity],
+    creds: auth_models.AdminGoogleToken,
+    parser: models.OrderSheetParseRead,
+    row_id: int,
+    *,
+    is_raise=True,
 ) -> BM:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
-    row = sheet.get(get_range(parser, row_id=row_id),
-                    value_render_option=ValueRenderOption.unformatted,
-                    date_time_render_option=DateTimeOption.formatted_string)
+    row = sheet.get(
+        get_range(parser, row_id=row_id),
+        value_render_option=ValueRenderOption.unformatted,
+        date_time_render_option=DateTimeOption.formatted_string,
+    )
     return parse_row(parser, model, row_id, row[0], is_raise=is_raise)
 
 
 def update_row_data(
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        row_id: int,
-        data: dict
+    creds: auth_models.AdminGoogleToken, parser: models.OrderSheetParseRead, row_id: int, data: dict
 ) -> None:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
@@ -349,15 +346,15 @@ def update_row_data(
         [{"range": f"{n2a(col)}{row_id}", "values": [[value]]} for col, value in row.items()],
         value_input_option=ValueInputOption.user_entered,
         response_value_render_option=ValueRenderOption.formatted,
-        response_date_time_render_option=DateTimeOption.formatted_string
+        response_date_time_render_option=DateTimeOption.formatted_string,
     )
 
 
 def create_row_data(
-        model: typing.Type[models.SheetEntity],
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        data: dict
+    model: typing.Type[models.SheetEntity],
+    creds: auth_models.AdminGoogleToken,
+    parser: models.OrderSheetParseRead,
+    data: dict,
 ) -> BM:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
@@ -375,10 +372,10 @@ def create_row_data(
 
 
 def find_by(
-        model: typing.Type[models.SheetEntity],
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        value
+    model: typing.Type[models.SheetEntity],
+    creds: auth_models.AdminGoogleToken,
+    parser: models.OrderSheetParseRead,
+    value,
 ) -> models.SheetEntity:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
@@ -389,10 +386,10 @@ def find_by(
 
 
 def create_or_update_booster(
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        value: str,
-        user: dict,
+    creds: auth_models.AdminGoogleToken,
+    parser: models.OrderSheetParseRead,
+    value: str,
+    user: dict,
 ):
     parser = models.OrderSheetParseRead.model_validate(parser)
     creds = auth_models.AdminGoogleToken.model_validate(creds)
@@ -404,9 +401,9 @@ def create_or_update_booster(
 
 
 def delete_booster(
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        value: str,
+    creds: auth_models.AdminGoogleToken,
+    parser: models.OrderSheetParseRead,
+    value: str,
 ) -> None:
     parser = models.OrderSheetParseRead.model_validate(parser)
     creds = auth_models.AdminGoogleToken.model_validate(creds)
@@ -415,11 +412,7 @@ def delete_booster(
         clear_row(creds, parser, booster.row_id)
 
 
-def clear_row(
-        creds: auth_models.AdminGoogleToken,
-        parser: models.OrderSheetParseRead,
-        row_id: int
-) -> None:
+def clear_row(creds: auth_models.AdminGoogleToken, parser: models.OrderSheetParseRead, row_id: int) -> None:
     parser = models.OrderSheetParseRead.model_validate(parser)
     creds = auth_models.AdminGoogleToken.model_validate(creds)
     clear_rows_data(creds, parser, row_id)

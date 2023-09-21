@@ -19,11 +19,10 @@ async def get_preorder(preorder_id: PydanticObjectId, _=Depends(auth_flows.curre
 
 @router.get(path="", response_model=search_models.Paginated[models.PreOrderReadUser])
 async def get_preorders(
-        paging: search_models.PaginationParams = Depends(),
-        sorting: search_models.OrderSortingParams = Depends(),
-        _=Depends(auth_flows.current_active_verified)
+    paging: search_models.PaginationParams = Depends(),
+    sorting: search_models.OrderSortingParams = Depends(),
+    _=Depends(auth_flows.current_active_verified),
 ):
     query = {}
     data = await search_service.paginate(models.PreOrder.find(query), paging, sorting)
-    data["results"] = [order for order in data["results"]]
     return data

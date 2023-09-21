@@ -18,9 +18,7 @@ from . import models, service
 
 
 async def boosters_from_order_sync(
-        order_id: PydanticObjectId,
-        order: models.OrderReadSheets,
-        users_in: list[auth_models.User]
+    order_id: PydanticObjectId, order: models.OrderReadSheets, users_in: list[auth_models.User]
 ) -> None:
     boosters_db = await accounting_service.get_by_order_id(order_id)
     completed = True if order.status == order_models.OrderStatus.Completed else False
@@ -37,26 +35,28 @@ async def boosters_from_order_sync(
                 dollars /= len(boosters)
             else:
                 dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
-            await accounting_service.create(accounting_models.UserOrderCreate(
-                order_id=order_id,
-                user_id=user.id,
-                dollars=dollars,
-                completed=completed,
-                paid=paid,
-                order_date=order.date
-            ))
+            await accounting_service.create(
+                accounting_models.UserOrderCreate(
+                    order_id=order_id,
+                    user_id=user.id,
+                    dollars=dollars,
+                    completed=completed,
+                    paid=paid,
+                    order_date=order.date,
+                )
+            )
 
 
 async def sync_data_from(
-        cfg: models.OrderSheetParseRead,
-        orders: dict[str, models.OrderReadSheets],
-        users: list[auth_models.User],
-        orders_db: dict[str, order_models.Order]
+    cfg: models.OrderSheetParseRead,
+    orders: dict[str, models.OrderReadSheets],
+    users: list[auth_models.User],
+    orders_db: dict[str, order_models.Order],
 ) -> None:
     t = time.time()
     deleted = 0
     changed = 0
-    exclude = {'id', "revision_id", "booster"}
+    exclude = {"id", "revision_id", "booster"}
 
     for order_id, order_db in orders_db.items():
         order = orders.get(order_id)
@@ -77,19 +77,21 @@ async def sync_data_from(
     created = len(insert_data)
     if created > 0:
         ids = await order_service.bulk_create(insert_data)
-        for order_id, order in zip(ids, orders.values()):
+        for order_id, order in zip(ids, orders.values(), strict=True):
             await boosters_from_order_sync(order_id, order, users)
 
-    logging.info(f"Syncing data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
-                 f"completed in {time.time() - t}. Created={created} Updated={changed} Deleted={deleted}")
+    logging.info(
+        f"Syncing data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
+        f"completed in {time.time() - t}. Created={created} Updated={changed} Deleted={deleted}"
+    )
 
 
 async def sync_data_to(
-        creds: auth_models.AdminGoogleToken,
-        cfg: models.OrderSheetParseRead,
-        orders: dict[str, models.OrderReadSheets],
-        users: list[auth_models.User],
-        orders_db: dict[PydanticObjectId, order_models.Order]
+    creds: auth_models.AdminGoogleToken,
+    cfg: models.OrderSheetParseRead,
+    orders: dict[str, models.OrderReadSheets],
+    users: list[auth_models.User],
+    orders_db: dict[PydanticObjectId, order_models.Order],
 ) -> None:
     t = time.time()
     to_sync = []
@@ -114,8 +116,10 @@ async def sync_data_to(
 
     if to_sync:
         service.update_rows_data(creds, cfg, to_sync)
-    logging.info(f"Syncing data to sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
-                 f"completed in {time.time() - t}. Updated {len(to_sync)} orders")
+    logging.info(
+        f"Syncing data to sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
+        f"completed in {time.time() - t}. Updated {len(to_sync)} orders"
+    )
 
 
 async def sync_orders() -> None:

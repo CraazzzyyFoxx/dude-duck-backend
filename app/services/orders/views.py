@@ -25,9 +25,9 @@ async def get_order(order_id: PydanticObjectId, _=Depends(auth_flows.current_act
 
 @router.get(path="", response_model=search_service.models.Paginated[schemas.OrderReadNoPerms])
 async def get_orders(
-        paging: search_service.models.PaginationParams = Depends(),
-        sorting: search_service.models.OrderSortingParams = Depends(),
-        _=Depends(auth_flows.current_active_verified)
+    paging: search_service.models.PaginationParams = Depends(),
+    sorting: search_service.models.OrderSortingParams = Depends(),
+    _=Depends(auth_flows.current_active_verified),
 ):
     query = {}
     if sorting.completed != search_service.models.OrderSelection.ALL:

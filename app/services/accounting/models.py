@@ -11,7 +11,7 @@ __all__ = (
     "UserOrderUpdate",
     "UserAccountReport",
     "SheetUserOrderCreate",
-    "AccountingBooster"
+    "AccountingBooster",
 )
 
 
@@ -103,7 +103,7 @@ class SheetBoosterOrderEntityCreate(BaseModel):
 class SheetUserOrderCreate(BaseModel):
     items: list[SheetBoosterOrderEntityCreate]
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def check_card_number_omitted(self) -> "SheetUserOrderCreate":  # noqa
         total: float = 0.0
 

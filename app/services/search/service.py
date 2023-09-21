@@ -9,14 +9,13 @@ DocumentType = TypeVar("DocumentType", bound=Document)
 
 
 async def paginate(
-        query: FindMany,
-        paging_params: models.PaginationParams,
-        sorting_params: models.SortingParams,
+    query: FindMany,
+    paging_params: models.PaginationParams,
+    sorting_params: models.SortingParams,
 ) -> models.PaginationDict:
     total = await query.count()
     results = (
-        await query
-        .skip(paging_params.skip)
+        await query.skip(paging_params.skip)
         .limit(paging_params.limit)
         .sort((sorting_params.sort, sorting_params.order.direction))
         .to_list()

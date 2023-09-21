@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from beanie import Document
-from pydantic import BaseModel, Field, constr, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, constr
 
 
 class ApiLayerCurrencyToken(BaseModel):
@@ -18,7 +18,7 @@ class AvailableCurrency(BaseModel):
 default_currencies = [
     AvailableCurrency(name="USD", precision=2),
     AvailableCurrency(name="RUB", precision=0),
-    AvailableCurrency(name="WOW", precision=0)
+    AvailableCurrency(name="WOW", precision=0),
 ]
 
 

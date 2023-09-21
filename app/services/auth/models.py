@@ -81,14 +81,14 @@ class UserCreate(schemas.BaseUserCreate):
     telegram: str
     discord: str
 
-    @field_validator('name', mode="after")
+    @field_validator("name", mode="after")
     def username_validate(cls, v: str):
         regex = re.fullmatch(config.app.username_regex, v)
         if not regex:
             raise ValueError("Only Latin, Cyrillic and numbers can be used in the username")
         return v
 
-    @field_validator('discord', mode="after")
+    @field_validator("discord", mode="after")
     def discord_validate(cls, v: str) -> str:
         if v.startswith("@"):
             if len(v.replace(" ", "")) != len(v):
@@ -114,8 +114,8 @@ class UserUpdateAdmin(schemas.BaseUserUpdate):
     binance_id: int | None = None
     max_orders: int
 
-    @model_validator(mode='after')
-    def check_passwords_match(self) -> 'UserUpdateAdmin':
+    @model_validator(mode="after")
+    def check_passwords_match(self) -> "UserUpdateAdmin":
         if self.phone and not self.bank:
             raise ValueError("When filling in the phone number, you must also fill in the name of the bank")
 
@@ -152,14 +152,12 @@ class User(BeanieBaseUserDocument):
         indexes = [
             IndexModel("email", unique=True),
             IndexModel("name", unique=True),
-            IndexModel(
-                "email", name="case_insensitive_email_index", collation=email_collation
-            ),
+            IndexModel("email", name="case_insensitive_email_index", collation=email_collation),
         ]
         bson_encoders = {
             Url: lambda x: str(x),
             PhoneNumber: lambda x: str(x),
-            PaymentCardNumber: lambda x: str(x)
+            PaymentCardNumber: lambda x: str(x),
         }
         use_state_management = True
         state_management_save_previous = True

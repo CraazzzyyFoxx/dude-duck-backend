@@ -15,9 +15,7 @@ from app.services.telegram.message import service as message_service
 from . import models, service
 
 
-async def get(
-        order_id: PydanticObjectId
-) -> models.PreOrder:
+async def get(order_id: PydanticObjectId) -> models.PreOrder:
     order = await service.get(order_id)
     if not order:
         raise HTTPException(
@@ -27,9 +25,7 @@ async def get(
     return order
 
 
-async def get_order_id(
-        order_id: str
-) -> models.PreOrder:
+async def get_order_id(order_id: str) -> models.PreOrder:
     order = await service.get_order_id(order_id)
     if not order:
         raise HTTPException(
@@ -39,18 +35,14 @@ async def get_order_id(
     return order
 
 
-async def create(
-        order_in: models.PreOrderCreate
-) -> models.PreOrder:
+async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
     order = await service.create(order_in)
     settings = await settings_service.get()
-    tasks_service.delete_expired_preorder.apply_async((str(order.id), ), countdown=settings.preorder_time_alive)
+    tasks_service.delete_expired_preorder.apply_async((str(order.id),), countdown=settings.preorder_time_alive)
     return order
 
 
-async def delete(
-        order_id: PydanticObjectId
-):
+async def delete(order_id: PydanticObjectId):
     await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
     order = await service.get(order_id)
     if not order:
@@ -74,7 +66,7 @@ async def format_preorder_system(order: models.PreOrder):
             price_dollar=order.price.price_dollar,
             price_booster_dollar_without_fee=booster_price,
             price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
-            price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True)
+            price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
         )
     else:
         price = models.PreOrderPriceSystem(price_dollar=order.price.price_dollar)
@@ -88,7 +80,7 @@ async def format_preorder_perms(order: models.PreOrder):
     if booster_price:
         price = models.PreOrderPriceUser(
             price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
-            price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True)
+            price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
         )
     else:
         price = models.PreOrderPriceUser()

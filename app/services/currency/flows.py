@@ -15,12 +15,12 @@ async def get(currency_date: datetime) -> models.Currency:
 
 
 async def usd_to_currency(
-        dollars: float,
-        date: datetime,
-        currency: str = "USD",
-        *,
-        with_round: bool = False,
-        with_fee: bool = False
+    dollars: float,
+    date: datetime,
+    currency: str = "USD",
+    *,
+    with_round: bool = False,
+    with_fee: bool = False,
 ) -> float:
     settings = await settings_service.get()
     if currency == "USD":
@@ -37,12 +37,12 @@ async def usd_to_currency(
 
 
 async def currency_to_usd(
-        wallet: float,
-        date: datetime,
-        currency: str = "USD",
-        *,
-        with_round: bool = False,
-        with_fee: bool = False
+    wallet: float,
+    date: datetime,
+    currency: str = "USD",
+    *,
+    with_round: bool = False,
+    with_fee: bool = False,
 ) -> float:
     settings = await settings_service.get()
     if currency == "USD":

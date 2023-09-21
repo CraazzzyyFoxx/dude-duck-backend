@@ -16,8 +16,7 @@ async def get_all_by_sheet(spreadsheet: str, sheet: int) -> list[models.PreOrder
 
 
 async def get_all_by_sheet_entity(spreadsheet: str, sheet: int, row_id: int) -> list[models.PreOrder]:
-    return await models.PreOrder.find(
-        {"spreadsheet": spreadsheet, "sheet_id": sheet, "row_id": row_id}).to_list()
+    return await models.PreOrder.find({"spreadsheet": spreadsheet, "sheet_id": sheet, "row_id": row_id}).to_list()
 
 
 async def get_order_id(order_id: str) -> models.PreOrder | None:

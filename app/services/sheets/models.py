@@ -6,8 +6,19 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.services.orders import models as order_models
 from app.services.orders import schemas as order_schemas
 
-allowed_types = ["int", "str", "timedelta", "datetime", "SecretStr", "EmailStr", "HttpUrl", "float", 'PhoneNumber',
-                 'PaymentCardNumber', 'bool']
+allowed_types = [
+    "int",
+    "str",
+    "timedelta",
+    "datetime",
+    "SecretStr",
+    "EmailStr",
+    "HttpUrl",
+    "float",
+    "PhoneNumber",
+    "PaymentCardNumber",
+    "bool",
+]
 
 
 class SheetEntity(BaseModel):
@@ -27,7 +38,7 @@ class OrderSheetParseItem(BaseModel):
 
     @field_validator("type")
     def validate_type(cls, v: str) -> str:
-        if '|' in v:
+        if "|" in v:
             vs = v.split("|")
         else:
             vs = [v]

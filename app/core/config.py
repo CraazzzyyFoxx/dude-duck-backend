@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class AppConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding='utf-8')
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # Application
     project_name: str = "Dude Duck CRM"
@@ -33,7 +33,7 @@ class AppConfig(BaseSettings):
 
     # JWT
     secret: str
-    algorithm: str = 'HS256'
+    algorithm: str = "HS256"
     expires_s: int = 3600
 
     # super user
@@ -49,4 +49,4 @@ class AppConfig(BaseSettings):
     celery_sheets_sync_time: int = 300
 
 
-app = AppConfig(_env_file='.env', _env_file_encoding='utf-8')
+app = AppConfig(_env_file=".env", _env_file_encoding="utf-8")

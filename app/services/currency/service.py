@@ -10,8 +10,8 @@ from app.services.settings import service as settings_service
 from . import models
 
 client = httpx.AsyncClient(
-    base_url='https://api.apilayer.com',
-    limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+    base_url="https://api.apilayer.com",
+    limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
 )
 
 
@@ -22,11 +22,7 @@ async def get(currency_id: PydanticObjectId) -> models.Currency | None:
 async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
     quotes = currency_in.normalize_quotes()
     quotes["WOW"] = (await settings_service.get()).currency_wow
-    currency = models.Currency(
-        date=currency_in.date,
-        timestamp=currency_in.timestamp,
-        quotes=quotes
-    )
+    currency = models.Currency(date=currency_in.date, timestamp=currency_in.timestamp, quotes=quotes)
     return await currency.create()
 
 
@@ -71,7 +67,7 @@ async def get_currency_historical(date: datetime.datetime) -> models.CurrencyApi
     date_str = normalize_date(date)
     token = await get_token()
     headers = {"apikey": token.token}
-    response = await client.request("GET", f'/currency_data/historical?date={date_str}', headers=headers)
+    response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
     if response.status_code == 429:
         raise RuntimeError("API Layer currency request limit exceeded.")
     json = response.json()
@@ -84,7 +80,7 @@ async def get_currency_historical(date: datetime.datetime) -> models.CurrencyApi
 async def validate_token(token: str) -> bool:
     date = normalize_date(datetime.datetime.utcnow())
     headers = {"apikey": token}
-    response = await client.request("GET", f'/currency_data/historical?date={date}', headers=headers)
+    response = await client.request("GET", f"/currency_data/historical?date={date}", headers=headers)
     if response.status_code != 200:
         raise HTTPException(status_code=404, detail=[{"msg": response.json()}])
     else:

@@ -21,14 +21,15 @@ async def get(order_id: PydanticObjectId) -> models.UserOrder | None:
 
 
 async def create(user_order_in: models.UserOrderCreate) -> models.UserOrder:
-    user_order = models.UserOrder(order_id=user_order_in.order_id,
-                                  user_id=user_order_in.user_id,
-                                  dollars=user_order_in.dollars,
-                                  completed=user_order_in.completed,
-                                  paid=user_order_in.paid,
-                                  method_payment=user_order_in.method_payment,
-                                  order_date=user_order_in.order_date
-                                  )
+    user_order = models.UserOrder(
+        order_id=user_order_in.order_id,
+        user_id=user_order_in.user_id,
+        dollars=user_order_in.dollars,
+        completed=user_order_in.completed,
+        paid=user_order_in.paid,
+        method_payment=user_order_in.method_payment,
+        order_date=user_order_in.order_date,
+    )
     if user_order_in.completed:
         user_order.completed_at = datetime.utcnow()
     if user_order_in.paid:
@@ -69,17 +70,17 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
         if field in update_data:
             if field == "paid":
                 if update_data[field]:
-                    setattr(user_order, "completed", True)
-                    setattr(user_order, "completed_at", datetime.utcnow())
-                    setattr(user_order, "paid_time", datetime.utcnow())
+                    user_order.completed = True
+                    user_order.completed_at = datetime.utcnow()
+                    user_order.paid_time = datetime.utcnow()
                 else:
-                    setattr(user_order, "paid_time", None)
+                    user_order.paid_time = None
             if field == "completed":
                 if update_data[field]:
-                    setattr(user_order, "completed", True)
-                    setattr(user_order, "completed_at", datetime.utcnow())
+                    user_order.completed = True
+                    user_order.completed_at = datetime.utcnow()
                 else:
-                    setattr(user_order, "completed_at", None)
+                    user_order.completed_at = None
             setattr(user_order, field, update_data[field])
 
     await user_order.save_changes()
@@ -137,10 +138,10 @@ async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth
     for d in data:
         booster = users_map.get(d.user_id, None)
         if booster:
-            price = await currency_flows.usd_to_currency(d.dollars, order.date, currency='RUB', with_round=True)
+            price = await currency_flows.usd_to_currency(d.dollars, order.date, currency="RUB", with_round=True)
             resp.append(f"{booster.name}({int(price)})")
     if resp:
-        return ' + '.join(resp)
+        return " + ".join(resp)
     return None
 
 

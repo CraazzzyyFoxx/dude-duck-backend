@@ -78,9 +78,7 @@ class CorrelationMiddleware:
         correlation_id.set(id_)
 
         async def send_wrapper(message: "Message") -> None:
-            if message["type"] == "http.response.start" and (
-                cid := correlation_id.get()
-            ):
+            if message["type"] == "http.response.start" and (cid := correlation_id.get()):
                 headers = MutableHeaders(scope=message)
                 headers[self.header] = cid
                 headers["Access-Control-Expose-Headers"] = self.header

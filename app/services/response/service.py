@@ -10,9 +10,7 @@ async def get(response_id: PydanticObjectId) -> models.Response | None:
 
 
 async def create(response_in: models.ResponseCreate) -> models.Response:
-    response = models.Response(order_id=response_in.order_id,
-                               user_id=response_in.user_id,
-                               extra=response_in.extra)
+    response = models.Response(order_id=response_in.order_id, user_id=response_in.user_id, extra=response_in.extra)
     response.created_at = datetime.utcnow()
     return await response.create()
 

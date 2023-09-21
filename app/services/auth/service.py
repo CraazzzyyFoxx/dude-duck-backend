@@ -1,3 +1,5 @@
+import typing
+
 from beanie import PydanticObjectId
 from fastapi import HTTPException
 from starlette import status
@@ -40,5 +42,5 @@ async def get_superusers_with_google():
     return await models.User.find({"is_superuser": True, "google": {"$ne": None}}).to_list()
 
 
-async def get_by_ids(users_id: list[PydanticObjectId]) -> list[models.User]:
+async def get_by_ids(users_id: typing.Iterable[PydanticObjectId]) -> list[models.User]:
     return await models.User.find({"_id": {"$in": users_id}}).to_list()

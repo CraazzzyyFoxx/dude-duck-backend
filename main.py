@@ -40,7 +40,7 @@ async def lifespan(application: FastAPI):  # noqa
                 is_superuser=True,
                 is_active=True,
                 is_verified=True,
-                discord='@system'
+                discord="@system",
             )
             await manager.validate_password(user.password, user)
             user_dict = user.create_update_dict_superuser()
@@ -61,7 +61,7 @@ api_app = FastAPI(
     title="DudeDuck CRM Backend",
     root_path="/api/v1",
     debug=config.app.debug,
-    default_response_class=ORJSONResponse
+    default_response_class=ORJSONResponse,
 )
 api_app.add_middleware(ExceptionMiddleware)
 api_app.include_router(api.router)

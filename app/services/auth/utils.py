@@ -20,9 +20,7 @@ class DatabaseStrategyAPI(DatabaseStrategy):
 
 
 class HTTPBearerAPI(HTTPBearer):
-    async def __call__(
-        self, request: Request
-    ) -> str | None:
+    async def __call__(self, request: Request) -> str | None:
         authorization = request.headers.get("Authorization")
         scheme, credentials = get_authorization_scheme_param(authorization)
         if not (authorization and scheme and credentials):
@@ -53,13 +51,13 @@ async def get_access_token_db_api():
 
 
 def get_database_strategy(
-        access_token_db: BeanieAccessTokenDatabase = Depends(get_access_token_db),
+    access_token_db: BeanieAccessTokenDatabase = Depends(get_access_token_db),
 ) -> DatabaseStrategy:
     return DatabaseStrategy(access_token_db, lifetime_seconds=3600 * 24)
 
 
 def get_database_strategy_api(
-        access_token_db: BeanieAccessTokenDatabase = Depends(get_access_token_db_api),
+    access_token_db: BeanieAccessTokenDatabase = Depends(get_access_token_db_api),
 ) -> DatabaseStrategy:
     return DatabaseStrategyAPI(access_token_db)
 

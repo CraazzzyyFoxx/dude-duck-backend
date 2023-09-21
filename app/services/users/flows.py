@@ -11,15 +11,13 @@ from app.services.auth import service as auth_service
 
 
 async def update_user(
-        request: Request,
-        user_update: auth_models.schemas.BaseUserUpdate,
-        user: auth_models.User,
-        user_manager: auth_manager.UserManager = Depends(auth_flows.get_user_manager)
+    request: Request,
+    user_update: auth_models.schemas.BaseUserUpdate,
+    user: auth_models.User,
+    user_manager: auth_manager.UserManager = Depends(auth_flows.get_user_manager),
 ) -> auth_models.UserRead:
     try:
-        user = await user_manager.update(
-            user_update, user, safe=True, request=request
-        )
+        user = await user_manager.update(user_update, user, safe=True, request=request)
         return auth_service.models.UserRead.model_validate(user, from_attributes=True)
     except exceptions.InvalidPasswordException as e:
         raise HTTPException(
