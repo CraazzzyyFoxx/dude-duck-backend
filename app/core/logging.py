@@ -71,7 +71,7 @@ class APILogger:
         )
         logging.basicConfig(handlers=[InterceptHandler()], level=0)
         #logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
-        for _log in ("uvicorn", "fastapi"):
+        for _log in ("uvicorn", "fastapi", "celery"):
             _logger = logging.getLogger(_log)
             _logger.handlers = [InterceptHandler()]
 
