@@ -42,7 +42,8 @@ async def boosters_from_order_sync(
                 user_id=user.id,
                 dollars=dollars,
                 completed=completed,
-                paid=paid
+                paid=paid,
+                order_date=order.date
             ))
 
 

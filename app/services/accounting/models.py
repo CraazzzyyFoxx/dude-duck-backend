@@ -24,6 +24,7 @@ class UserOrder(Document, BaseModel):
     paid_time: datetime.datetime | None = Field(default=None)
     method_payment: str = Field(default="$")
 
+    order_date: datetime.datetime
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     completed_at: datetime.datetime | None = None
 
@@ -42,6 +43,7 @@ class UserOrderCreate(BaseModel):
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)
     method_payment: str = Field(default="$")
+    order_date: datetime.datetime
 
 
 class UserOrderUpdate(BaseModel):
@@ -82,6 +84,8 @@ class UserOrderRead(BaseModel):
     completed: bool
     paid: bool
     paid_time: datetime.datetime | None
+    order_date: datetime.datetime
+    completed_at: datetime.datetime | None
     method_payment: str
 
 

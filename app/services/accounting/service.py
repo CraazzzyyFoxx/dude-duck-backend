@@ -26,7 +26,8 @@ async def create(user_order_in: models.UserOrderCreate) -> models.UserOrder:
                                   dollars=user_order_in.dollars,
                                   completed=user_order_in.completed,
                                   paid=user_order_in.paid,
-                                  method_payment=user_order_in.method_payment
+                                  method_payment=user_order_in.method_payment,
+                                  order_date=user_order_in.order_date
                                   )
     if user_order_in.completed:
         user_order.completed_at = datetime.utcnow()

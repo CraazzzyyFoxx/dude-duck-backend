@@ -106,7 +106,7 @@ async def add_booster(
         percent = 1 / (len(boosters) + 1)
         price = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
         await service.bulk_update_price(order.id, price * percent)
-        create_data = models.UserOrderCreate(order_id=order.id, user_id=user.id, dollars=price * percent)
+        create_data = models.UserOrderCreate(order_id=order.id, user_id=user.id, dollars=price * percent, order_date=order.date)
         if method_payment is not None:
             create_data.method_payment = method_payment
         data = await service.create(create_data)
@@ -116,7 +116,7 @@ async def add_booster(
             b.dollars = abs(b.dollars - minus_dollars)
         await check_total_dollars(order, boosters, price)
         await service.bulk_decrement_price(order.id, minus_dollars)
-        create_data = models.UserOrderCreate(order_id=order.id, user_id=user.id, dollars=price)
+        create_data = models.UserOrderCreate(order_id=order.id, user_id=user.id, dollars=price, order_date=order.date)
         if method_payment is not None:
             create_data.method_payment = method_payment
         data = await service.create(create_data)
@@ -193,14 +193,11 @@ async def remove_booster(order: order_models.Order, user: auth_models.User) -> m
 
 async def create_user_report(user: auth_models.User) -> models.UserAccountReport:
     payments = await service.get_by_user_id(user.id)
-    orders_id = [p.order_id for p in payments]
-    orders = await order_service.get_by_ids(orders_id)
-    orders_map: dict[PydanticObjectId, order_models.Order] = {order.id: order for order in orders}
     total, total_rub, paid, paid_rub, not_paid, not_paid_rub, not_paid_orders, paid_orders = 0, 0, 0, 0, 0, 0, 0, 0
 
     for payment in payments:
         rub = await currency_flows.usd_to_currency(
-            payment.dollars, orders_map.get(payment.order_id).date, "RUB", with_round=True
+            payment.dollars, payment.order_date, "RUB", with_round=True
         )
         total += payment.dollars
         total_rub += rub

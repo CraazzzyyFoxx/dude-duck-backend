@@ -63,7 +63,7 @@ api_app = FastAPI(
     debug=config.app.debug,
     default_response_class=ORJSONResponse
 )
-
+api_app.add_middleware(ExceptionMiddleware)
 api_app.include_router(api.router)
 
 if config.app.cors_origins:
