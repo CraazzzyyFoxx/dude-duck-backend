@@ -26,7 +26,7 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
-class OverFastAPILogger:
+class APILogger:
     @classmethod
     def make_logger(cls):
         return cls.customize_logging(
@@ -69,14 +69,14 @@ class OverFastAPILogger:
             level=level.upper(),
             format=log_format,
         )
-        logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
-        # logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
-        # for _log in ("uvicorn", "uvicorn.error", "fastapi"):
-        #     _logger = logging.getLogger(_log)
-        #     _logger.handlers = [InterceptHandler()]
+        logging.basicConfig(handlers=[InterceptHandler()], level=0)
+        #logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
+        for _log in ("uvicorn", "fastapi"):
+            _logger = logging.getLogger(_log)
+            _logger.handlers = [InterceptHandler()]
 
         return loguru_logger
 
 
 # Instanciate generic logger for all the app
-logger = OverFastAPILogger.make_logger()
+logger = APILogger.make_logger()
