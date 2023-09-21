@@ -27,11 +27,6 @@ celery.conf.beat_schedule = {
 celery.conf.timezone = 'UTC'
 
 
-@setup_logging.connect
-def setup_logging(*args, **kwargs):
-    logging.basicConfig(handlers=[InterceptHandler()], level="INFO")
-
-
 @celery.task(allow_async=True, name="sync_data")
 def sync_data():
     loop = asyncio.get_event_loop()
