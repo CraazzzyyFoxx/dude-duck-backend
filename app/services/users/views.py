@@ -52,8 +52,8 @@ async def update_user(user_update: auth_models.UserUpdateAdmin, request: Request
     return await flows.update_user(request, user_update, user, user_manager)
 
 
-@router.patch("/{user_id}", response_model=auth_models.UserRead)
-async def update_user(user_id: PydanticObjectId, _=Depends(auth_flows.current_active_superuser)):
+@router.get("/{user_id}", response_model=auth_models.UserRead)
+async def get_user(user_id: PydanticObjectId, _=Depends(auth_flows.current_active_superuser)):
     user = await auth_flows.get_user(user_id)
     return auth_models.UserRead.model_validate(user)
 
