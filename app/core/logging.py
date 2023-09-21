@@ -1,3 +1,5 @@
+"""Custom Logger Using Loguru, inspired by Riki-1mg gist custom_logging.py"""
+
 import logging
 import sys
 from pathlib import Path
@@ -8,7 +10,7 @@ from app.core import config
 
 
 class InterceptHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
+    def emit(self, record):
         # Get corresponding Loguru level if it exists.
         try:
             level = logger.level(record.levelname).name
@@ -17,14 +19,14 @@ class InterceptHandler(logging.Handler):
 
         # Find caller from where originated the logged message.
         frame, depth = sys._getframe(6), 6
-        while frame and frame.f_code.co_filename == logging.__file__:  # type: ignore
-            frame = frame.f_back  # type: ignore
+        while frame and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
-class APILogger:
+class OverFastAPILogger:
     @classmethod
     def make_logger(cls):
         return cls.customize_logging(
@@ -42,13 +44,13 @@ class APILogger:
 
     @classmethod
     def customize_logging(
-            cls,
-            filepath: Path,
-            level: str,
-            rotation: str,
-            retention: str,
-            compression: str,
-            log_format: str,
+        cls,
+        filepath: Path,
+        level: str,
+        rotation: str,
+        retention: str,
+        compression: str,
+        log_format: str,
     ):
         loguru_logger.remove()
         loguru_logger.add(
@@ -67,10 +69,7 @@ class APILogger:
             level=level.upper(),
             format=log_format,
         )
-        logging.basicConfig(
-            handlers=[InterceptHandler()],
-            level=config.app.log_level.upper() if not config.app.debug else "DEBUG"
-        )
+        logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
         # logging.getLogger("uvicorn.access").handlers = [InterceptHandler()]
         # for _log in ("uvicorn", "uvicorn.error", "fastapi"):
         #     _logger = logging.getLogger(_log)
@@ -79,4 +78,5 @@ class APILogger:
         return loguru_logger
 
 
-logger = APILogger.make_logger()
+# Instanciate generic logger for all the app
+logger = OverFastAPILogger.make_logger()
