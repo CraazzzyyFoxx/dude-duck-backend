@@ -3,10 +3,11 @@ from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import ValidationError
 from starlette import status
-from starlette.middleware.base import (BaseHTTPMiddleware,
-                                       RequestResponseEndpoint)
+from starlette.middleware.base import BaseHTTPMiddleware,RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
+
+from app.core import config
 
 
 class ExceptionMiddleware(BaseHTTPMiddleware):
@@ -20,7 +21,8 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]}
             )
-            logger.exception("What!?")
+            if config.app.debug:
+                logger.exception("What!?")
         except ValidationError as e:
             response = ORJSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

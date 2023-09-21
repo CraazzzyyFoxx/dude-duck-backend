@@ -92,7 +92,7 @@ async def approve_response(
     responds = await service.get_by_order_id(order.id)
 
     messages_service.send_response_chose_notify(
-        await order_flows.format_order_system(order),
+        order.order_id,
         auth_models.UserRead.model_validate(user, from_attributes=True),
         len(responds)
     )

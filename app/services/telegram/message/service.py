@@ -142,7 +142,7 @@ def send_response_approve(
         response: response_models.ResponseRead
 ) -> None:
     data = build_payload(
-        message_type=models.MessageEnum.RESPONSE_ORDER_APPROVED, order_id=order.id, user=user, response=response
+        message_type=models.MessageEnum.RESPONSE_ORDER_APPROVED, order=order, user=user, response=response
     )
     asyncio.create_task(request(data))
 
@@ -151,7 +151,7 @@ def send_response_decline(
         user: auth_models.UserRead,
         order: order_schemas.OrderReadSystem
 ) -> None:
-    data = build_payload(message_type=models.MessageEnum.RESPONSE_ORDER_DECLINED, order_id=order.id, user=user)
+    data = build_payload(message_type=models.MessageEnum.RESPONSE_ORDER_DECLINED, order_id=order.order_id, user=user)
     asyncio.create_task(request(data))
 
 
@@ -221,7 +221,7 @@ def send_deleted_order_notify(
 
 
 def send_response_chose_notify(
-        order_id: PydanticObjectId,
+        order_id: str,
         user: auth_models.UserRead,
         responses: int
 ) -> None:
