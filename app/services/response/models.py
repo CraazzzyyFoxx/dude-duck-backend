@@ -47,6 +47,8 @@ class ResponseCreate(BaseModel):
 
 
 class ResponseRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     order_id: PydanticObjectId
     user_id: PydanticObjectId
 

@@ -1,7 +1,7 @@
 import datetime
 
 from beanie import PydanticObjectId
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .models import OrderCredentials, OrderInfo, OrderPaidStatus, OrderStatus
 
@@ -41,6 +41,8 @@ class OrderReadNoPerms(BaseModel):
 
 
 class OrderReadSystemBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     order_id: str
     date: datetime.datetime
 
@@ -62,10 +64,14 @@ class OrderReadSystemBase(BaseModel):
 
 
 class OrderReadSystem(OrderReadSystemBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: PydanticObjectId
 
 
 class OrderReadActive(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: PydanticObjectId
     order_id: str
     screenshot: str | None

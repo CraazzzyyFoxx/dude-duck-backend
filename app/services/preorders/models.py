@@ -1,7 +1,7 @@
 import datetime
 
 from beanie import Document, PydanticObjectId
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from pydantic_core import Url
 
 from app.services.orders import models as order_models
@@ -65,6 +65,8 @@ class PreOrder(sheets_models.SheetEntity, Document):
 
 
 class PreOrderReadSystem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: PydanticObjectId
     order_id: str
     date: datetime.datetime
@@ -74,6 +76,8 @@ class PreOrderReadSystem(BaseModel):
 
 
 class PreOrderReadUser(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: PydanticObjectId
     order_id: str
 

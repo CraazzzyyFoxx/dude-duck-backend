@@ -1,9 +1,12 @@
 import asyncio
+import logging
 
 from celery import Celery
+from celery.signals import setup_logging
 
 from app.core import config
 from app.core.config import app
+from app.core.logging import InterceptHandler
 from app.services.auth import models as auth_models
 from app.services.preorders import tasks as preorders_tasks
 from app.services.sheets import models as sheets_models
@@ -22,6 +25,11 @@ celery.conf.beat_schedule = {
     },
 }
 celery.conf.timezone = 'UTC'
+
+
+@setup_logging.connect
+def setup_logging(*args, **kwargs):
+    logging.basicConfig(handlers=[InterceptHandler()], level="INFO")
 
 
 @celery.task(allow_async=True, name="sync_data")

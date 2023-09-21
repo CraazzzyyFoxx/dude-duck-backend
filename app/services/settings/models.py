@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from beanie import Document
-from pydantic import BaseModel, Field, constr
+from pydantic import BaseModel, Field, constr, ConfigDict
 
 
 class ApiLayerCurrencyToken(BaseModel):
@@ -42,6 +42,8 @@ class Settings(Document):
 
 
 class SettingsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     api_layer_currency: list[ApiLayerCurrencyToken]
     currencies: list[AvailableCurrency]
     preorder_time_alive: int
