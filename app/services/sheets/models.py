@@ -1,8 +1,9 @@
 import typing
 
-from beanie import Document, Indexed, PydanticObjectId
+from beanie import Indexed, PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.db import TimeStampMixin
 from app.services.orders import models as order_models
 from app.services.orders import schemas as order_schemas
 
@@ -48,7 +49,7 @@ class OrderSheetParseItem(BaseModel):
         return v
 
 
-class OrderSheetParse(Document):
+class OrderSheetParse(TimeStampMixin):
     spreadsheet: Indexed(str)
     sheet_id: int
     start: int = Field(default=2, gt=1)
@@ -59,6 +60,7 @@ class OrderSheetParse(Document):
     class Settings:
         use_state_management = True
         state_management_save_previous = True
+        validate_on_save = True
 
 
 class OrderSheetParseRead(BaseModel):

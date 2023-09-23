@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
 
-from beanie import Document
 from pydantic import BaseModel, field_validator
 from pymongo import IndexModel
 
+from app.core.db import TimeStampMixin
 
-class Currency(Document):
+
+class Currency(TimeStampMixin):
     date: datetime
     timestamp: int
 
@@ -13,6 +14,7 @@ class Currency(Document):
 
     class Settings:
         use_cache = True
+        validate_on_save = True
         cache_expiration_time = timedelta(days=1)
         cache_capacity = 100
 

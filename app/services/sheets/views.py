@@ -1,6 +1,5 @@
 import datetime
 
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from lxml.builder import ElementMaker
 from lxml.etree import tostring
@@ -64,7 +63,7 @@ async def update_order_from_sheets(
 
 @router.patch("/orders/{order_id}", response_model=list[accounting_models.UserOrderRead])
 async def patch_boosters(
-    order_id: PydanticObjectId | str,
+    order_id: str,
     model: accounting_models.SheetUserOrderCreate,
     by_sheets: bool = False,
     _=Depends(auth_flows.current_active_superuser_api),
@@ -72,7 +71,7 @@ async def patch_boosters(
     if by_sheets:
         order = await orders_flows.get_by_order_id(order_id)
     else:
-        order = await orders_flows.get(order_id)
+        order = await orders_flows.get(order_id)  # type: ignore
     data = await accounting_flows.update_boosters_percent(order, model)
     return data
 

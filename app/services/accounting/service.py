@@ -117,7 +117,7 @@ async def update_booster_price(old: order_models.Order, new: order_models.Order)
 def boosters_from_str(string: str) -> dict[str, int | None]:
     if string is None:
         return {}
-    resp = {}
+    resp: dict[str, int | None] = {}
     boosters = BOOSTER_WITH_PRICE_REGEX.findall(string.lower())
     if len(boosters) > 0:
         for booster in boosters:

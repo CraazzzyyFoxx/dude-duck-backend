@@ -1,21 +1,13 @@
 import datetime
 
-from beanie import Document, PydanticObjectId
-from pydantic import (BaseModel, ConfigDict, Field, HttpUrl, constr,
-                      field_validator, model_validator)
+from beanie import PydanticObjectId
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, constr, field_validator, model_validator
 from pymongo import IndexModel
 
-__all__ = (
-    "UserOrder",
-    "UserOrderCreate",
-    "UserOrderUpdate",
-    "UserAccountReport",
-    "SheetUserOrderCreate",
-    "AccountingBooster",
-)
+from app.core.db import TimeStampMixin
 
 
-class UserOrder(Document, BaseModel):
+class UserOrder(TimeStampMixin):
     order_id: PydanticObjectId
     user_id: PydanticObjectId
     dollars: float
@@ -34,6 +26,7 @@ class UserOrder(Document, BaseModel):
         ]
         use_state_management = True
         state_management_save_previous = True
+        validate_on_save = True
 
 
 class UserOrderCreate(BaseModel):

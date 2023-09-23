@@ -3,8 +3,7 @@ from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import ValidationError
 from starlette import status
-from starlette.middleware.base import (BaseHTTPMiddleware,
-                                       RequestResponseEndpoint)
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -16,21 +15,21 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
         except RequestValidationError as e:
-            response = ORJSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]},
-            )
             if config.app.debug:
                 logger.exception("What!?")
-        except ValidationError as e:
             response = ORJSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]},
             )
+        except ValidationError as e:
             logger.exception("What!?")
+            response = ORJSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]},
+            )
         except HTTPException as e:
-            response = ORJSONResponse({"detail": e.detail}, status_code=e.status_code)
             logger.exception("What!?")
+            response = ORJSONResponse({"detail": e.detail}, status_code=e.status_code)
         except Exception:
             logger.exception("What!?")
             response = ORJSONResponse(

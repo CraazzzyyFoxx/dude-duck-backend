@@ -25,8 +25,9 @@ class AppConfig(BaseSettings):
     sentry_dsn: str | None = None
 
     # Telegram Bot
-    frontend_token: str
-    frontend_url: str
+    telegram_token: str
+    telegram_url: str
+    telegram_integration: bool
 
     # MongoDB
     mongo_dsn: str
@@ -35,6 +36,8 @@ class AppConfig(BaseSettings):
     secret: str
     algorithm: str = "HS256"
     expires_s: int = 3600
+    verification_token_audience: str = "dude_duck:verify"
+    reset_password_token_audience: str = "dude_duck:reset"
 
     # super user
     super_user_username: str

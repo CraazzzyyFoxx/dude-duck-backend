@@ -150,22 +150,14 @@ async def update_boosters_percent(
             await service.delete(x.id)
 
     for _id, percent in users:
-        if _id not in boosters_map.keys():
-            if add:
-                await service.create(
-                    models.UserOrderCreate(
-                        order_id=order.id,
-                        user_id=_id,
-                        dollars=order.price.price_booster_dollar_fee * percent,
-                        order_date=order.date
-                    )
-                )
-        else:
-            if not boosters_map[_id].paid:
-                await service.update(
-                    boosters_map[_id],
-                    models.UserOrderUpdate(dollars=order.price.price_booster_dollar_fee * percent),
-                )
+        dollars = (
+            await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True) * percent
+        )
+        if _id not in boosters_map.keys() and add:
+            created = models.UserOrderCreate(order_id=order.id, user_id=_id, dollars=dollars, order_date=order.date)
+            await service.create(created)
+        elif not boosters_map[_id].paid:
+            await service.update(boosters_map[_id], models.UserOrderUpdate(dollars=dollars))
 
     boosters = await service.get_by_order_id(order.id)
     return boosters
@@ -194,16 +186,14 @@ async def remove_booster(order: order_models.Order, user: auth_models.User) -> m
 
 async def create_user_report(user: auth_models.User) -> models.UserAccountReport:
     payments = await service.get_by_user_id(user.id)
-    total, total_rub, paid, paid_rub, not_paid, not_paid_rub, not_paid_orders, paid_orders = (
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-    )
+    total: float = 0.0
+    total_rub: float = 0.0
+    paid: float = 0.0
+    paid_rub: float = 0.0
+    not_paid: float = 0.0
+    not_paid_rub: float = 0.0
+    not_paid_orders: int = 0
+    paid_orders: int = 0
 
     for payment in payments:
         rub = await currency_flows.usd_to_currency(payment.dollars, payment.order_date, "RUB", with_round=True)
@@ -254,14 +244,14 @@ async def create_report(
 
         orders_map: dict[PydanticObjectId, order_models.Order] = {order.id: order for order in orders}
         payments = await service.get_by_orders(list(orders_map.keys()))
-        user_ids = set([payment.user_id for payment in payments])
+        user_ids = [payment.user_id for payment in payments]
         users = await auth_service.get_by_ids(user_ids)
         users_map: dict[PydanticObjectId, auth_models.User] = {user.id: user for user in users}
     else:
-        user = await auth_flows.get_booster_by_name(username)
-        payments = await service.get_by_user_id(user.id)
+        chosen_user = await auth_flows.get_booster_by_name(username)
+        payments = await service.get_by_user_id(chosen_user.id)
         orders_id = [payment.order_id for payment in payments]
-        users_map = {user.id: user}
+        users_map = {chosen_user.id: chosen_user}
         if sheet_id is not None:
             query = {
                 "spreadsheet": spreadsheet,
@@ -277,38 +267,38 @@ async def create_report(
     for payment in payments:
         order = orders_map.get(payment.order_id)
         user = users_map.get(payment.user_id)
+        if order is not None and user is not None:
+            if user.binance_id:
+                payment_str = str(user.binance_id)
+                bank = "Binance ID"
+            elif user.binance_email:
+                payment_str = user.binance_email
+                bank = "Binance Email"
+            elif user.phone:
+                payment_str = user.phone
+                bank = user.bank
+            elif user.bankcard:
+                payment_str = user.phone
+                bank = user.bank
+            else:
+                payment_str = "Хуй знает"
+                bank = "Хуй знает"
 
-        if user.binance_id:
-            payment_str = str(user.binance_id)
-            bank = "Binance ID"
-        elif user.binance_email:
-            payment_str = user.binance_email
-            bank = "Binance Email"
-        elif user.phone:
-            payment_str = user.phone
-            bank = user.bank
-        elif user.bankcard:
-            payment_str = user.phone
-            bank = user.bank
-        else:
-            payment_str = "Хуй знает"
-            bank = "Хуй знает"
-
-        rub = await currency_flows.usd_to_currency(payment.dollars, order.date, currency="RUB")
-        item = schemas.AccountingReportItem(
-            order_id=order.order_id,
-            date=order.date,
-            username=user.name,
-            dollars=order.price.price_dollar,
-            rub=rub,
-            dollars_fee=payment.dollars,
-            end_date=order.end_date,
-            payment=payment_str,
-            bank=bank,
-            status=order.status,
-            payment_id=payment.id,
-        )
-        items.append(item)
+            rub = await currency_flows.usd_to_currency(payment.dollars, order.date, currency="RUB")
+            item = schemas.AccountingReportItem(
+                order_id=order.order_id,
+                date=order.date,
+                username=user.name,
+                dollars=order.price.price_dollar,
+                rub=rub,
+                dollars_fee=payment.dollars,
+                end_date=order.end_date,
+                payment=payment_str,
+                bank=bank,
+                status=order.status,
+                payment_id=payment.id,
+            )
+            items.append(item)
 
     if first_sort.ORDER:
         items = sorted(items, key=lambda x: (x.order_id[0], int(x.order_id[1:])))
@@ -319,10 +309,13 @@ async def create_report(
     else:
         items = sorted(items, key=lambda x: x.username)
     total = await order_models.Order.find(query).sum(order_models.Order.price.price_dollar)  # type: ignore
+    earned = await order_models.Order.find(query).sum(order_models.Order.price.price_booster_dollar)  # type: ignore
+    if earned is None:
+        earned = 0.0
     return schemas.AccountingReport(
         total=total,
         orders=await order_models.Order.find(query).count(),
-        earned=total - await order_models.Order.find(query).sum(order_models.Order.price.price_booster_dollar),
+        earned=total - earned,
         items=items,
     )
 
@@ -330,8 +323,8 @@ async def create_report(
 async def close_order(user: auth_models.User, order: order_service.models.Order, data: models.CloseOrderForm):
     f = False
     for price in await service.get_by_order_id(order.id):
-        if price.user_id == user.id:
-            f = True
+        if f := price.user_id == user.id:
+            break
     if not f:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -363,10 +356,11 @@ async def paid_order(payment_id: PydanticObjectId) -> models.UserOrder:
     if all([booster.paid for booster in boosters]):
         parser = await sheets_service.get_by_spreadsheet_sheet(order.spreadsheet, order.sheet_id)
         user = await auth_service.get_first_superuser()
-        tasks_service.update_order.delay(
-            user.google.model_dump_json(),
-            parser.model_dump_json(),
-            order.row_id,
-            order_models.OrderUpdate(status_paid=order_models.OrderPaidStatus.Paid).model_dump(),
-        )
+        if user.google is not None and parser is not None:
+            tasks_service.update_order.delay(
+                user.google.model_dump_json(),
+                parser.model_dump_json(),
+                order.row_id,
+                order_models.OrderUpdate(status_paid=order_models.OrderPaidStatus.Paid).model_dump(),
+            )
     return data

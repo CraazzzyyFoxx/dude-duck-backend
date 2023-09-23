@@ -8,8 +8,7 @@ from beanie import PydanticObjectId
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
-                      create_model, field_validator)
+from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -76,19 +75,19 @@ async def get(parser_id: PydanticObjectId) -> models.OrderSheetParse | None:
     return await models.OrderSheetParse.find_one({"_id": parser_id})
 
 
-async def create(parser_in: models.OrderSheetParseCreate):
+async def create(parser_in: models.OrderSheetParseCreate) -> models.OrderSheetParse:
     parser = models.OrderSheetParse(**parser_in.model_dump())
     return await parser.create()
 
 
-async def delete(parser_id: PydanticObjectId):
+async def delete(parser_id: PydanticObjectId) -> None:
     user_order = await models.OrderSheetParse.get(parser_id)
     await user_order.delete()
     if _CACHE.get(parser_id, None):
         _CACHE.pop(parser_id)
 
 
-async def get_by_spreadsheet(spreadsheet: str):
+async def get_by_spreadsheet(spreadsheet: str) -> list[models.OrderSheetParse]:
     return await models.OrderSheetParse.find({"spreadsheet": spreadsheet}).to_list()
 
 
@@ -108,7 +107,7 @@ async def get_all() -> list[models.OrderSheetParse]:
     return await models.OrderSheetParse.find({}).to_list()
 
 
-async def update(parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate):
+async def update(parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate) -> models.OrderSheetParse:
     parser_data = parser.model_dump()
     update_data = parser_in.model_dump(exclude_none=True)
 
@@ -122,12 +121,12 @@ async def update(parser: models.OrderSheetParse, parser_in: models.OrderSheetPar
     return parser
 
 
-def n2a(n: int):
+def n2a(n: int) -> str:
     d, m = divmod(n, 26)  # 26 is the number of ASCII letters
     return "" if n < 0 else n2a(d - 1) + chr(m + 65)  # chr(65) = 'A'
 
 
-def get_range(parser: models.OrderSheetParseRead, *, row_id: int | None = None, end_id: int = 0):
+def get_range(parser: models.OrderSheetParseRead, *, row_id: int | None = None, end_id: int = 0) -> str:
     columns = 0
     start = 100000000000000
     for p in parser.items:
@@ -170,7 +169,7 @@ def parse_row(
     row: list[typing.Any],
     *,
     is_raise: bool = True,
-) -> BM | None:
+) -> BaseModel | None:
     for _ in range(len(parser.items) - len(row)):
         row.append(None)
 
@@ -246,9 +245,9 @@ def parse_all_data(
     sheet_id: int,
     rows_in: list[list[typing.Any]],
     parser_in: models.OrderSheetParseRead,
-) -> list[BM]:
+) -> list[BaseModel]:
     t = time.time()
-    resp: list[BM] = []
+    resp: list[BaseModel] = []
     for row_id, row in enumerate(rows_in, parser_in.start):
         data = parse_row(parser_in, model, row_id, row, is_raise=False)
         if data:
@@ -261,7 +260,7 @@ def get_all_data(
     creds: auth_models.AdminGoogleToken,
     model: typing.Type[models.SheetEntity],
     parser: models.OrderSheetParseRead,
-) -> list[BM]:
+) -> list[BaseModel]:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -323,7 +322,7 @@ def get_row_data(
     row_id: int,
     *,
     is_raise=True,
-) -> BM:
+) -> BaseModel:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -355,7 +354,7 @@ def create_row_data(
     creds: auth_models.AdminGoogleToken,
     parser: models.OrderSheetParseRead,
     data: dict,
-) -> BM:
+) -> BaseModel:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -376,7 +375,7 @@ def find_by(
     creds: auth_models.AdminGoogleToken,
     parser: models.OrderSheetParseRead,
     value,
-) -> models.SheetEntity:
+) -> BaseModel:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)

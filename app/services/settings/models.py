@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from beanie import Document
 from pydantic import BaseModel, ConfigDict, Field, constr
+
+from app.core.db import TimeStampMixin
 
 
 class ApiLayerCurrencyToken(BaseModel):
@@ -22,7 +23,7 @@ default_currencies = [
 ]
 
 
-class Settings(Document):
+class Settings(TimeStampMixin):
     api_layer_currency: list[ApiLayerCurrencyToken] = Field(default=[])
     currencies: list[AvailableCurrency] = Field(default=default_currencies)
     preorder_time_alive: int = 60
@@ -33,6 +34,7 @@ class Settings(Document):
     class Settings:
         use_state_management = True
         state_management_save_previous = True
+        validate_on_save = True
 
     def get_precision(self, currency: str) -> int:
         for cur in self.currencies:

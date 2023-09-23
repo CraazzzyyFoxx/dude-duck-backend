@@ -1,21 +1,11 @@
 import datetime
 from enum import Enum
 
-from beanie import Document
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import Url
 from pymongo import IndexModel
 
-__all__ = (
-    "Order",
-    "OrderPrice",
-    "OrderInfo",
-    "OrderCredentials",
-    "OrderUpdate",
-    "OrderCreate",
-    "OrderStatus",
-    "OrderPaidStatus",
-)
+from app.core.db import TimeStampMixin
 
 
 class OrderStatus(Enum):
@@ -27,12 +17,6 @@ class OrderStatus(Enum):
 class OrderPaidStatus(Enum):
     Paid = "Paid"
     NotPaid = "Not Paid"
-
-
-class SheetEntity(BaseModel):
-    spreadsheet: str
-    sheet_id: int
-    row_id: int
 
 
 class OrderInfo(BaseModel):
@@ -62,9 +46,12 @@ class OrderCredentials(BaseModel):
     discord: str | None = None
 
 
-class OrderCreate(SheetEntity, BaseModel):
+class OrderCreate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     order_id: str
+    spreadsheet: str
+    sheet_id: int
+    row_id: int
 
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     shop: str | None = None
@@ -102,9 +89,11 @@ class OrderUpdate(BaseModel):
     end_date: datetime.datetime | None = None
 
 
-class Order(SheetEntity, Document):
-    model_config = ConfigDict(from_attributes=True)
+class Order(TimeStampMixin):
     order_id: str
+    spreadsheet: str
+    sheet_id: int
+    row_id: int
 
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     shop: str | None = None
@@ -126,6 +115,7 @@ class Order(SheetEntity, Document):
     class Settings:
         use_state_management = True
         state_management_save_previous = True
+        validate_on_save = True
         bson_encoders = {
             Url: lambda x: str(x),
         }

@@ -58,10 +58,15 @@ async def get_order_from_sheets(data: models.SheetEntity, user: auth_models.User
         )
     parser = await get_by_spreadsheet_sheet(data.spreadsheet, data.sheet_id)
     try:
-        model = service.get_row_data(orders_models.Order, user.google, parser, data.row_id)
+        model = service.get_row_data(
+            models.OrderReadSheets,
+            user.google,
+            models.OrderSheetParseRead.model_validate(parser, from_attributes=True),
+            data.row_id,
+        )
     except ValidationError as error:
         e = errors.GoogleSheetsParserError.http_exception(
             orders_models.Order, data.spreadsheet, data.sheet_id, data.row_id, error
         )
-        raise e
+        raise e from None
     return model

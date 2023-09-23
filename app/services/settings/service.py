@@ -8,7 +8,7 @@ CACHE: dict[int, models.Settings] = {}
 async def get() -> models.Settings:
     if CACHE.get(0):
         return CACHE[0]
-    settings = await models.Settings.find_one({})
+    settings: models.Settings = await models.Settings.find_one({})
     CACHE[0] = settings  # type: ignore
     return settings
 

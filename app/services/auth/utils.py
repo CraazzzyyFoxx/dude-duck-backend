@@ -1,83 +1,47 @@
-from fastapi import Depends
-from fastapi.security import HTTPBearer
-from fastapi.security.utils import get_authorization_scheme_param
-from fastapi_users.authentication import AuthenticationBackend, BearerTransport
-from fastapi_users.authentication.strategy import DatabaseStrategy
-from fastapi_users_db_beanie.access_token import BeanieAccessTokenDatabase
-from starlette.requests import Request
+import typing
+from datetime import datetime, timedelta
 
-from app.services.auth import models
+import jwt
+from passlib import pwd
+from passlib.context import CryptContext
 
+from app.core import config
 
-class DatabaseStrategyAPI(DatabaseStrategy):
-    async def write_token(self, user: models.User) -> str:
-        token = await models.AccessTokenAPI.find_one(models.AccessTokenAPI.user_id == user.id)
-        if token:
-            await token.delete()
-        access_token_dict = self._create_access_token_dict(user)
-        access_token = await self.database.create(access_token_dict)
-        return access_token.token
+password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-class HTTPBearerAPI(HTTPBearer):
-    async def __call__(self, request: Request) -> str | None:
-        authorization = request.headers.get("Authorization")
-        scheme, credentials = get_authorization_scheme_param(authorization)
-        if not (authorization and scheme and credentials):
-            return None
-        if scheme.lower() != "bearer":
-            return None
-        return credentials
+def generate_jwt(
+    data: dict,
+    secret: str,
+    lifetime_seconds: int | None = None,
+) -> str:
+    payload = data.copy()
+    if lifetime_seconds:
+        expire = datetime.utcnow() + timedelta(seconds=lifetime_seconds)
+        payload["exp"] = expire
+    return jwt.encode(payload, secret, algorithm=config.app.algorithm)
 
 
-class BearerTransportAPI(BearerTransport):
-    scheme: HTTPBearerAPI
-
-    def __init__(self, tokenUrl: str = "unknown"):
-        super().__init__(tokenUrl)
-        self.scheme = HTTPBearerAPI(bearerFormat="Bearer", auto_error=False)
-
-
-bearer_transport = BearerTransport(tokenUrl="auth/login")
-bearer_transport_api = BearerTransportAPI()
-
-
-async def get_access_token_db():
-    yield BeanieAccessTokenDatabase(models.AccessToken)
+def decode_jwt(
+    encoded_jwt: str,
+    secret: str,
+    audience: list[str],
+) -> dict[str, typing.Any]:
+    return jwt.decode(
+        encoded_jwt,
+        secret,
+        audience=audience,
+        lgorithms=[config.app.algorithm],
+    )
 
 
-async def get_access_token_db_api():
-    yield BeanieAccessTokenDatabase(models.AccessTokenAPI)
+def verify_and_update_password(plain_password: str, hashed_password: str) -> tuple[bool, str]:
+    return password_context.verify_and_update(plain_password, hashed_password)
 
 
-def get_database_strategy(
-    access_token_db: BeanieAccessTokenDatabase = Depends(get_access_token_db),
-) -> DatabaseStrategy:
-    return DatabaseStrategy(access_token_db, lifetime_seconds=3600 * 24)
+def hash_password(password: str) -> str:
+    return password_context.hash(password)
 
 
-def get_database_strategy_api(
-    access_token_db: BeanieAccessTokenDatabase = Depends(get_access_token_db_api),
-) -> DatabaseStrategy:
-    return DatabaseStrategyAPI(access_token_db)
-
-
-auth_backend_api = AuthenticationBackend(
-    name="api_db",
-    transport=bearer_transport_api,
-    get_strategy=get_database_strategy_api,
-)
-
-auth_backend_db = AuthenticationBackend(
-    name="db",
-    transport=bearer_transport,
-    get_strategy=get_database_strategy,
-)
-
-
-async def get_enabled_backends(_: Request):
-    return [auth_backend_db]
-
-
-async def get_enabled_backends_api(_: Request):
-    return [auth_backend_api]
+def generate_password() -> str:
+    return pwd.genword()

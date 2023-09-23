@@ -1,15 +1,13 @@
 from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from starlette import status
-from starlette.requests import Request
 
 from app.core.enums import RouteTag
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import models as accounting_models
 from app.services.auth import flows as auth_flows
-from app.services.auth import manager as auth_manager
 from app.services.auth import models as auth_models
-from app.services.auth import utils as auth_utils
+from app.services.auth import service as auth_service
 from app.services.orders import flows as orders_flows
 from app.services.orders import models as orders_models
 from app.services.orders import schemas as orders_schemas
@@ -28,7 +26,7 @@ async def get_users(
     sorting: search_models.SortingParams = Depends(),
     _: auth_flows.models.User = Depends(auth_flows.current_active_superuser),
 ):
-    return await search_service.paginate(auth_models.User.find({}), paging, sorting)
+    return await search_service.paginate(auth_models.User.all(), paging, sorting)
 
 
 @router.get("/@me", response_model=auth_models.UserRead)
@@ -37,25 +35,18 @@ async def get_me(user=Depends(auth_flows.current_active_verified)):
 
 
 @router.patch("/@me", response_model=auth_models.UserRead)
-async def update_me(
-    user_update: auth_models.UserUpdate,
-    request: Request,
-    user=Depends(auth_flows.current_active_verified),
-    user_manager: auth_manager.UserManager = Depends(auth_flows.get_user_manager),
-):
-    return await flows.update_user(request, user_update, user, user_manager)
+async def update_me(user_update: auth_models.UserUpdate, user=Depends(auth_flows.current_active_verified)):
+    return await flows.update_user(user_update, user)
 
 
 @router.patch("/{user_id}", response_model=auth_models.UserRead)
 async def update_user(
     user_update: auth_models.UserUpdateAdmin,
-    request: Request,
     user_id: PydanticObjectId,
     _=Depends(auth_flows.current_active_superuser),
-    user_manager: auth_manager.UserManager = Depends(auth_flows.get_user_manager),
 ):
     user = await auth_flows.get_user(user_id)
-    return await flows.update_user(request, user_update, user, user_manager)
+    return await flows.update_user(user_update, user)
 
 
 @router.get("/{user_id}", response_model=auth_models.UserRead)
@@ -67,9 +58,9 @@ async def get_user(user_id: PydanticObjectId, _=Depends(auth_flows.current_activ
 @router.post("/@me/google-token", status_code=201, response_model=auth_models.AdminGoogleToken)
 async def add_google_token(file: UploadFile, user=Depends(auth_flows.current_active_superuser)):
     token = auth_models.AdminGoogleToken.model_validate_json(await file.read())
-    user.google = token
-    await user.save_changes()
-    return user.google
+    await auth_service.update(user, auth_models.UserUpdateAdmin(google=token))
+    await user.save()
+    return token.model_dump()
 
 
 @router.get("/@me/google-token", response_model=auth_models.AdminGoogleToken)
@@ -83,11 +74,8 @@ async def read_google_token(user=Depends(auth_flows.current_active_superuser)):
 
 
 @router.post("/@me/generate-api-token")
-async def generate_api_token(
-    user=Depends(auth_flows.current_active_superuser),
-    strategy=Depends(auth_utils.auth_backend_api.get_strategy),
-):
-    response = await auth_utils.auth_backend_api.login(strategy, user)
+async def generate_api_token(user=Depends(auth_flows.current_active_superuser)):
+    response = await auth_service.write_token_api(user)
     return response
 
 

@@ -1,13 +1,12 @@
 import datetime
 
-from beanie import Document, PydanticObjectId
+from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import Url
 
+from app.core.db import TimeStampMixin
 from app.services.orders import models as order_models
 from app.services.sheets import models as sheets_models
-
-__all__ = ("PreOrder", "PreOrderUpdate", "PreOrderCreate", "PreOrderPriceUser")
 
 
 class PreOrderPriceUser(BaseModel):
@@ -39,7 +38,7 @@ class PreOrderUpdate(BaseModel):
     has_response: bool | None = None
 
 
-class PreOrder(sheets_models.SheetEntity, Document):
+class PreOrder(sheets_models.SheetEntity, TimeStampMixin):
     order_id: str
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
 
@@ -51,6 +50,7 @@ class PreOrder(sheets_models.SheetEntity, Document):
 
     class Settings:
         use_state_management = True
+        validate_on_save = True
         bson_encoders = {
             Url: lambda x: str(x),
         }

@@ -77,8 +77,8 @@ async def sync_data_from(
     created = len(insert_data)
     if created > 0:
         ids = await order_service.bulk_create(insert_data)
-        for order_id, order in zip(ids, orders.values(), strict=True):
-            await boosters_from_order_sync(order_id, order, users)
+        for order_id_db, order in zip(ids, orders.values(), strict=True):
+            await boosters_from_order_sync(order_id_db, order, users)
 
     logging.info(
         f"Syncing data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "

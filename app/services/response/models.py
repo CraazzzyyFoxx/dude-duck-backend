@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 
-from beanie import Document, PydanticObjectId
+from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
-__all__ = ("ResponseExtra", "Response", "ResponseUpdate", "ResponseCreate", "ResponseRead")
+from app.core.db import TimeStampMixin
 
 
 class ResponseExtra(BaseModel):
@@ -14,7 +14,7 @@ class ResponseExtra(BaseModel):
     eta: timedelta | None = None
 
 
-class Response(Document):
+class Response(TimeStampMixin):
     order_id: PydanticObjectId
     user_id: PydanticObjectId
 
@@ -32,6 +32,7 @@ class Response(Document):
         ]
         use_state_management = True
         state_management_save_previous = True
+        validate_on_save = True
 
 
 class ResponseCreate(BaseModel):

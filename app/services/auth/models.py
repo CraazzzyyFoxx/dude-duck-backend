@@ -3,11 +3,7 @@ import enum
 import re
 
 from beanie import PydanticObjectId
-from fastapi_users import schemas
-from fastapi_users_db_beanie import BeanieBaseUserDocument
-from fastapi_users_db_beanie.access_token import BeanieBaseAccessTokenDocument
-from pydantic import (BaseModel, EmailStr, Field, HttpUrl, constr,
-                      field_validator, model_validator)
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
 from pydantic_core import Url
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -15,18 +11,8 @@ from pymongo import IndexModel
 from pymongo.collation import Collation
 
 from app.core import config
+from app.core.db import TimeStampMixin
 from app.services.sheets.models import SheetEntity
-
-__all__ = (
-    "UserRead",
-    "UserCreate",
-    "UserUpdate",
-    "AdminGoogleToken",
-    "UserReadSheets",
-    "User",
-    "AccessToken",
-    "AccessTokenAPI",
-)
 
 
 class UserLanguage(str, enum.Enum):
@@ -48,7 +34,15 @@ class AdminGoogleToken(BaseModel):
     universe_domain: str
 
 
-class UserRead(schemas.BaseUser[PydanticObjectId]):
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: PydanticObjectId
+    email: EmailStr
+    is_active: bool = True
+    is_superuser: bool = False
+    is_verified: bool = False
+
     name: str
     telegram: str
     phone: PhoneNumber | None
@@ -63,7 +57,11 @@ class UserRead(schemas.BaseUser[PydanticObjectId]):
     created_at: datetime.datetime
 
 
-class UserReadSheets(schemas.BaseUser[PydanticObjectId], SheetEntity):
+class UserReadSheets(SheetEntity):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: PydanticObjectId
+    email: EmailStr
     name: str
     telegram: str
     phone: PhoneNumber | None
@@ -74,9 +72,13 @@ class UserReadSheets(schemas.BaseUser[PydanticObjectId], SheetEntity):
     discord: str | None
 
 
-class UserCreate(schemas.BaseUserCreate):
+class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=6)
+    password: str
+    is_active: bool | None = True
+    is_superuser: bool | None = False
+    is_verified: bool | None = False
+
     name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
     telegram: str
     discord: str
@@ -102,17 +104,26 @@ class UserCreate(schemas.BaseUserCreate):
         return v
 
 
-class UserUpdate(schemas.BaseUserUpdate):
+class BaseUserUpdate(BaseModel):
+    password: str | None = None
+    email: EmailStr | None = None
+    is_active: bool | None = None
+    is_superuser: bool | None = None
+    is_verified: bool | None = None
+
+
+class UserUpdate(BaseUserUpdate):
     language: UserLanguage | None = None
 
 
-class UserUpdateAdmin(schemas.BaseUserUpdate):
+class UserUpdateAdmin(BaseUserUpdate):
     phone: PhoneNumber | None = None
     bank: str | None = None
     bankcard: PaymentCardNumber | None = None
     binance_email: EmailStr | None = None
     binance_id: int | None = None
-    max_orders: int
+    max_orders: int | None = None
+    google: AdminGoogleToken | None = None
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "UserUpdateAdmin":
@@ -122,16 +133,31 @@ class UserUpdateAdmin(schemas.BaseUserUpdate):
         return self
 
 
-class AccessToken(BeanieBaseAccessTokenDocument):
-    pass
+class AccessToken(TimeStampMixin):
+    token: str
+    user_id: PydanticObjectId
+
+    class Settings:
+        indexes = [IndexModel("token", unique=True)]
+        validate_on_save = True
 
 
-class AccessTokenAPI(BeanieBaseAccessTokenDocument):
+class AccessTokenAPI(TimeStampMixin):
+    token: str
+    user_id: PydanticObjectId
+
     class Settings:
         indexes = [IndexModel("user_id", unique=True)]
+        validate_on_save = True
 
 
-class User(BeanieBaseUserDocument):
+class User(TimeStampMixin):
+    email: str
+    hashed_password: str
+    is_active: bool = True
+    is_superuser: bool = False
+    is_verified: bool = False
+
     name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
     telegram: str
     phone: PhoneNumber | None = None
@@ -161,3 +187,4 @@ class User(BeanieBaseUserDocument):
         }
         use_state_management = True
         state_management_save_previous = True
+        validate_on_save = True
