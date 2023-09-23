@@ -97,12 +97,9 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
         if field in update_data:
             setattr(user, field, update_data[field])
 
-    await user.save_changes()
-
     if user_in.password:
         user.hashed_password = utils.hash_password(user_in.password)
-    user = user.update_from_dict(update_data)
-    await user.save()
+    await user.save_changes()
     parser = await sheets_service.get_default_booster()
     creds = await get_first_superuser()
     if creds.google is not None:
