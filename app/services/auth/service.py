@@ -106,7 +106,7 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
         tasks_service.create_or_update_booster.delay(
             creds.google.model_dump_json(),
             sheets_models.OrderSheetParseRead.model_validate(parser, from_attributes=True).model_dump_json(),
-            user.id,
+            str(user.id),
             models.UserRead.model_validate(user).model_dump(),
         )
     return user
@@ -119,7 +119,7 @@ async def delete(user: models.User) -> None:
     tasks_service.delete_booster.delay(
         creds.google.model_dump_json(),
         sheets_models.OrderSheetParseRead.model_validate(parser, from_attributes=True).model_dump_json(),
-        user.id,
+        str(user.id),
     )
 
 
