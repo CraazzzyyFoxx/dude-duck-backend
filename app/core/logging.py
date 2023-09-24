@@ -1,5 +1,3 @@
-"""Custom Logger Using Loguru, inspired by Riki-1mg gist custom_logging.py"""
-
 import logging
 import sys
 from pathlib import Path
@@ -55,6 +53,7 @@ class APILogger:
         loguru_logger.remove()
         loguru_logger.add(
             sys.stdout,
+            enqueue=True,
             backtrace=True,
             level=level.upper(),
             format=log_format,
@@ -77,5 +76,4 @@ class APILogger:
         return loguru_logger
 
 
-# Instanciate generic logger for all the app
 logger = APILogger.make_logger()

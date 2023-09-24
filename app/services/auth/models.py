@@ -2,8 +2,9 @@ import datetime
 import enum
 import re
 
-from beanie import PydanticObjectId
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
+from beanie import Link, PydanticObjectId
+from pydantic import (BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr,
+                      field_validator, model_validator)
 from pydantic_core import Url
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -133,24 +134,6 @@ class UserUpdateAdmin(BaseUserUpdate):
         return self
 
 
-class AccessToken(TimeStampMixin):
-    token: str
-    user_id: PydanticObjectId
-
-    class Settings:
-        indexes = [IndexModel("token", unique=True)]
-        validate_on_save = True
-
-
-class AccessTokenAPI(TimeStampMixin):
-    token: str
-    user_id: PydanticObjectId
-
-    class Settings:
-        indexes = [IndexModel("user_id", unique=True)]
-        validate_on_save = True
-
-
 class User(TimeStampMixin):
     email: str
     hashed_password: str
@@ -174,6 +157,7 @@ class User(TimeStampMixin):
     created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
 
     class Settings:
+        name = "user"
         email_collation = Collation("en", strength=2)
         indexes = [
             IndexModel("email", unique=True),
@@ -187,4 +171,24 @@ class User(TimeStampMixin):
         }
         use_state_management = True
         state_management_save_previous = True
+        validate_on_save = True
+
+
+class AccessToken(TimeStampMixin):
+    token: str
+    user_id: Link[User]
+
+    class Settings:
+        name = "access_token"
+        indexes = [IndexModel("token", unique=True)]
+        validate_on_save = True
+
+
+class AccessTokenAPI(TimeStampMixin):
+    token: str
+    user_id: Link[User]
+
+    class Settings:
+        name = "access_token_api"
+        indexes = [IndexModel("user_id", unique=True)]
         validate_on_save = True

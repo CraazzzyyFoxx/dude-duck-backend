@@ -65,7 +65,7 @@ async def get_all_from_datetime_range_by_sheet(
 
 async def update_with_sync(order: models.Order, order_in: models.OrderUpdate) -> models.Order:
     order = await update(order, order_in)
-    parser = await sheets_flows.service.get_by_spreadsheet_sheet(order.spreadsheet, order.sheet_id)
+    parser = await sheets_flows.service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
     user = await auth_service.get_first_superuser()
     tasks_service.update_order.delay(
         user.google.model_dump_json(), parser.model_dump_json(), order.row_id, order_in.model_dump()
@@ -110,5 +110,7 @@ async def create(order_in: models.OrderCreate) -> models.Order:
 
 
 async def bulk_create(orders_in: list[models.OrderCreate]) -> list[PydanticObjectId]:
-    data = await models.Order.insert_many([models.Order.model_validate(order_in) for order_in in orders_in])
+    data = await models.Order.insert_many(
+        [models.Order.model_validate(order_in, from_attributes=True) for order_in in orders_in]
+    )
     return data.inserted_ids

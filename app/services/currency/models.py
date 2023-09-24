@@ -13,6 +13,7 @@ class Currency(TimeStampMixin):
     quotes: dict[str, float]
 
     class Settings:
+        name = "currency"
         use_cache = True
         validate_on_save = True
         cache_expiration_time = timedelta(days=1)

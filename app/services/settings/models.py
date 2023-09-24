@@ -32,6 +32,7 @@ class Settings(TimeStampMixin):
     currency_wow: float = 0.031
 
     class Settings:
+        name = "settings"
         use_state_management = True
         state_management_save_previous = True
         validate_on_save = True

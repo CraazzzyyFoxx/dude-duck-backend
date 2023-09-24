@@ -31,7 +31,7 @@ def decode_jwt(
         encoded_jwt,
         secret,
         audience=audience,
-        lgorithms=[config.app.algorithm],
+        algorithms=[config.app.algorithm],
     )
 
 

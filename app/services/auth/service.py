@@ -9,7 +9,6 @@ from loguru import logger
 from starlette import status
 
 from app.core import config, enums, errors
-from app.services.sheets import models as sheets_models
 from app.services.sheets import service as sheets_service
 from app.services.tasks import service as tasks_service
 from app.services.telegram.message import service as message_service
@@ -70,12 +69,12 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
     password = user_dict.pop("password")
     user_dict["hashed_password"] = utils.hash_password(password)
     created_user = await models.User(**user_dict).create()
-    parser = await sheets_service.get_default_booster()
+    parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
     if creds.google is not None:
         tasks_service.create_booster.delay(
             creds.google.model_dump_json(),
-            sheets_models.OrderSheetParseRead.model_validate(parser, from_attributes=True).model_dump_json(),
+            parser.model_dump_json(),
             models.UserRead.model_validate(created_user).model_dump(),
         )
     return created_user
@@ -100,12 +99,12 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
     if user_in.password:
         user.hashed_password = utils.hash_password(user_in.password)
     await user.save_changes()
-    parser = await sheets_service.get_default_booster()
+    parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
     if creds.google is not None:
         tasks_service.create_or_update_booster.delay(
             creds.google.model_dump_json(),
-            sheets_models.OrderSheetParseRead.model_validate(parser, from_attributes=True).model_dump_json(),
+            parser.model_dump_json(),
             str(user.id),
             models.UserRead.model_validate(user).model_dump(),
         )
@@ -114,11 +113,11 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
 
 async def delete(user: models.User) -> None:
     await user.delete()
-    parser = await sheets_service.get_default_booster()
+    parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
     tasks_service.delete_booster.delay(
         creds.google.model_dump_json(),
-        sheets_models.OrderSheetParseRead.model_validate(parser, from_attributes=True).model_dump_json(),
+        parser.model_dump_json(),
         str(user.id),
     )
 
@@ -140,8 +139,7 @@ async def request_verify(user: models.User) -> None:
         "aud": config.app.verification_token_audience,
     }
     token = utils.generate_jwt(token_data, config.app.secret)
-    user = models.UserRead.model_validate(user)
-    message_service.send_request_verify(user, token)
+    message_service.send_request_verify(models.UserRead.model_validate(user), token)
 
 
 async def verify(token: str) -> models.User:
@@ -281,11 +279,11 @@ async def read_token(token: str | None) -> models.User | None:
     access_token = await models.AccessToken.find_one({"token": token, "created_at": {"$gte": max_age}})
     if access_token is None:
         return None
-    return await get(access_token.user_id)
+    return await get(access_token.user_id.ref.id)
 
 
 async def write_token(user: models.User) -> str:
-    access_token = models.AccessToken(user_id=user.id, token=secrets.token_urlsafe())
+    access_token = models.AccessToken(user_id=user, token=secrets.token_urlsafe())
     access_token = await access_token.create()
     return access_token.token
 
@@ -304,7 +302,7 @@ async def read_token_api(token: str | None) -> models.User | None:
     access_token = await models.AccessTokenAPI.find_one({"token": token})
     if access_token is None:
         return None
-    return await get(access_token.user_id)
+    return await get(access_token.user_id.ref.id)
 
 
 async def write_token_api(user: models.User) -> str:

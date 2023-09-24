@@ -27,7 +27,7 @@ class OrderInfo(BaseModel):
     character_class: str | None = None
     platform: str | None = None
     game: str
-    purchase: str | None = None
+    purchase: str
     comment: str | None = None
     eta: str | None = None
 
@@ -113,6 +113,7 @@ class Order(TimeStampMixin):
     end_date: datetime.datetime | None = None
 
     class Settings:
+        name = "order"
         use_state_management = True
         state_management_save_previous = True
         validate_on_save = True

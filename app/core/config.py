@@ -51,5 +51,7 @@ class AppConfig(BaseSettings):
     celery_result_backend: RedisDsn
     celery_sheets_sync_time: int = 300
 
+    sync_boosters: bool
+
 
 app = AppConfig(_env_file=".env", _env_file_encoding="utf-8")

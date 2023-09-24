@@ -16,6 +16,15 @@ router = APIRouter(prefix="/auth", tags=[enums.RouteTag.AUTH])
 @router.post("/login")
 async def login(credentials: OAuth2PasswordRequestForm = Depends()):
     user = await service.authenticate(credentials)
+    if user is None:
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=[
+                errors.DudeDuckException(
+                    msg=enums.ErrorCode.LOGIN_BAD_CREDENTIALS, code=enums.ErrorCode.LOGIN_BAD_CREDENTIALS
+                )
+            ],
+        )
     token = await service.write_token(user)
     message_service.send_logged_notify(models.UserRead.model_validate(user))
     return ORJSONResponse({"access_token": token, "token_type": "bearer"})

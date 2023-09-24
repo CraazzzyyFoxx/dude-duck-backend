@@ -15,6 +15,36 @@ from app.services.telegram.message import service as messages_service
 from . import models, service
 
 
+async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.Response:
+    resp = await service.get_by_order_id_user_id(order_id, user_id)
+    if not resp:
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=[
+                errors.DudeDuckException(
+                    msg="A response with this order_id and user_id does not exist.",
+                    code="not_exist",
+                )
+            ],
+        )
+    return resp
+
+
+async def get(response_id: PydanticObjectId) -> models.Response:
+    resp = await service.get(response_id)
+    if not resp:
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=[errors.DudeDuckException(msg="A response with this id does not exist.", code="not_exist")],
+        )
+    return resp
+
+
+async def delete(response_id: PydanticObjectId) -> None:
+    response = await get(response_id)
+    return await service.delete(response.id)
+
+
 async def order_available(order: order_models.Order) -> bool:
     if order.status != order_models.OrderStatus.InProgress:
         raise errors.DudeDuckHTTPException(
@@ -96,7 +126,7 @@ async def approve_response(user: auth_models.User, order: order_models.Order) ->
             messages_service.send_response_decline(user_declined_read, order.order_id)
     await messages_service.pull_order_delete(await order_flows.format_order_system(order))
     messages_service.send_response_chose_notify(order.order_id, user_approved, len(responds))
-    return await service.get_by_order_id_user_id(order.id, user.id)
+    return await get_by_order_id_user_id(order.id, user.id)
 
 
 async def approve_preorder_response(user: auth_models.User, order: preorder_models.PreOrder) -> models.Response:
@@ -104,34 +134,4 @@ async def approve_preorder_response(user: auth_models.User, order: preorder_mode
     for resp in await service.get_by_order_id(order_id=order.id):
         await service.update(resp, models.ResponseUpdate(approved=resp.user_id == user.id, closed=True))
     await preorder_service.update(order, preorder_models.PreOrderUpdate(has_response=True))
-    return await service.get_by_order_id_user_id(order.id, user.id)
-
-
-async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.Response:
-    resp = await service.get_by_order_id_user_id(order_id, user_id)
-    if not resp:
-        raise errors.DudeDuckHTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=[
-                errors.DudeDuckException(
-                    msg="A response with this order_id and user_id does not exist.",
-                    code="not_exist",
-                )
-            ],
-        )
-    return resp
-
-
-async def get(response_id: PydanticObjectId) -> models.Response:
-    resp = await service.get(response_id)
-    if not resp:
-        raise errors.DudeDuckHTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A response with this id does not exist.", code="not_exist")],
-        )
-    return resp
-
-
-async def delete(response_id: PydanticObjectId) -> None:
-    response = await get(response_id)
-    return await service.delete(response.id)
+    return await get_by_order_id_user_id(order.id, user.id)

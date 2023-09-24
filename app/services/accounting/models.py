@@ -1,7 +1,8 @@
-import datetime
+from datetime import datetime
 
 from beanie import PydanticObjectId
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, constr, field_validator, model_validator
+from pydantic import (BaseModel, ConfigDict, Field, HttpUrl, constr,
+                      field_validator, model_validator)
 from pymongo import IndexModel
 
 from app.core.db import TimeStampMixin
@@ -13,14 +14,15 @@ class UserOrder(TimeStampMixin):
     dollars: float
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)
-    paid_time: datetime.datetime | None = Field(default=None)
+    paid_time: datetime | None = Field(default=None)
     method_payment: str = Field(default="$")
 
-    order_date: datetime.datetime
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
-    completed_at: datetime.datetime | None = None
+    order_date: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: datetime | None = None
 
     class Settings:
+        name = "order_user"
         indexes = [
             IndexModel(["order_id", "user_id"], unique=True),
         ]
@@ -36,7 +38,7 @@ class UserOrderCreate(BaseModel):
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)
     method_payment: str = Field(default="$")
-    order_date: datetime.datetime
+    order_date: datetime
 
 
 class UserOrderUpdate(BaseModel):
@@ -58,16 +60,6 @@ class UserAccountReport(BaseModel):
     paid_orders: int
 
 
-class AccountingBooster(BaseModel):
-    booster_name: str
-    percent: str
-
-
-class ManageBoosterForm(BaseModel):
-    order_id: str
-    boosters: list[AccountingBooster]
-
-
 class UserOrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -76,9 +68,9 @@ class UserOrderRead(BaseModel):
     dollars: float
     completed: bool
     paid: bool
-    paid_time: datetime.datetime | None
-    order_date: datetime.datetime
-    completed_at: datetime.datetime | None
+    paid_time: datetime | None
+    order_date: datetime
+    completed_at: datetime | None
     method_payment: str
 
 
@@ -88,9 +80,7 @@ class SheetBoosterOrderEntityCreate(BaseModel):
 
     @field_validator("percent", mode="before")
     def percent_resolver(cls, v) -> float:
-        if v > 1:
-            return v / 100
-        return v
+        return v / 100 if v > 1 else v
 
 
 class SheetUserOrderCreate(BaseModel):
@@ -99,13 +89,10 @@ class SheetUserOrderCreate(BaseModel):
     @model_validator(mode="after")
     def check_card_number_omitted(self) -> "SheetUserOrderCreate":  # noqa
         total: float = 0.0
-
         for item in self.items:
             total += item.percent
-
         if total <= 0.99 or total > 1:
             raise ValueError("The final percentage must be greater or equal 0.99")
-
         return self  # noqa
 
 

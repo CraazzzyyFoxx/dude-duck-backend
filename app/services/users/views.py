@@ -30,12 +30,12 @@ async def get_users(
 
 
 @router.get("/@me", response_model=auth_models.UserRead)
-async def get_me(user=Depends(auth_flows.current_active_verified)):
+async def get_me(user=Depends(auth_flows.current_active)):
     return auth_models.UserRead.model_validate(user)
 
 
 @router.patch("/@me", response_model=auth_models.UserRead)
-async def update_me(user_update: auth_models.UserUpdate, user=Depends(auth_flows.current_active_verified)):
+async def update_me(user_update: auth_models.UserUpdate, user=Depends(auth_flows.current_active)):
     return await flows.update_user(user_update, user)
 
 
@@ -45,13 +45,13 @@ async def update_user(
     user_id: PydanticObjectId,
     _=Depends(auth_flows.current_active_superuser),
 ):
-    user = await auth_flows.get_user(user_id)
+    user = await auth_flows.get(user_id)
     return await flows.update_user(user_update, user)
 
 
 @router.get("/{user_id}", response_model=auth_models.UserRead)
 async def get_user(user_id: PydanticObjectId, _=Depends(auth_flows.current_active_superuser)):
-    user = await auth_flows.get_user(user_id)
+    user = await auth_flows.get(user_id)
     return auth_models.UserRead.model_validate(user)
 
 

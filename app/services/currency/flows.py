@@ -32,8 +32,7 @@ async def usd_to_currency(
         price *= settings.accounting_fee
     if with_round:
         return round(price, settings.get_precision(currency))
-    else:
-        return price
+    return price
 
 
 async def currency_to_usd(

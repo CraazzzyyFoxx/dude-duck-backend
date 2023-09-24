@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends
 
 from app.core.enums import RouteTag
 from app.services.auth import flows as auth_flows
-from app.services.auth import service as auth_service
 from app.services.orders import flows as order_flows
 from app.services.preorders import flows as preorder_flows
 from app.services.search import models as search_models
@@ -47,7 +46,7 @@ async def create_preorder_response(
 
 @router.get("/{order_id}/{user_id}", response_model=models.ResponseRead)
 async def get_response(order_id: PydanticObjectId, user=Depends(auth_flows.resolve_user)):
-    user = await auth_service.get(user.id)
+    user = await auth_flows.get(user.id)
     return await flows.get_by_order_id_user_id(order_id, user.id)
 
 
@@ -57,7 +56,7 @@ async def remove_response(
     user_id: PydanticObjectId,
     _=Depends(auth_flows.current_active_superuser),
 ):
-    user = await auth_service.get(user_id)
+    user = await auth_flows.get(user_id)
     resp = await flows.get_by_order_id_user_id(order_id, user.id)
     await service.delete(resp.id)
     return resp
@@ -70,7 +69,7 @@ async def approve_response(
     _=Depends(auth_flows.current_active_superuser),
 ):
     order = await order_flows.get(order_id)
-    user = await auth_service.get(user_id)
+    user = await auth_flows.get(user_id)
     return await flows.approve_response(user, order)
 
 
@@ -81,5 +80,5 @@ async def approve_preorder_response(
     _=Depends(auth_flows.current_active_superuser),
 ):
     order = await preorder_flows.get(order_id)
-    user = await auth_service.get(user_id)
+    user = await auth_flows.get(user_id)
     return await flows.approve_preorder_response(user, order)

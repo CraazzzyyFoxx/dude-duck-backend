@@ -58,6 +58,7 @@ class OrderSheetParse(TimeStampMixin):
     is_user: bool
 
     class Settings:
+        name = "order_sheet_parse"
         use_state_management = True
         state_management_save_previous = True
         validate_on_save = True

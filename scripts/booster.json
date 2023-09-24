@@ -92,5 +92,5 @@
       "type": "bool"
     }
   ],
-  "default": "booster"
+  "is_user": true
 }

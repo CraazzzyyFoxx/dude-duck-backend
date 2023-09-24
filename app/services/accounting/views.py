@@ -23,8 +23,10 @@ async def create_order_booster(
     _=Depends(auth_flows.current_active_superuser),
 ):
     order = await orders_flows.get(order_id)
-    user = await auth_flows.get_user(data.user_id)
-    return await flows.add_booster(order, user, data.dollars)
+    user = await auth_flows.get(data.user_id)
+    if data.dollars:
+        return await flows.add_booster_with_price(order, user, data.dollars)
+    return await flows.add_booster(order, user)
 
 
 @router.delete("/orders/{order_id}/{user_id}", response_model=models.UserOrder)
@@ -34,7 +36,7 @@ async def delete_order_booster(
     _=Depends(auth_flows.current_active_superuser),
 ):
     order = await orders_flows.get(order_id)
-    user = await auth_flows.get_user(user_id)
+    user = await auth_flows.get(user_id)
     return await flows.remove_booster(order, user)
 
 

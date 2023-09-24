@@ -27,6 +27,7 @@ class Response(TimeStampMixin):
     approved_at: datetime | None = None
 
     class Settings:
+        name = "response"
         indexes = [
             IndexModel(["order_id", "user_id"], unique=True),
         ]

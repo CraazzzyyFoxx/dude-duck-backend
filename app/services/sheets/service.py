@@ -8,7 +8,8 @@ from beanie import PydanticObjectId
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
+from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
+                      create_model, field_validator)
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -95,12 +96,31 @@ async def get_by_spreadsheet_sheet(spreadsheet: str, sheet: int) -> models.Order
     return await models.OrderSheetParse.find_one({"spreadsheet": spreadsheet, "sheet_id": sheet})
 
 
+async def get_by_spreadsheet_sheet_read(spreadsheet: str, sheet: int) -> models.OrderSheetParseRead | None:
+    parser = await get_by_spreadsheet_sheet(spreadsheet, sheet)
+    if parser:
+        return models.OrderSheetParseRead.model_validate(parser)
+    return None
+
+
 async def get_default_booster() -> models.OrderSheetParse | None:
     return await models.OrderSheetParse.find_one({"is_user": True})
 
 
-async def get_all_not_default_booster() -> list[models.OrderSheetParse]:
+async def get_default_booster_read() -> models.OrderSheetParseRead:
+    parser = await get_default_booster()
+    if parser:
+        return models.OrderSheetParseRead.model_validate(parser)
+    raise RuntimeError("Default user sheet parser didn't setup")
+
+
+async def get_all_not_default_user() -> list[models.OrderSheetParse]:
     return await models.OrderSheetParse.find({"is_user": False}).to_list()
+
+
+async def get_all_not_default_user_read() -> list[models.OrderSheetParseRead]:
+    parsers = await get_all_not_default_user()
+    return [models.OrderSheetParseRead.model_validate(p, from_attributes=True) for p in parsers]
 
 
 async def get_all() -> list[models.OrderSheetParse]:
@@ -170,14 +190,15 @@ def parse_row(
     *,
     is_raise: bool = True,
 ) -> BaseModel | None:
-    for _ in range(len(parser.items) - len(row)):
+    maximum = max([i.row for i in parser.items])
+    for _ in range(maximum - len(row) + 1):
         row.append(None)
 
     data_for_valid = {}
     for getter in parser.items:
         value = row[getter.row]
-        # if getter.type == "float" and isinstance(value, str):
-        #     value = value.replace(',', '.')
+        if getter.type == "float" and isinstance(value, str):
+            value = value.replace(",", ".")
         data_for_valid[getter.name] = value if value not in ["", " "] else None
     try:
         valid_model = generate_model(parser)(**data_for_valid)

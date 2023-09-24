@@ -1,4 +1,5 @@
 import re
+import typing
 from datetime import datetime
 
 from beanie import PydanticObjectId
@@ -58,7 +59,7 @@ async def get_all() -> list[models.UserOrder]:
     return await models.UserOrder.find({}).to_list()
 
 
-async def get_by_orders(orders_id: list[PydanticObjectId]) -> list[models.UserOrder]:
+async def get_by_orders(orders_id: typing.Iterable[PydanticObjectId]) -> list[models.UserOrder]:
     return await models.UserOrder.find({"order_id": {"$in": orders_id}}).to_list()
 
 
@@ -87,14 +88,11 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
     return user_order
 
 
-async def bulk_update_price(order_id: PydanticObjectId, price: float) -> None:
-    await models.UserOrder.find({"order_id": order_id}).update({"$set": {"dollars": price}})
-
-
-async def bulk_decrement_price(order_id: PydanticObjectId, price: float, is_dec=True) -> None:
-    if is_dec:
-        price = -price
-    await models.UserOrder.find({"order_id": order_id}).update({"$inc": {"dollars": price}})
+async def bulk_update_price(order_id: PydanticObjectId, price: float, inc=False) -> None:
+    if not inc:
+        await models.UserOrder.find({"order_id": order_id}).update({"$set": {"dollars": price}})
+    else:
+        await models.UserOrder.find({"order_id": order_id}).update({"$inc": {"dollars": price}})
 
 
 async def check_user_total_orders(user: auth_models.User) -> bool:

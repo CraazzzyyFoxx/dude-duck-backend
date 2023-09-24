@@ -4,6 +4,8 @@ services :
   redis:
     image: redis:alpine
     restart: always
+    ports:
+      - "6379:6379"
   app:
     restart: always
     build:
@@ -12,6 +14,9 @@ services :
     volumes:
       - ./logs:/logs
     command: uvicorn main:app --host 0.0.0.0 --port ${PORT}
+    environment:
+      - DEBUG=${DEBUG}
+      - TELEGRAM_INTEGRATION=${TELEGRAM_INTEGRATION}
     ports:
       - "${PORT}:${PORT}"
   worker:
@@ -22,6 +27,9 @@ services :
     command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info
     volumes:
       - ./app:/app
+    environment:
+      - CELERY_SHEETS_SYNC_TIME=${CELERY_SHEETS_SYNC_TIME}
+      - SYNC_BOOSTERS=${SYNC_BOOSTERS}
     depends_on:
       - redis
   flower:

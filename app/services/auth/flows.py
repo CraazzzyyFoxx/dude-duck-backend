@@ -13,7 +13,7 @@ oauth2_scheme = OAuth2PasswordBearer("auth/login", auto_error=False)
 bearer_scheme_api = HTTPBearer(bearerFormat="Bearer")
 
 
-async def get_user(user_id: PydanticObjectId):
+async def get(user_id: PydanticObjectId):
     user = await service.get(user_id)
     if not user:
         raise errors.DudeDuckHTTPException(
@@ -93,7 +93,7 @@ async def get_current_user_api(
 
 
 def current_user(
-    active: bool = True,
+    active: bool = False,
     verified: bool = False,
     superuser: bool = False,
 ):
@@ -141,7 +141,7 @@ def current_user_api(
     return current_user_dependency
 
 
-current_active_user = current_user(active=True)
+current_active = current_user(active=True)
 current_active_superuser = current_user(active=True, superuser=True)
 current_active_verified = current_user(active=True, verified=True)
 current_active_superuser_api = current_user(active=True, superuser=True)
@@ -149,7 +149,7 @@ current_active_superuser_api = current_user(active=True, superuser=True)
 
 async def resolve_user(
     user_id: PydanticObjectId | str,
-    user: models.User = Depends(current_active_user),
+    user: models.User = Depends(current_active),
 ) -> models.User:
     if user_id == "@me":
         return user

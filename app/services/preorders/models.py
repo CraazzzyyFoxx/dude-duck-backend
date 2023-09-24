@@ -49,6 +49,7 @@ class PreOrder(sheets_models.SheetEntity, TimeStampMixin):
     has_response: bool = Field(default=False)
 
     class Settings:
+        name = "preorder"
         use_state_management = True
         validate_on_save = True
         bson_encoders = {

@@ -64,4 +64,5 @@ async def request(endpoint: str, method: str, data: dict | None = None) -> httpx
                 status_code=500,
                 detail=[{"msg": "Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable"}],
             )
+        logger.info(response.json())
         return response

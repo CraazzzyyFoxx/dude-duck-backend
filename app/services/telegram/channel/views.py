@@ -4,7 +4,7 @@ from starlette import status
 
 from app.core import enums
 from app.services.auth import flows as auth_flows
-from app.services.search import service as search_service
+from app.services.search import models as search_models
 
 from ..service import request as service_request
 from . import models
@@ -16,9 +16,9 @@ router = APIRouter(
 )
 
 
-@router.get(path="", response_model=search_service.models.Paginated[models.ChannelRead])
+@router.get(path="", response_model=search_models.Paginated[models.ChannelRead])
 async def get_channels(
-    paging: search_service.models.PaginationParams = Depends(),
+    paging: search_models.PaginationParams = Depends(),
 ):
     response = await service_request(
         f"channel?page={paging.page}&per_page={paging.per_page}",

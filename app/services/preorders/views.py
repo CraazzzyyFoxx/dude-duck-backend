@@ -23,6 +23,5 @@ async def get_preorders(
     sorting: search_models.OrderSortingParams = Depends(),
     _=Depends(auth_flows.current_active_verified),
 ):
-    query = {}
-    data = await search_service.paginate(models.PreOrder.find(query), paging, sorting)
+    data = await search_service.paginate(models.PreOrder.find_all(), paging, sorting)
     return data

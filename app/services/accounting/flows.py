@@ -1,6 +1,8 @@
+import typing
 from datetime import datetime
 
 from beanie import PydanticObjectId
+from loguru import logger
 from starlette import status
 
 from app.core import errors
@@ -65,65 +67,160 @@ async def can_user_pick_order(user: auth_models.User, order: order_service.model
     return True
 
 
-async def check_total_dollars(
-    order: order_service.models.Order, boosters: list[models.UserOrder], price: float
-) -> bool:
+async def order_available(order: order_models.Order) -> bool:
+    if order.status != order_models.OrderStatus.InProgress:
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=[errors.DudeDuckException(msg="You cannot add user to a completed order.", code="cannot_add")],
+        )
+    return True
+
+
+async def sync_boosters_sheet(order: order_models.Order) -> None:
+    parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
+    creds = await auth_service.get_first_superuser()
+    if creds.google is not None:
+        tasks_service.update_order.delay(
+            creds.google.model_dump_json(),
+            parser.model_dump_json(),
+            order.row_id,
+            {"booster": await service.boosters_to_str(order, await service.get_by_order_id(order.id))},
+        )
+
+
+async def update_price(order: order_models.Order, price: float, *, add: bool = True) -> dict[PydanticObjectId, float]:
+    boosters = await service.get_by_order_id(order.id)
+    dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+    total_dollars = sum(b.dollars for b in boosters)
+    free_dollars = dollars - total_dollars
+    if add:
+        price_map: dict[PydanticObjectId, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
+        price = -price
+    else:
+        price_map: dict[PydanticObjectId, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
+    logger.warning(dollars)
+    logger.warning(free_dollars)
+    logger.warning(price_map)
+    for booster in boosters:
+        booster.dollars += price * price_map[booster.id]
+        await booster.save_changes()
+    await sync_boosters_sheet(order)
+    return price_map
+
+
+async def _add_booster(
+    order: order_models.Order, create_data: models.UserOrderCreate, boosters: list[models.UserOrder], price: float
+) -> models.UserOrder:
+    try:
+        booster = await service.create(create_data)
+    except Exception as e:
+        await update_price(order, price, add=False)
+        raise e
+    if not boosters:
+        await order_service.update_with_sync(order, order_models.OrderUpdate(auth_date=datetime.utcnow()))
+    await sync_boosters_sheet(order)
+    return booster
+
+
+async def add_booster(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
+    await can_user_pick(user)
+    boosters = await service.get_by_order_id(order.id)
+    if user.id in [b.user_id for b in boosters]:
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
+        )
+    dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+    calculated_dollars = dollars / (len(boosters) + 1)
+    await update_price(order, calculated_dollars)
+    create_data = models.UserOrderCreate(
+        order_id=order.id,
+        user_id=user.id,
+        dollars=calculated_dollars,
+        order_date=order.date,
+        completed=True if order.status == order_models.OrderStatus.Completed else False,
+        paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
+    )
+    return await _add_booster(order, create_data, boosters, calculated_dollars)
+
+
+async def add_booster_with_price(
+    order: order_service.models.Order,
+    user: auth_models.User,
+    price: float,
+    method_payment: str | None = None,
+) -> models.UserOrder:
+    await can_user_pick(user)
+    boosters = await service.get_by_order_id(order.id)
+    if user.id in [b.user_id for b in boosters]:
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
+        )
+    if len(boosters) == 0:
+        minus_dollars = 0.0
+    else:
+        minus_dollars = price / len(boosters)
     p = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
-    total = sum([b.dollars for b in boosters]) + price
+    total = sum([abs(b.dollars - minus_dollars) for b in boosters]) + price
     if p < total:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[
                 errors.DudeDuckException(
                     msg=f"The price for the booster is incorrect. "
-                    f"Order price {p}, total price for boosters {total}. \n"
-                    f"{total}>{p}",
+                    f"Order price {p}, total price for boosters {total}. \n{total}>{p}",
                     code="invalid_price",
                 )
             ],
         )
-    return True
+    await update_price(order, price)
+    create_data = models.UserOrderCreate(
+        order_id=order.id,
+        user_id=user.id,
+        dollars=price,
+        order_date=order.date,
+        completed=True if order.status == order_models.OrderStatus.Completed else False,
+        paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
+    )
+    if method_payment:
+        create_data.method_payment = method_payment
+    return await _add_booster(order, create_data, boosters, price)
 
 
-async def add_booster(
-    order: order_service.models.Order,
-    user: auth_models.User,
-    price: float | None = None,
-    method_payment: str | None = None,
-) -> models.UserOrder:
-    await can_user_pick(user)
+async def update_booster(order: order_models.Order, user: auth_models.User, update_model: models.UserOrderUpdate):
     boosters = await service.get_by_order_id(order.id)
-
-    if user.id in [b.user_id for b in boosters]:
+    boosters_map = {b.user_id: b for b in boosters}
+    if boosters_map.get(user.id) is None:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
+            detail=[errors.DudeDuckException(msg="The user is not a booster of this order", code="not_exist")],
         )
-
-    if price is None:
-        percent = 1 / (len(boosters) + 1)
-        price = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
-        await service.bulk_update_price(order.id, price * percent)
-        create_data = models.UserOrderCreate(
-            order_id=order.id, user_id=user.id, dollars=price * percent, order_date=order.date
-        )
-        if method_payment is not None:
-            create_data.method_payment = method_payment
-        data = await service.create(create_data)
     else:
-        minus_dollars = price / len(boosters)
-        for b in boosters:
-            b.dollars = abs(b.dollars - minus_dollars)
-        await check_total_dollars(order, boosters, price)
-        await service.bulk_decrement_price(order.id, minus_dollars)
-        create_data = models.UserOrderCreate(order_id=order.id, user_id=user.id, dollars=price, order_date=order.date)
-        if method_payment is not None:
-            create_data.method_payment = method_payment
-        data = await service.create(create_data)
+        if update_model.dollars:
+            await update_price(order, update_model.dollars)
+        try:
+            return await service.update(boosters_map[user.id], update_model)
+        except Exception as e:
+            if update_model.dollars:
+                await update_price(order, update_model.dollars, add=False)
+            raise e
 
-    if not boosters:
-        await order_service.update_with_sync(order, order_models.OrderUpdate(auth_date=datetime.utcnow()))
-    return data
+
+async def remove_booster(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
+    boosters = await service.get_by_order_id(order.id)
+    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id: b for b in boosters}
+    to_delete = boosters_map.get(user.id)
+    if to_delete is None:
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[errors.DudeDuckException(msg="The user is not a booster of this order", code="not_exist")],
+        )
+    await service.delete(to_delete.id)
+    if len(boosters_map.values()) > 1:
+        await update_price(order, to_delete.dollars, add=False)
+    await sync_boosters_sheet(order)
+    return to_delete
 
 
 async def update_boosters_percent(
@@ -145,14 +242,13 @@ async def update_boosters_percent(
         )
     add = len(boosters) < len(users)
     if not add:
-        for _id in list(set(boosters_map.keys()) - set(users_id)):
-            x = await service.get_by_order_id_user_id(order.id, _id)
+        for _id in set(boosters_map.keys()) - set(users_id):
+            x = await get_by_order_id_user_id(order, boosters_map[_id])
             await service.delete(x.id)
 
     for _id, percent in users:
-        dollars = (
-            await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True) * percent
-        )
+        dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+        dollars *= percent
         if _id not in boosters_map.keys() and add:
             created = models.UserOrderCreate(order_id=order.id, user_id=_id, dollars=dollars, order_date=order.date)
             await service.create(created)
@@ -161,27 +257,6 @@ async def update_boosters_percent(
 
     boosters = await service.get_by_order_id(order.id)
     return boosters
-
-
-async def remove_booster(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
-    boosters = await service.get_by_order_id(order.id)
-    boosters_map = {b.user_id: b for b in boosters}
-
-    to_delete: models.UserOrder = boosters_map.get(user.id)
-
-    if to_delete is None:
-        raise errors.DudeDuckHTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DudeDuckException(msg="The user is not a booster of this order", code="not_exist")],
-        )
-    to_delete_price = to_delete.dollars
-    boosters_map.pop(user.id)
-    await service.delete(to_delete.id)
-
-    if len(boosters_map.values()) > 0:
-        await service.bulk_decrement_price(order.id, to_delete_price, is_dec=False)
-
-    return to_delete
 
 
 async def create_user_report(user: auth_models.User) -> models.UserAccountReport:
@@ -231,63 +306,57 @@ async def create_report(
 ) -> schemas.AccountingReport:
     items: list[schemas.AccountingReportItem] = []
     if username is None:
+        query: dict[str, typing.Any] = {"date": {"$gte": start_date, "$lte": end_date}}
         if sheet_id is not None:
-            query = {
-                "spreadsheet": spreadsheet,
-                "sheet_id": sheet_id,
-                "date": {"$gte": start_date, "$lte": end_date},
-            }
-        else:
-            query = {"date": {"$gte": start_date, "$lte": end_date}}
-
+            query.update({"spreadsheet": spreadsheet, "sheet_id": sheet_id})
         orders = await order_models.Order.find(query).to_list()
-
-        orders_map: dict[PydanticObjectId, order_models.Order] = {order.id: order for order in orders}
-        payments = await service.get_by_orders(list(orders_map.keys()))
+        orders_map: dict[PydanticObjectId, order_models.Order] = {o.id: o for o in orders}
+        payments = await service.get_by_orders(orders_map.keys())
         user_ids = [payment.user_id for payment in payments]
         users = await auth_service.get_by_ids(user_ids)
-        users_map: dict[PydanticObjectId, auth_models.User] = {user.id: user for user in users}
+        users_map: dict[PydanticObjectId, auth_models.User] = {u.id: u for u in users}
     else:
         chosen_user = await auth_flows.get_booster_by_name(username)
         payments = await service.get_by_user_id(chosen_user.id)
-        orders_id = [payment.order_id for payment in payments]
         users_map = {chosen_user.id: chosen_user}
+        query: dict[str, typing.Any] = {
+            "_id": {"$in": [p.order_id for p in payments]},
+            "date": {"$gte": start_date, "$lte": end_date},
+        }
         if sheet_id is not None:
-            query = {
-                "spreadsheet": spreadsheet,
-                "sheet_id": sheet_id,
-                "_id": {"$in": orders_id},
-                "date": {"$gte": start_date, "$lte": end_date},
-            }
-        else:
-            query = {"_id": {"$in": orders_id}, "date": {"$gte": start_date, "$lte": end_date}}
+            query.update(
+                {
+                    "spreadsheet": spreadsheet,
+                    "sheet_id": sheet_id,
+                }
+            )
         orders = await order_models.Order.find(query).to_list()
         orders_map: dict[PydanticObjectId, order_models.Order] = {order.id: order for order in orders}
 
     for payment in payments:
         order = orders_map.get(payment.order_id)
         user = users_map.get(payment.user_id)
-        if order is not None and user is not None:
+        if order and user:
             if user.binance_id:
-                payment_str = str(user.binance_id)
-                bank = "Binance ID"
+                payment_str: str = str(user.binance_id)
+                bank: str = "Binance ID"
             elif user.binance_email:
-                payment_str = user.binance_email
-                bank = "Binance Email"
+                payment_str: str = user.binance_email
+                bank: str = "Binance Email"
             elif user.phone:
-                payment_str = user.phone
-                bank = user.bank
+                payment_str: str = user.phone
+                bank: str = user.bank
             elif user.bankcard:
-                payment_str = user.phone
-                bank = user.bank
+                payment_str: str = user.phone
+                bank: str = user.bank
             else:
-                payment_str = "Хуй знает"
-                bank = "Хуй знает"
+                payment_str: str = "Хуй знает"
+                bank: str = "Хуй знает"
 
-            rub = await currency_flows.usd_to_currency(payment.dollars, order.date, currency="RUB")
+            rub = await currency_flows.usd_to_currency(payment.dollars, payment.order_date, currency="RUB")
             item = schemas.AccountingReportItem(
                 order_id=order.order_id,
-                date=order.date,
+                date=payment.order_date,
                 username=user.name,
                 dollars=order.price.price_dollar,
                 rub=rub,
@@ -354,7 +423,7 @@ async def paid_order(payment_id: PydanticObjectId) -> models.UserOrder:
     await service.update(data, models.UserOrderUpdate(paid=True))
     boosters = await service.get_by_order_id(order.id)
     if all([booster.paid for booster in boosters]):
-        parser = await sheets_service.get_by_spreadsheet_sheet(order.spreadsheet, order.sheet_id)
+        parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
         user = await auth_service.get_first_superuser()
         if user.google is not None and parser is not None:
             tasks_service.update_order.delay(
