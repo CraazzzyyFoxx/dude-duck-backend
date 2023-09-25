@@ -298,7 +298,6 @@ async def destroy_token(token: str) -> None:
 async def read_token_api(token: str | None) -> models.User | None:
     if token is None:
         return None
-
     access_token = await models.AccessTokenAPI.find_one({"token": token})
     if access_token is None:
         return None

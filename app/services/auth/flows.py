@@ -2,7 +2,7 @@ from typing import Annotated
 
 from beanie import PydanticObjectId
 from fastapi import Depends
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, OAuth2PasswordBearer, HTTPAuthorizationCredentials
 from starlette import status
 
 from app.core import errors
@@ -60,7 +60,7 @@ def verify_user(
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status_code,
-            detail=[],
+            detail=[errors.DudeDuckException(msg="Missing Permissions", code="unauthorized")],
         )
 
     return True
@@ -87,18 +87,10 @@ def current_user(
     active: bool = False,
     verified: bool = False,
     superuser: bool = False,
-    api: bool = False
 ):
     async def current_user_dependency(token: Annotated[str, Depends(oauth2_scheme)]):
-        user, _ = await get_current_user(
-            token,
-            active=active,
-            verified=verified,
-            superuser=superuser,
-            api=api
-        )
+        user, _ = await get_current_user(token, active=active, verified=verified, superuser=superuser)
         return user
-
     return current_user_dependency
 
 
@@ -107,18 +99,11 @@ def current_user_api(
     verified: bool = False,
     superuser: bool = False,
 ):
-    async def current_user_dependency(
-        token: Annotated[str, Depends(bearer_scheme_api)],
-    ):
+    async def current_user_dependency(token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme_api)]):
         user, _ = await get_current_user(
-            token,
-            active=active,
-            verified=verified,
-            superuser=superuser,
-            api=True
+            token.credentials, active=active, verified=verified, superuser=superuser, api=True
         )
         return user
-
     return current_user_dependency
 
 
