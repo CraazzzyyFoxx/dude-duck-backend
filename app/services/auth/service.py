@@ -309,7 +309,7 @@ async def write_token_api(user: models.User) -> str:
     access_token = await models.AccessTokenAPI.find_one({"user_id": user.id})
     if access_token:
         await access_token.delete()
-    access_token = models.AccessTokenAPI(user_id=user.id, token=secrets.token_urlsafe())
+    access_token = models.AccessTokenAPI(user_id=user, token=secrets.token_urlsafe())
     access_token = await access_token.create()
     return access_token.token
 
