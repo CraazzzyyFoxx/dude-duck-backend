@@ -4,8 +4,11 @@ import httpx
 from beanie import PydanticObjectId
 from fastapi import HTTPException
 
+from app.core import errors
+from app.services.auth import service as auth_service
 from app.services.settings import models as settings_models
 from app.services.settings import service as settings_service
+from app.services.sheets import service as sheets_service
 
 from . import models
 
@@ -21,7 +24,26 @@ async def get(currency_id: PydanticObjectId) -> models.Currency | None:
 
 async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
     quotes = currency_in.normalize_quotes()
-    quotes["WOW"] = (await settings_service.get()).currency_wow
+    settings = await settings_service.get()
+    if settings.collect_currency_wow_by_sheets:
+        creds = await auth_service.get_first_superuser()
+        if creds.google:
+            quotes["WOW"] = float(
+                sheets_service.get_cell(
+                    creds.google,
+                    settings.currency_wow_spreadsheet,
+                    settings.currency_wow_sheet_id,
+                    settings.currency_wow_cell,
+                )
+            )
+
+        else:
+            raise errors.DudeDuckHTTPException(
+                status_code=404,
+                detail=[errors.DudeDuckException(msg="Google token missing for first superuser", code="not_exist")],
+            )
+    else:
+        quotes["WOW"] = (await settings_service.get()).currency_wow
     currency = models.Currency(date=currency_in.date, timestamp=currency_in.timestamp, quotes=quotes)
     return await currency.create()
 

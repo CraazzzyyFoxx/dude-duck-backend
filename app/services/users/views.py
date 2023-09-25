@@ -115,7 +115,7 @@ async def send_close_request(
     order = await orders_flows.get(order_id)
     new_order = await accounting_flows.close_order(user, order, data)
 
-    price = await accounting_flows.get_by_order_id_user_id(new_order, user.id)
+    price = await accounting_flows.get_by_order_id_user_id(new_order, user)
     return await orders_flows.format_order_active(new_order, price)
 
 

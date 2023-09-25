@@ -30,6 +30,10 @@ class Settings(TimeStampMixin):
     accounting_fee: float = 0.95
 
     currency_wow: float = 0.031
+    collect_currency_wow_by_sheets: bool = False
+    currency_wow_spreadsheet: str | None = None
+    currency_wow_sheet_id: int | None = None
+    currency_wow_cell: str | None = None
 
     class Settings:
         name = "settings"
@@ -53,12 +57,20 @@ class SettingsRead(BaseModel):
     accounting_fee: float
 
     currency_wow: float
+    collect_currency_wow_by_sheets: bool
+    currency_wow_spreadsheet: str | None
+    currency_wow_sheet_id: int | None
+    currency_wow_cell: str | None
 
 
 class SettingsUpdate(BaseModel):
     preorder_time_alive: int | None = None
-
     accounting_precision_dollar: int | None = Field(ge=0, default=None)
     accounting_precision_rub: int | None = Field(ge=0, default=None)
     accounting_precision_gold: int | None = Field(ge=0, default=None)
     accounting_fee: float | None = Field(ge=0, le=1, default=None)
+    currency_wow: float | None = Field(ge=0, default=None)
+    collect_currency_wow_by_sheets: bool = Field(default=False)
+    currency_wow_spreadsheet: str | None = Field(default=None)
+    currency_wow_sheet_id: int | None = Field(default=None)
+    currency_wow_cell: str | None = Field(default=None)

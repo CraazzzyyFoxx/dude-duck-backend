@@ -8,8 +8,7 @@ from beanie import PydanticObjectId
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
-                      create_model, field_validator)
+from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -436,3 +435,12 @@ def clear_row(creds: auth_models.AdminGoogleToken, parser: models.OrderSheetPars
     parser = models.OrderSheetParseRead.model_validate(parser)
     creds = auth_models.AdminGoogleToken.model_validate(creds)
     clear_rows_data(creds, parser, row_id)
+
+
+def get_cell(creds: auth_models.AdminGoogleToken, spreadsheet: str, sheet_id: int, cell: str) -> str:
+    creds = auth_models.AdminGoogleToken.model_validate(creds)
+    gc = gspread.service_account_from_dict(creds.model_dump())
+    sh = gc.open(spreadsheet)
+    sheet = sh.get_worksheet_by_id(sheet_id)
+    value: gspread.worksheet.ValueRange = sheet.get(cell)
+    return value[0]
