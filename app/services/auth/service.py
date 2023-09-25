@@ -66,8 +66,10 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
         if safe
         else user_create.model_dump(exclude={"id"}, exclude_unset=True)
     )
-    password = user_dict.pop("password")
+    email: str = user_dict.pop("email")
+    password: str = user_dict.pop("password")
     user_dict["hashed_password"] = utils.hash_password(password)
+    user_dict["email"] = email.lower()
     created_user = await models.User(**user_dict).create()
     parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
@@ -188,7 +190,7 @@ async def verify(token: str) -> models.User:
 
 
 async def authenticate(credentials: OAuth2PasswordRequestForm) -> models.User | None:
-    user = await get_by_email(credentials.username)
+    user = await get_by_email(credentials.username.lower())
     if user is None:
         utils.hash_password(credentials.password)
         return None

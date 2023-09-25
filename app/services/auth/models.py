@@ -135,7 +135,7 @@ class UserUpdateAdmin(BaseUserUpdate):
 
 
 class User(TimeStampMixin):
-    email: str
+    email: EmailStr
     hashed_password: str
     is_active: bool = True
     is_superuser: bool = False
