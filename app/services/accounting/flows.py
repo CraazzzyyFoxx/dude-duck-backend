@@ -98,9 +98,6 @@ async def update_price(order: order_models.Order, price: float, *, add: bool = T
         price = -price
     else:
         price_map: dict[PydanticObjectId, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
-    logger.warning(dollars)
-    logger.warning(free_dollars)
-    logger.warning(price_map)
     for booster in boosters:
         booster.dollars += price * price_map[booster.id]
         await booster.save_changes()
@@ -311,7 +308,7 @@ async def create_report(
             query.update({"spreadsheet": spreadsheet, "sheet_id": sheet_id})
         orders = await order_models.Order.find(query).to_list()
         orders_map: dict[PydanticObjectId, order_models.Order] = {o.id: o for o in orders}
-        payments = await service.get_by_orders(orders_map.keys())
+        payments = await service.get_by_orders(list(orders_map.keys()))
         user_ids = [payment.user_id for payment in payments]
         users = await auth_service.get_by_ids(user_ids)
         users_map: dict[PydanticObjectId, auth_models.User] = {u.id: u for u in users}
