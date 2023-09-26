@@ -4,7 +4,7 @@ from datetime import datetime
 from beanie import PydanticObjectId
 from starlette import status
 
-from app.core import errors
+from app.core import errors, config
 from app.services.auth import flows as auth_flows
 from app.services.auth import models as auth_models
 from app.services.auth import service as auth_service
@@ -76,15 +76,16 @@ async def order_available(order: order_models.Order) -> bool:
 
 
 async def sync_boosters_sheet(order: order_models.Order) -> None:
-    parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
-    creds = await auth_service.get_first_superuser()
-    if creds.google is not None:
-        tasks_service.update_order.delay(
-            creds.google.model_dump_json(),
-            parser.model_dump_json(),
-            order.row_id,
-            {"booster": await service.boosters_to_str(order, await service.get_by_order_id(order.id))},
-        )
+    if config.app.sync_boosters:
+        parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
+        creds = await auth_service.get_first_superuser()
+        if creds.google is not None:
+            tasks_service.update_order.delay(
+                creds.google.model_dump_json(),
+                parser.model_dump_json(),
+                order.row_id,
+                {"booster": await service.boosters_to_str(order, await service.get_by_order_id(order.id))},
+            )
 
 
 async def update_price(order: order_models.Order, price: float, *, add: bool = True) -> dict[PydanticObjectId, float]:
