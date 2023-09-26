@@ -47,7 +47,7 @@ async def format_order_system(order: models.Order):
         price_booster_dollar_without_fee=booster_price,
         price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
         price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
-        price_booster_gold=await currency_flows.usd_to_currency(booster_price, order.date, "WOW", with_fee=True),
+        price_booster_gold=order.price.price_booster_gold,
     )
     data["price"] = price
     return schemas.OrderReadSystem.model_validate(data)
