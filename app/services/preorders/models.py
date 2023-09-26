@@ -68,7 +68,7 @@ class PreOrderReadSystem(BaseModel):
     date: datetime.datetime
 
     info: order_models.OrderInfo
-    price: PreOrderPriceUser
+    price: PreOrderPriceSystem
 
 
 class PreOrderReadUser(BaseModel):
