@@ -92,4 +92,4 @@ class OrderSheetParseCreate(BaseModel):
 
 class OrderReadSheets(order_schemas.OrderReadSystemBase, SheetEntity):
     booster: str | None = None
-    price: order_models.OrderPrice
+    price: order_models.OrderPriceNone

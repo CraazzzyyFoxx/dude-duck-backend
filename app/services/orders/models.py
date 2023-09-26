@@ -37,6 +37,11 @@ class OrderPrice(BaseModel):
     price_booster_dollar: float
 
 
+class OrderPriceNone(BaseModel):
+    price_dollar: float | None = None
+    price_booster_dollar: float| None = None
+
+
 class OrderCredentials(BaseModel):
     battle_tag: str | None = None
     nickname: str | None = None

@@ -43,7 +43,7 @@ class PreOrder(sheets_models.SheetEntity, TimeStampMixin):
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
 
     info: order_models.OrderInfo
-    price: order_models.OrderPrice
+    price: order_models.OrderPriceNone
     status: order_models.OrderStatus  # TODO: Убрать, нужен для обратной совместимости с обычным заказом
 
     has_response: bool = Field(default=False)
