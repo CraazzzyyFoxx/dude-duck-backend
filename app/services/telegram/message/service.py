@@ -15,10 +15,12 @@ async def order_create(
     order: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem,
     categories: list[str],
     configs: list[str],
-    pre: bool = False,
+    *,
+    is_pre: bool = False,
+    is_gold: bool = False,
 ) -> models.OrderResponse:
-    data = {"order": order, "categories": categories, "configs": configs}
-    if pre:
+    data = {"order": order, "categories": categories, "configs": configs, "is_gold": is_gold}
+    if is_pre:
         resp = await service_request("message/order_create", "POST", data=data)
     else:
         resp = await service_request("message/preorder_create", "POST", data=data)
@@ -28,10 +30,12 @@ async def order_create(
 async def order_edit(
     order: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem,
     configs: list[str],
-    pre: bool = False,
+    *,
+    is_pre: bool = False,
+    is_gold: bool = False,
 ) -> models.OrderResponse:
-    data = {"order": order, "configs": configs}
-    if pre:
+    data = {"order": order, "configs": configs, "is_gold": is_gold}
+    if is_pre:
         resp = await service_request("message/order_update", "POST", data=data)
     else:
         resp = await service_request("message/preorder_update", "POST", data=data)

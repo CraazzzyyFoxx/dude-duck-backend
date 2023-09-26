@@ -12,6 +12,7 @@ class OrderMessage(BaseModel):
 class OrderPull(BaseModel):
     config_names: list[str]
     preorder: bool = False
+    is_gold: bool = False
 
 
 class OrderPullCreate(OrderPull):
