@@ -2,6 +2,7 @@ import httpx
 from fastapi.encoders import jsonable_encoder
 from httpx import HTTPError, TimeoutException
 from loguru import logger
+from pydantic import BaseModel
 
 from app.core import config, errors
 
@@ -31,7 +32,7 @@ class TelegramServiceMeta:
 TelegramService = TelegramServiceMeta()
 
 
-async def request(endpoint: str, method: str, data: dict | None = None) -> httpx.Response:
+async def request(endpoint: str, method: str, data: dict | BaseModel | None = None) -> httpx.Response:
     if config.app.telegram_integration is False:
         raise errors.DudeDuckHTTPException(
             status_code=500,

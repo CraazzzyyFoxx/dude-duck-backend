@@ -45,11 +45,10 @@ async def order_edit(
 async def order_delete(
     order: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem, pre: bool = False
 ) -> models.OrderResponse:
-    data = {"order": order}
     if pre:
-        resp = await service_request("message/order_delete", "POST", data=data)
+        resp = await service_request("message/order_delete", "POST", data=order)
     else:
-        resp = await service_request("message/preorder_delete", "POST", data=data)
+        resp = await service_request("message/preorder_delete", "POST", data=order)
     return models.OrderResponse.model_validate(resp.json())
 
 
@@ -84,13 +83,11 @@ def send_response_decline(user: auth_models.UserRead, order_id: str) -> None:
 
 
 def send_logged_notify(user: auth_models.UserRead) -> None:
-    data = {"user": user}
-    asyncio.create_task(service_request("message/logged_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/logged_notify", "POST", data=user))
 
 
 def send_registered_notify(user: auth_models.UserRead) -> None:
-    data = {"user": user}
-    asyncio.create_task(service_request("message/registered_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/registered_notify", "POST", data=user))
 
 
 def send_request_verify(user: auth_models.UserRead, token: str) -> None:
@@ -99,8 +96,7 @@ def send_request_verify(user: auth_models.UserRead, token: str) -> None:
 
 
 def send_verified_notify(user: auth_models.UserRead) -> None:
-    data = {"user": user}
-    asyncio.create_task(service_request("message/verified_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/verified_notify", "POST", data=user))
 
 
 def send_order_close_notify(user: auth_models.UserRead, order_id: str, url: str, message: str) -> None:
