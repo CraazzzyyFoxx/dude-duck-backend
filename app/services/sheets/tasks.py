@@ -3,6 +3,7 @@ import time
 
 from beanie import PydanticObjectId, init_beanie
 from deepdiff import DeepDiff
+from pydantic import ValidationError
 
 from app import db
 from app.core import config
@@ -61,8 +62,11 @@ async def sync_data_from(
     inserted_orders = []
     for order in orders.values():
         if order.shop_order_id is not None:
-            insert_data.append(order_models.OrderCreate.model_validate(order, from_attributes=True))
-            inserted_orders.append(order)
+            try:
+                insert_data.append(order_models.OrderCreate.model_validate(order, from_attributes=True))
+                inserted_orders.append(order)
+            except ValidationError:
+                pass
     created = len(insert_data)
     if created > 0:
         ids = await order_service.bulk_create(insert_data)
