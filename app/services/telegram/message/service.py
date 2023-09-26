@@ -45,7 +45,7 @@ async def order_edit(
 async def order_delete(
     order: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem, pre: bool = False
 ) -> models.OrderResponse:
-    if pre:
+    if not pre:
         resp = await service_request("message/order_delete", "POST", data=order)
     else:
         resp = await service_request("message/preorder_delete", "POST", data=order)
