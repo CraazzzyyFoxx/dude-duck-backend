@@ -62,7 +62,11 @@ async def sync_data_from(
     insert_data = []
     inserted_orders = []
     for order in orders.values():
-        if order.shop_order_id is not None and order.status != order_models.OrderStatus.Refund:
+        if (
+            order.shop_order_id is not None
+            and order.status != order_models.OrderStatus.Refund
+            and order.price.price_booster_dollar is not None
+        ):
             try:
                 insert_data.append(order_models.OrderCreate.model_validate(order, from_attributes=True))
                 inserted_orders.append(order)
