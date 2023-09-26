@@ -2,7 +2,6 @@ import typing
 from datetime import datetime
 
 from beanie import PydanticObjectId
-from loguru import logger
 from starlette import status
 
 from app.core import errors
@@ -419,7 +418,7 @@ async def paid_order(payment_id: PydanticObjectId) -> models.UserOrder:
     order = await order_flows.get(data.order_id)
     await service.update(data, models.UserOrderUpdate(paid=True))
     boosters = await service.get_by_order_id(order.id)
-    if all([booster.paid for booster in boosters]):
+    if all(booster.paid for booster in boosters):
         parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
         user = await auth_service.get_first_superuser()
         if user.google is not None and parser is not None:

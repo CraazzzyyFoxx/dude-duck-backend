@@ -70,7 +70,7 @@ async def is_already_respond(order_id: PydanticObjectId, user: auth_models.User)
     response = await service.get_by_order_id_user_id(order_id, user.id)
     if response is not None:
         raise errors.DudeDuckHTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=[
                 errors.DudeDuckException(
                     msg="It is impossible to respond to the same order twice.",
@@ -88,7 +88,7 @@ async def create_response(
     await is_already_respond(order.id, user)
     await accounting_flows.can_user_pick_order(user, order)
     resp = await service.create(models.ResponseCreate(extra=response, order_id=order.id, user_id=user.id))
-    messages_service.send_response_admin(
+    messages_service.send_order_response_admin(
         await order_flows.format_order_system(order),
         auth_models.UserRead.model_validate(user, from_attributes=True),
         models.ResponseRead.model_validate(resp),
@@ -124,13 +124,13 @@ async def approve_response(user: auth_models.User, order: order_models.Order) ->
             user_declined = await auth_service.get(resp.user_id)
             user_declined_read = auth_models.UserRead.model_validate(user_declined, from_attributes=True)
             messages_service.send_response_decline(user_declined_read, order.order_id)
-    await messages_service.pull_order_delete(await order_flows.format_order_system(order))
+    await messages_service.order_delete(await order_flows.format_order_system(order))
     messages_service.send_response_chose_notify(order.order_id, user_approved, len(responds))
     return await get_by_order_id_user_id(order.id, user.id)
 
 
 async def approve_preorder_response(user: auth_models.User, order: preorder_models.PreOrder) -> models.Response:
-    await messages_service.pull_order_delete(await preorder_flows.format_preorder_system(order), pre=True)
+    await messages_service.order_delete(await preorder_flows.format_preorder_system(order), pre=True)
     for resp in await service.get_by_order_id(order_id=order.id):
         await service.update(resp, models.ResponseUpdate(approved=resp.user_id == user.id, closed=True))
     await preorder_service.update(order, preorder_models.PreOrderUpdate(has_response=True))

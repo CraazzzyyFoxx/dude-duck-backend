@@ -2,7 +2,6 @@ import datetime
 
 import httpx
 from beanie import PydanticObjectId
-from fastapi import HTTPException
 
 from app.core import errors
 from app.services.auth import service as auth_service
@@ -104,6 +103,8 @@ async def validate_token(token: str) -> bool:
     headers = {"apikey": token}
     response = await client.request("GET", f"/currency_data/historical?date={date}", headers=headers)
     if response.status_code != 200:
-        raise HTTPException(status_code=404, detail=[{"msg": response.json()}])
+        raise errors.DudeDuckHTTPException(
+            status_code=400, detail=[errors.DudeDuckException(msg=response.json(), code="invalid_token")]
+        )
     else:
         return True

@@ -1,5 +1,4 @@
 from beanie import PydanticObjectId
-from fastapi import HTTPException
 from pydantic import ValidationError
 from starlette import status
 
@@ -13,9 +12,9 @@ from . import models, service
 async def get(parser_id: PydanticObjectId):
     parser = await service.get(parser_id)
     if not parser:
-        raise HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A Spreadsheet parse with this id does not exist."}],
+            detail=[errors.DudeDuckException(msg="A Spreadsheet parse with this id does not exist.", code="not_exist")],
         )
     return parser
 
@@ -23,9 +22,13 @@ async def get(parser_id: PydanticObjectId):
 async def get_by_spreadsheet_sheet(spreadsheet: str, sheet: int):
     parser = await service.get_by_spreadsheet_sheet(spreadsheet, sheet)
     if not parser:
-        raise HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A Spreadsheet parse with this spreadsheet and sheet_id does not exist."}],
+            detail=[
+                errors.DudeDuckException(
+                    msg="A Spreadsheet parse with this spreadsheet and sheet_id does not exist.", code="not_exist"
+                )
+            ],
         )
     return parser
 
@@ -33,9 +36,11 @@ async def get_by_spreadsheet_sheet(spreadsheet: str, sheet: int):
 async def create(parser_in: models.OrderSheetParseCreate):
     data = await service.get_by_spreadsheet_sheet(parser_in.spreadsheet, parser_in.sheet_id)
     if data:
-        raise HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[{"msg": "A Spreadsheet parse with this id already exists"}],
+            detail=[
+                errors.DudeDuckException(msg="A Spreadsheet parse with this id already exists", code="already_exist")
+            ],
         )
     return await service.create(parser_in)
 
@@ -52,9 +57,9 @@ async def delete(spreadsheet: str, sheet_id: int):
 
 async def get_order_from_sheets(data: models.SheetEntity, user: auth_models.User):
     if not user.google:
-        raise HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=[{"msg": "Google Service account doesn't setup."}],
+            detail=[errors.DudeDuckException(msg="Google Service account doesn't setup.", code="not_exist")],
         )
     parser = await get_by_spreadsheet_sheet(data.spreadsheet, data.sheet_id)
     try:
@@ -65,8 +70,7 @@ async def get_order_from_sheets(data: models.SheetEntity, user: auth_models.User
             data.row_id,
         )
     except ValidationError as error:
-        e = errors.GoogleSheetsParserError.http_exception(
+        raise errors.GoogleSheetsParserError.http_exception(
             orders_models.Order, data.spreadsheet, data.sheet_id, data.row_id, error
         )
-        raise e from None
     return model

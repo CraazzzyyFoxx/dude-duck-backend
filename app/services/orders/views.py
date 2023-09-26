@@ -17,13 +17,6 @@ async def get_order(order_id: PydanticObjectId, _=Depends(auth_flows.current_act
     return await flows.format_order_perms(order)
 
 
-# @router.get(path="/{order_id}/all", response_model=schemas.OrderReadNoPerms)
-# async def get_order_all(order_id: PydanticObjectId, user=Depends(auth_flows.current_active_verified)):
-#     order = await flows.get(order_id)
-#     await permissions_flows.has_access_to_order(order, user)
-#     return await flows.format_order_perms(order, has=True)
-
-
 @router.get(path="", response_model=search_service.models.Paginated[schemas.OrderReadNoPerms])
 async def get_orders(
     paging: search_models.PaginationParams = Depends(),

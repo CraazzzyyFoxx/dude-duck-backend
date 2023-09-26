@@ -91,6 +91,7 @@ def current_user(
     async def current_user_dependency(token: Annotated[str, Depends(oauth2_scheme)]):
         user, _ = await get_current_user(token, active=active, verified=verified, superuser=superuser)
         return user
+
     return current_user_dependency
 
 
@@ -104,6 +105,7 @@ def current_user_api(
             token.credentials, active=active, verified=verified, superuser=superuser, api=True
         )
         return user
+
     return current_user_dependency
 
 

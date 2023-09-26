@@ -1,8 +1,7 @@
 from datetime import datetime
 
 from beanie import PydanticObjectId
-from pydantic import (BaseModel, ConfigDict, Field, HttpUrl, constr,
-                      field_validator, model_validator)
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, constr, field_validator, model_validator
 from pymongo import IndexModel
 
 from app.core.db import TimeStampMixin

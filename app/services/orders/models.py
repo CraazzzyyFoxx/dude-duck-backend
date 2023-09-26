@@ -39,7 +39,7 @@ class OrderPrice(BaseModel):
 
 class OrderPriceNone(BaseModel):
     price_dollar: float | None = None
-    price_booster_dollar: float| None = None
+    price_booster_dollar: float | None = None
 
 
 class OrderCredentials(BaseModel):

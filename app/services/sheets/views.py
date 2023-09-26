@@ -1,12 +1,12 @@
 import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from lxml.builder import ElementMaker
 from lxml.etree import tostring
 from starlette import status
 from starlette.responses import Response
 
-from app.core import enums
+from app.core import enums, errors
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import models as accounting_models
 from app.services.auth import flows as auth_flows
@@ -25,12 +25,21 @@ from . import flows, models
 router = APIRouter(prefix="/sheets", tags=[enums.RouteTag.SHEETS])
 
 
-@router.get("/currency")
-async def get_currency_for_sheet(date: datetime.date):
+@router.get("/currency/rub")
+async def get_currency_rub_for_sheet(date: datetime.date):
     e_maker = ElementMaker()
     wallet = await currency_flows.get(datetime.datetime(year=date.year, month=date.month, day=date.day))
     wallet_str = str(wallet.quotes["RUB"]).replace(".", ",")
-    the_doc = e_maker.root(e_maker.USD(wallet_str))
+    the_doc = e_maker.root(e_maker.RUB(wallet_str))
+    return Response(content=tostring(the_doc, pretty_print=True), media_type="text/xml")
+
+
+@router.get("/currency/wow")
+async def get_currency_wow_for_sheet(date: datetime.date):
+    e_maker = ElementMaker()
+    wallet = await currency_flows.get(datetime.datetime(year=date.year, month=date.month, day=date.day))
+    wallet_str = str(wallet.quotes["WOW"]).replace(".", ",")
+    the_doc = e_maker.root(e_maker.WOW(wallet_str))
     return Response(content=tostring(the_doc, pretty_print=True), media_type="text/xml")
 
 
@@ -53,9 +62,9 @@ async def update_order_from_sheets(
 ):
     model = await flows.get_order_from_sheets(data, user)
     if not model.shop_order_id:
-        return HTTPException(
+        raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[{"msg": "The preorder cannot be updated."}],
+            detail=[errors.DudeDuckException(msg="The preorder cannot be updated.", code="cannot_updated")],
         )
     order = await orders_flows.get_by_order_id(model.order_id)
     return await orders_service.update(order, model)
