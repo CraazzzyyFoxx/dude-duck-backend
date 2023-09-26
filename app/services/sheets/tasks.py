@@ -48,7 +48,7 @@ async def sync_data_from(
 
     for order_id, order_db in orders_db.items():
         order = orders.get(order_id)
-        if order is not None:
+        if order is not None and order.status != order_models.OrderStatus.Refund:
             orders.pop(order_id)
             if DeepDiff(order.model_dump(exclude=exclude), order_db.model_dump(exclude=exclude)):
                 await order_service.update(order_db, order_models.OrderUpdate.model_validate(order.model_dump()))

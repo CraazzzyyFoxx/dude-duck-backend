@@ -13,8 +13,8 @@ class OrderPriceUser(BaseModel):
 
 
 class OrderPriceSystem(BaseModel):
-    price_dollar: float | None = None
-    price_booster_dollar_without_fee: float | None = None
+    price_dollar: float
+    price_booster_dollar_without_fee: float
 
     price_booster_dollar: float
     price_booster_rub: float
