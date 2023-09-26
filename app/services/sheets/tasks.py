@@ -55,13 +55,14 @@ async def sync_data_from(
                 changed += 1
             await boosters_from_order_sync(order_db, order, users)
         else:
+            orders.pop(order_id)
             await order_service.delete(order_db.id)
             deleted += 1
 
     insert_data = []
     inserted_orders = []
     for order in orders.values():
-        if order.shop_order_id is not None:
+        if order.shop_order_id is not None and order.status != order_models.OrderStatus.Refund:
             try:
                 insert_data.append(order_models.OrderCreate.model_validate(order, from_attributes=True))
                 inserted_orders.append(order)
