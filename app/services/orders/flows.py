@@ -59,7 +59,7 @@ async def format_order_perms(order: models.Order, *, has: bool = False):
     price = schemas.OrderPriceUser(
         price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
         price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
-        price_booster_gold=await currency_flows.usd_to_currency(booster_price, order.date, "WOW", with_fee=True),
+        price_booster_gold=order.price.price_booster_gold,
     )
     data["price"] = price
     if has:
@@ -74,7 +74,7 @@ async def format_order_active(order: models.Order, order_active: accounting_mode
     price = schemas.OrderPriceUser(
         price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date),
         price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB"),
-        price_booster_gold=await currency_flows.usd_to_currency(booster_price, order.date, "WOW"),
+        price_booster_gold=order.price.price_booster_gold,
     )
     data["price"] = price
     data["paid_time"] = order_active.paid_time

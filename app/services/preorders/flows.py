@@ -64,6 +64,7 @@ async def format_preorder_system(order: models.PreOrder):
             price_booster_dollar_without_fee=booster_price,
             price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
             price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
+            price_booster_gold=order.price.price_booster_gold,
         )
     else:
         price = models.PreOrderPriceSystem(price_dollar=order.price.price_dollar)
@@ -78,6 +79,7 @@ async def format_preorder_perms(order: models.PreOrder):
         price = models.PreOrderPriceUser(
             price_booster_dollar=await currency_flows.usd_to_currency(booster_price, order.date, with_fee=True),
             price_booster_rub=await currency_flows.usd_to_currency(booster_price, order.date, "RUB", with_fee=True),
+            price_booster_gold=order.price.price_booster_gold,
         )
     else:
         price = models.PreOrderPriceUser()
