@@ -20,7 +20,7 @@ async def order_create(
     is_gold: bool = False,
 ) -> models.OrderResponse:
     data = {"order": order, "categories": categories, "configs": configs, "is_gold": is_gold}
-    if is_pre:
+    if not is_pre:
         resp = await service_request("message/order_create", "POST", data=data)
     else:
         resp = await service_request("message/preorder_create", "POST", data=data)
@@ -35,7 +35,7 @@ async def order_edit(
     is_gold: bool = False,
 ) -> models.OrderResponse:
     data = {"order": order, "configs": configs, "is_gold": is_gold}
-    if is_pre:
+    if not is_pre:
         resp = await service_request("message/order_update", "POST", data=data)
     else:
         resp = await service_request("message/preorder_update", "POST", data=data)
