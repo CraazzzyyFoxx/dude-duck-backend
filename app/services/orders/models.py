@@ -38,10 +38,9 @@ class OrderPrice(BaseModel):
     price_booster_gold: float | None = None
 
 
-class OrderPriceNone(BaseModel):
+class OrderPriceNone(OrderPrice):
     price_dollar: float | None = None
     price_booster_dollar: float | None = None
-    price_booster_gold: float | None = None
 
 
 class OrderCredentials(BaseModel):
