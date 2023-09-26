@@ -16,7 +16,7 @@ class PreOrderPriceUser(BaseModel):
 
 
 class PreOrderPriceSystem(BaseModel):
-    price_dollar: float
+    price_dollar: float | None = None
     price_booster_dollar_without_fee: float | None = None
 
     price_booster_dollar: float | None = None
