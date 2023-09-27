@@ -20,15 +20,6 @@ from . import flows
 router = APIRouter(prefix="/users", tags=[enums.RouteTag.USERS])
 
 
-@router.get("", response_model=search_models.Paginated[auth_models.UserRead])
-async def get_users(
-    paging: search_models.PaginationParams = Depends(),
-    sorting: search_models.SortingParams = Depends(),
-    _: auth_flows.models.User = Depends(auth_flows.current_active_superuser),
-):
-    return await search_service.paginate(auth_models.User.all(), paging, sorting)
-
-
 @router.get("/@me", response_model=auth_models.UserRead)
 async def get_me(user=Depends(auth_flows.current_active)):
     return auth_models.UserRead.model_validate(user)

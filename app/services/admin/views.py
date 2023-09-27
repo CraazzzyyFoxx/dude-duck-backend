@@ -17,6 +17,15 @@ router = APIRouter(
 )
 
 
+@router.get("", response_model=search_models.Paginated[auth_models.UserRead])
+async def get_users(
+    paging: search_models.PaginationParams = Depends(),
+    sorting: search_models.SortingParams = Depends(),
+    _: auth_flows.models.User = Depends(auth_flows.current_active_superuser),
+):
+    return await search_service.paginate(auth_models.User.all(), paging, sorting)
+
+
 @router.get(path="/orders/{order_id}", response_model=order_schemas.OrderReadSystem)
 async def get_order(order_id: PydanticObjectId):
     order = await order_flows.get(order_id)
