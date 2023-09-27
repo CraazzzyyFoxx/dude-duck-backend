@@ -1,8 +1,8 @@
 from beanie import PydanticObjectId
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, UploadFile
 from starlette import status
 
-from app.core.enums import RouteTag
+from app.core import errors, enums
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import models as accounting_models
 from app.services.auth import flows as auth_flows
@@ -17,7 +17,7 @@ from app.services.search import service as search_service
 
 from . import flows
 
-router = APIRouter(prefix="/users", tags=[RouteTag.USERS])
+router = APIRouter(prefix="/users", tags=[enums.RouteTag.USERS])
 
 
 @router.get("", response_model=search_models.Paginated[auth_models.UserRead])
@@ -66,9 +66,9 @@ async def add_google_token(file: UploadFile, user=Depends(auth_flows.current_act
 @router.get("/@me/google-token", response_model=auth_models.AdminGoogleToken)
 async def read_google_token(user=Depends(auth_flows.current_active_superuser)):
     if user.google is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=[{"msg": "Google Service account doesn't setup."}],
+        raise errors.DudeDuckHTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=[errors.DudeDuckException(msg="Google Service account doesn't setup.", code="not_exist")],
         )
     return user.google
 

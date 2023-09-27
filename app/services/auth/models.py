@@ -3,8 +3,7 @@ import enum
 import re
 
 from beanie import Link, PydanticObjectId
-from pydantic import (BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr,
-                      field_validator, model_validator)
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
 from pydantic_core import Url
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -91,18 +90,15 @@ class UserCreate(BaseModel):
             raise ValueError("Only Latin, Cyrillic and numbers can be used in the username")
         return v
 
-    @field_validator("discord", mode="after")
+    @field_validator("discord")
     def discord_validate(cls, v: str) -> str:
-        if v.startswith("@"):
-            if len(v.replace(" ", "")) != len(v):
-                raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
-        elif "#" in v:
+        if "#" in v:
             name, dis = v.split("#")
-            if len(dis) != 4:
-                raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
-        else:
-            raise ValueError("The discord username should be @craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
-        return v
+            if len(dis) == 4:
+                return v
+        if len(v.replace(" ", "")) == len(v):
+            return v
+        raise ValueError("The discord username should be craaazzzyyfoxx or CraazzzyyFoxx#0001 format")
 
 
 class BaseUserUpdate(BaseModel):

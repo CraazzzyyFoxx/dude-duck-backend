@@ -3,6 +3,7 @@ import time
 
 from beanie import PydanticObjectId, init_beanie
 from deepdiff import DeepDiff
+from pydantic import ValidationError
 
 from app import db
 from app.core import config
@@ -56,22 +57,30 @@ async def sync_data_from(
 
     for order_id, order_db in orders_db.items():
         order = orders.get(order_id)
-        if order is not None:
+        if order is not None and order.status != order_models.OrderStatus.Refund:
             orders.pop(order_id)
             if DeepDiff(order.model_dump(exclude=exclude), order_db.model_dump(exclude=exclude)):
                 await order_service.update(order_db, order_models.OrderUpdate.model_validate(order.model_dump()))
                 changed += 1
             await boosters_from_order_sync(order_db, order, users)
         else:
+            orders.pop(order_id)
             await order_service.delete(order_db.id)
             deleted += 1
 
     insert_data = []
     inserted_orders = []
     for order in orders.values():
-        if order.shop_order_id is not None:
-            insert_data.append(order_models.OrderCreate.model_validate(order, from_attributes=True))
-            inserted_orders.append(order)
+        if (
+            order.shop_order_id is not None
+            and order.status != order_models.OrderStatus.Refund
+            and order.price.price_booster_dollar is not None
+        ):
+            try:
+                insert_data.append(order_models.OrderCreate.model_validate(order, from_attributes=True))
+                inserted_orders.append(order)
+            except ValidationError:
+                pass
     created = len(insert_data)
     if created > 0:
         ids = await order_service.bulk_create(insert_data)

@@ -48,8 +48,7 @@ async def get_by_ids(users_id: typing.Iterable[PydanticObjectId]) -> list[models
 
 
 async def create(user_create: models.UserCreate, safe: bool = False) -> models.User:
-    existing_user = await get_by_email(user_create.email)
-    if existing_user is not None:
+    if await get_by_email(user_create.email) is not None or await get_by_name(user_create.name):
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
