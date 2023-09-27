@@ -81,7 +81,7 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
     return created_user
 
 
-async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool = False) -> models.User:
+async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool = False, exclude=True) -> models.User:
     update_data = (
         user_in.model_dump(
             exclude={"is_superuser", "is_active", "is_verified", "oauth_accounts", "password"},
@@ -89,7 +89,7 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
             mode="json",
         )
         if safe
-        else user_in.model_dump(exclude={"password"}, mode="json", exclude_unset=True)
+        else user_in.model_dump(exclude={"password"}, mode="json", exclude_unset=exclude)
     )
 
     user_data = dict(user)
