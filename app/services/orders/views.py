@@ -6,7 +6,7 @@ from app.services.auth import flows as auth_flows
 from app.services.search import models as search_models
 from app.services.search import service as search_service
 
-from . import flows, models, schemas
+from . import flows, schemas
 
 router = APIRouter(prefix="/orders", tags=[enums.RouteTag.ORDERS])
 
@@ -23,12 +23,6 @@ async def get_orders(
     sorting: search_models.OrderSortingParams = Depends(),
     _=Depends(auth_flows.current_active_verified),
 ):
-    query = {}
-    if sorting.completed != search_models.OrderSelection.ALL:
-        if sorting.completed == search_models.OrderSelection.Completed:
-            query = models.Order.status == sorting.completed
-        else:
-            query = models.Order.status == sorting.completed
-    data = await search_service.paginate(models.Order.find(query), paging, sorting)
+    data = await flows.get_filter(paging, sorting)
     data["results"] = [await flows.format_order_perms(order) for order in data["results"]]
     return data

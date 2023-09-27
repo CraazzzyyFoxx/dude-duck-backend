@@ -64,8 +64,6 @@ class OrderReadSystemBase(BaseModel):
 
 
 class OrderReadSystem(OrderReadSystemBase):
-    model_config = ConfigDict(from_attributes=True)
-
     id: PydanticObjectId
 
 

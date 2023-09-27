@@ -9,12 +9,14 @@ from app.services.settings.views import router as settings_router
 from app.services.sheets.views import router as sheets_router
 from app.services.telegram.views import router as telegram_router
 from app.services.users.views import router as users_router
+from app.services.admin.views import router as admin_router
 
 router = APIRouter()
 router.include_router(auth_router)
 
 api_router = APIRouter()
 api_router.include_router(settings_router)
+api_router.include_router(admin_router)
 api_router.include_router(users_router)
 api_router.include_router(orders_router)
 api_router.include_router(preorders_router)

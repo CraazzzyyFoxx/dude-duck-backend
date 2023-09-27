@@ -2,7 +2,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, UploadFile
 from starlette import status
 
-from app.core import errors, enums
+from app.core import enums, errors
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import models as accounting_models
 from app.services.auth import flows as auth_flows
@@ -37,22 +37,6 @@ async def get_me(user=Depends(auth_flows.current_active)):
 @router.patch("/@me", response_model=auth_models.UserRead)
 async def update_me(user_update: auth_models.UserUpdate, user=Depends(auth_flows.current_active)):
     return await flows.update_user(user_update, user)
-
-
-@router.patch("/{user_id}", response_model=auth_models.UserRead)
-async def update_user(
-    user_update: auth_models.UserUpdateAdmin,
-    user_id: PydanticObjectId,
-    _=Depends(auth_flows.current_active_superuser),
-):
-    user = await auth_flows.get(user_id)
-    return await flows.update_user(user_update, user)
-
-
-@router.get("/{user_id}", response_model=auth_models.UserRead)
-async def get_user(user_id: PydanticObjectId, _=Depends(auth_flows.current_active_superuser)):
-    user = await auth_flows.get(user_id)
-    return auth_models.UserRead.model_validate(user)
 
 
 @router.post("/@me/google-token", status_code=201, response_model=auth_models.AdminGoogleToken)

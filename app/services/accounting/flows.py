@@ -5,7 +5,7 @@ from beanie import PydanticObjectId
 from loguru import logger
 from starlette import status
 
-from app.core import errors, config
+from app.core import config, errors
 from app.services.auth import flows as auth_flows
 from app.services.auth import models as auth_models
 from app.services.auth import service as auth_service
@@ -94,11 +94,9 @@ async def update_price(order: order_models.Order, price: float, *, add: bool = T
     dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
     total_dollars = sum(b.dollars for b in boosters)
     free_dollars = dollars - total_dollars
+    price_map: dict[PydanticObjectId, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
     if add:
-        price_map: dict[PydanticObjectId, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
         price = -price
-    else:
-        price_map: dict[PydanticObjectId, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
     for booster in boosters:
         booster.dollars += price * price_map[booster.id]
         await booster.save_changes()
@@ -421,13 +419,7 @@ async def paid_order(payment_id: PydanticObjectId) -> models.UserOrder:
     await service.update(data, models.UserOrderUpdate(paid=True))
     boosters = await service.get_by_order_id(order.id)
     if all(booster.paid for booster in boosters):
-        parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
-        user = await auth_service.get_first_superuser()
-        if user.google is not None and parser is not None:
-            tasks_service.update_order.delay(
-                user.google.model_dump_json(),
-                parser.model_dump_json(),
-                order.row_id,
-                order_models.OrderUpdate(status_paid=order_models.OrderPaidStatus.Paid).model_dump(),
-            )
+        await order_service.update_with_sync(
+            order, order_models.OrderUpdate(status_paid=order_models.OrderPaidStatus.Paid)
+        )
     return data

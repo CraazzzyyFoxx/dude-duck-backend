@@ -2,7 +2,7 @@ from typing import Annotated
 
 from beanie import PydanticObjectId
 from fastapi import Depends
-from fastapi.security import HTTPBearer, OAuth2PasswordBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
 from starlette import status
 
 from app.core import errors

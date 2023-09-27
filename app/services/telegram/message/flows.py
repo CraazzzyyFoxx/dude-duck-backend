@@ -1,7 +1,7 @@
 from app.services.orders import schemas as order_schemas
 from app.services.preorders import models as preorder_models
 
-from . import service, models
+from . import models, service
 
 
 async def create_order_message(

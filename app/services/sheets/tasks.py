@@ -8,8 +8,8 @@ from pydantic import ValidationError
 from app import db
 from app.core import config
 from app.services.accounting import flows as accounting_flows
-from app.services.accounting import service as accounting_service
 from app.services.accounting import models as accounting_models
+from app.services.accounting import service as accounting_service
 from app.services.auth import models as auth_models
 from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows

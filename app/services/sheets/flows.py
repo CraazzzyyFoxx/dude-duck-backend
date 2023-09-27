@@ -72,5 +72,5 @@ async def get_order_from_sheets(data: models.SheetEntity, user: auth_models.User
     except ValidationError as error:
         raise errors.GoogleSheetsParserError.http_exception(
             orders_models.Order, data.spreadsheet, data.sheet_id, data.row_id, error
-        )
+        ) from error
     return model
