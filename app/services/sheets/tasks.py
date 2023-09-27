@@ -8,6 +8,7 @@ from app import db
 from app.core import config
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import service as accounting_service
+from app.services.accounting import models as accounting_models
 from app.services.auth import models as auth_models
 from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows
@@ -26,12 +27,20 @@ async def boosters_from_order_sync(
         users_in_map: dict[str, auth_models.User] = {user.name: user for user in users_in}
         for booster, price in accounting_service.boosters_from_str(order.booster).items():
             user = users_in_map.get(booster)
-            if user and boosters_db_map.get(user.id) is None:
-                if price is None:
-                    await accounting_flows.add_booster(order_db, user)
+            if user:
+                if boosters_db_map.get(user.id) is None:
+                    if price is None:
+                        await accounting_flows.add_booster(order_db, user)
+                    else:
+                        dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
+                        await accounting_flows.add_booster_with_price(order_db, user, dollars)
                 else:
-                    dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
-                    await accounting_flows.add_booster_with_price(order_db, user, dollars)
+                    if order_db.status != order.status or order_db.status_paid != order.status_paid:
+                        update_model = accounting_models.UserOrderUpdate(
+                            completed=True if order.status == order_models.OrderStatus.Completed else False,
+                            paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
+                        )
+                        await accounting_flows.update_booster(order_db, user, update_model)
 
 
 async def sync_data_from(

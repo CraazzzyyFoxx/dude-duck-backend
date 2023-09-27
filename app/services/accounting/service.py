@@ -70,17 +70,18 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
     for field in user_order_data:
         if field in update_data:
             if field == "paid":
-                if update_data[field]:
-                    user_order.completed = True
-                    user_order.completed_at = datetime.utcnow()
+                if update_data[field] is True:
+                    user_order.paid = True
                     user_order.paid_time = datetime.utcnow()
                 else:
+                    user_order.paid = False
                     user_order.paid_time = None
             if field == "completed":
-                if update_data[field]:
+                if update_data[field] is False:
                     user_order.completed = True
                     user_order.completed_at = datetime.utcnow()
                 else:
+                    user_order.completed = False
                     user_order.completed_at = None
             setattr(user_order, field, update_data[field])
 
