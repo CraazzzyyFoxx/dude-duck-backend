@@ -17,7 +17,7 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=search_models.Paginated[auth_models.UserRead])
+@router.get("/users", response_model=search_models.Paginated[auth_models.UserRead])
 async def get_users(
     paging: search_models.PaginationParams = Depends(),
     sorting: search_models.SortingParams = Depends(),
@@ -42,19 +42,19 @@ async def get_orders(
     return data
 
 
-@router.patch("/{user_id}", response_model=auth_models.UserRead)
+@router.patch("/users/{user_id}", response_model=auth_models.UserRead)
 async def update_user(user_update: auth_models.UserUpdateAdmin, user_id: PydanticObjectId):
     user = await auth_flows.get(user_id)
     return await user_flows.update_user(user_update, user)
 
 
-@router.get("/{user_id}", response_model=auth_models.UserRead)
+@router.get("/users/{user_id}", response_model=auth_models.UserRead)
 async def get_user(user_id: PydanticObjectId):
     user = await auth_flows.get(user_id)
     return auth_models.UserRead.model_validate(user)
 
 
-@router.get("/{user_id}/payment/report", response_model=accounting_models.UserAccountReport)
+@router.get("/users/{user_id}/payment/report", response_model=accounting_models.UserAccountReport)
 async def get_accounting_report(user_id: PydanticObjectId):
     user = await auth_flows.get(user_id)
     return await accounting_flows.create_user_report(user)
