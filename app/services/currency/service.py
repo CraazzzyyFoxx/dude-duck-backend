@@ -27,14 +27,13 @@ async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
     if settings.collect_currency_wow_by_sheets:
         creds = await auth_service.get_first_superuser()
         if creds.google:
-            quotes["WOW"] = float(
-                sheets_service.get_cell(
-                    creds.google,
-                    settings.currency_wow_spreadsheet,
-                    settings.currency_wow_sheet_id,
-                    settings.currency_wow_cell,
-                )
+            cell = sheets_service.get_cell(
+                creds.google,
+                settings.currency_wow_spreadsheet,
+                settings.currency_wow_sheet_id,
+                settings.currency_wow_cell,
             )
+            quotes["WOW"] = float(cell)
 
         else:
             raise errors.DudeDuckHTTPException(

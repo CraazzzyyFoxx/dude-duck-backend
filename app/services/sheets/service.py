@@ -443,4 +443,4 @@ def get_cell(creds: auth_models.AdminGoogleToken, spreadsheet: str, sheet_id: in
     sh = gc.open(spreadsheet)
     sheet = sh.get_worksheet_by_id(sheet_id)
     value: gspread.worksheet.ValueRange = sheet.get(cell)
-    return value[0]
+    return value[0][0]
