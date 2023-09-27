@@ -53,7 +53,7 @@ async def sync_data_from(
     t = time.time()
     deleted = 0
     changed = 0
-    exclude = {"id", "revision_id", "booster", "created_at", "updated_at"}
+    exclude = {"id", "revision_id", "booster", "created_at", "updated_at", "spreadsheet", "sheet_id", "row_id"}
 
     for order_id, order_db in orders_db.items():
         order = orders.get(order_id)
