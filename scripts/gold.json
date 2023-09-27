@@ -1,7 +1,7 @@
 {
   "spreadsheet": "B2B order",
-  "sheet_id": 0,
-  "start": 5,
+  "sheet_id": 1426029514,
+  "start": 2,
   "items": [
     {
       "name": "order_id",
@@ -103,7 +103,7 @@
       "type": "str"
     },
     {
-      "name": "game",
+      "name": "discord",
       "row": 12,
       "null": true,
       "generated": false,
@@ -111,7 +111,7 @@
       "type": "str"
     },
     {
-      "name": "category",
+      "name": "game",
       "row": 13,
       "null": true,
       "generated": false,
@@ -119,7 +119,7 @@
       "type": "str"
     },
     {
-      "name": "purchase",
+      "name": "category",
       "row": 14,
       "null": true,
       "generated": false,
@@ -127,7 +127,7 @@
       "type": "str"
     },
     {
-      "name": "comment",
+      "name": "purchase",
       "row": 15,
       "null": true,
       "generated": false,
@@ -135,7 +135,7 @@
       "type": "str"
     },
     {
-      "name": "manager_comment",
+      "name": "comment",
       "row": 16,
       "null": true,
       "generated": false,
@@ -143,7 +143,7 @@
       "type": "str"
     },
     {
-      "name": "battle_tag",
+      "name": "manager_comment",
       "row": 17,
       "null": true,
       "generated": false,
@@ -184,7 +184,7 @@
     },
     {
       "name": "booster",
-      "row": 24,
+      "row": 22,
       "null": true,
       "generated": false,
       "valid_values": [],
@@ -192,7 +192,7 @@
     },
     {
       "name": "auth_date",
-      "row": 25,
+      "row": 23,
       "null": true,
       "generated": false,
       "valid_values": [],
@@ -200,7 +200,7 @@
     },
     {
       "name": "status",
-      "row": 26,
+      "row": 24,
       "null": false,
       "generated": true,
       "valid_values": [
@@ -212,7 +212,7 @@
     },
     {
       "name": "screenshot",
-      "row": 27,
+      "row": 25,
       "null": true,
       "generated": false,
       "valid_values": [],
@@ -220,15 +220,23 @@
     },
     {
       "name": "end_date",
-      "row": 28,
+      "row": 26,
       "null": true,
       "generated": false,
       "valid_values": [],
       "type": "datetime"
     },
     {
+      "name": "price_booster_rub",
+      "row": 27,
+      "null": true,
+      "generated": true,
+      "valid_values": [],
+      "type": "float"
+    },
+    {
       "name": "price_dollar",
-      "row": 29,
+      "row": 28,
       "null": true,
       "generated": false,
       "valid_values": [],
@@ -236,7 +244,7 @@
     },
     {
       "name": "eta",
-      "row": 30,
+      "row": 29,
       "null": true,
       "generated": false,
       "valid_values": [],
@@ -244,7 +252,7 @@
     },
     {
       "name": "price_booster_rub",
-      "row": 31,
+      "row": 30,
       "null": true,
       "generated": true,
       "valid_values": [],
@@ -252,7 +260,7 @@
     },
     {
       "name": "price_booster_dollar",
-      "row": 32,
+      "row": 31,
       "null": true,
       "generated": true,
       "valid_values": [],
@@ -260,6 +268,14 @@
     },
     {
       "name": "price_booster_dollar_fee",
+      "row": 32,
+      "null": true,
+      "generated": true,
+      "valid_values": [],
+      "type": "float"
+    },
+    {
+      "name": "price_booster_gold",
       "row": 33,
       "null": true,
       "generated": true,
@@ -268,7 +284,7 @@
     },
     {
       "name": "status_paid",
-      "row": 38,
+      "row": 41,
       "null": true,
       "generated": true,
       "valid_values": [

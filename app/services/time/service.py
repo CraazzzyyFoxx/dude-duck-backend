@@ -22,7 +22,7 @@ def convert_time(
     future_time: bool = False,
 ) -> datetime.datetime:
     """Try converting a string of human-readable time to a datetime object."""
-
+    time_str = str(time_str)
     if not conversion_mode or conversion_mode == ConversionMode.RELATIVE:
         # Relative time conversion Get any pair of <number><word> with a single optional space in between,
         # and return them as a dict (sort of)
