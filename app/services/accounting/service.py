@@ -4,6 +4,7 @@ from datetime import datetime
 
 from beanie import PydanticObjectId
 from beanie.odm.operators.find.comparison import In
+from loguru import logger
 
 from app.core import config
 from app.services.auth import flows as auth_flows
@@ -35,11 +36,13 @@ async def create(user_order_in: models.UserOrderCreate) -> models.UserOrder:
         user_order.completed_at = datetime.utcnow()
     if user_order_in.paid:
         user_order.paid_time = datetime.utcnow()
+    logger.info(f"Created UserOrder [order_id={user_order_in.order_id} user_id={user_order_in.user_id}]")
     return await user_order.create()
 
 
 async def delete(user_order_id: PydanticObjectId) -> None:
     user_order = await get(user_order_id)
+    logger.info(f"Deleted UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
     await user_order.delete()
 
 
@@ -86,6 +89,7 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
             setattr(user_order, field, update_data[field])
 
     await user_order.save_changes()
+    logger.info(f"Updated UserOrder [order_id={user_order_in.order_id} user_id={user_order_in.user_id}]")
     return user_order
 
 
