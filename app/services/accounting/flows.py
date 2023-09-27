@@ -105,20 +105,24 @@ async def update_price(order: order_models.Order, price: float, *, add: bool = T
 
 
 async def _add_booster(
-    order: order_models.Order, create_data: models.UserOrderCreate, boosters: list[models.UserOrder], price: float
+    order: order_models.Order,
+    create_data: models.UserOrderCreate,
+    boosters: list[models.UserOrder],
+    price: float,
+    sync: bool = True,
 ) -> models.UserOrder:
     try:
         booster = await service.create(create_data)
     except Exception as e:
         await update_price(order, price, add=False)
         raise e
-    if not boosters:
+    if not boosters and sync:
         await order_service.update_with_sync(order, order_models.OrderUpdate(auth_date=datetime.utcnow()))
     await sync_boosters_sheet(order)
     return booster
 
 
-async def add_booster(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
+async def add_booster(order: order_models.Order, user: auth_models.User, sync: bool = True) -> models.UserOrder:
     await can_user_pick(user)
     boosters = await service.get_by_order_id(order.id)
     if user.id in [b.user_id for b in boosters]:
@@ -137,7 +141,7 @@ async def add_booster(order: order_models.Order, user: auth_models.User) -> mode
         completed=True if order.status == order_models.OrderStatus.Completed else False,
         paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
     )
-    return await _add_booster(order, create_data, boosters, calculated_dollars)
+    return await _add_booster(order, create_data, boosters, calculated_dollars, sync)
 
 
 async def add_booster_with_price(
@@ -145,6 +149,7 @@ async def add_booster_with_price(
     user: auth_models.User,
     price: float,
     method_payment: str | None = None,
+    sync: bool = True,
 ) -> models.UserOrder:
     await can_user_pick(user)
     boosters = await service.get_by_order_id(order.id)

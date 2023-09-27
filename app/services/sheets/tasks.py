@@ -32,10 +32,10 @@ async def boosters_from_order_sync(
             user = users_in.get(booster)
             if user and boosters_db_map.get(user.id) is None:
                 if price is None:
-                    await accounting_flows.add_booster(order_db, user)
+                    await accounting_flows.add_booster(order_db, user, sync=False)
                 else:
                     dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
-                    await accounting_flows.add_booster_with_price(order_db, user, dollars)
+                    await accounting_flows.add_booster_with_price(order_db, user, dollars, sync=False)
 
     if order_db.status != order.status or order_db.status_paid != order.status_paid:
         update_model = accounting_models.UserOrderUpdate(
