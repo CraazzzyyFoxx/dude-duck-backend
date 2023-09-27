@@ -36,7 +36,7 @@ async def create(user_order_in: models.UserOrderCreate) -> models.UserOrder:
         user_order.completed_at = datetime.utcnow()
     if user_order_in.paid:
         user_order.paid_time = datetime.utcnow()
-    logger.info(f"Created UserOrder [order_id={user_order_in.order_id} user_id={user_order_in.user_id}]")
+    logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
     return await user_order.create()
 
 
@@ -72,25 +72,26 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
 
     for field in user_order_data:
         if field in update_data:
-            if field == "paid":
-                if update_data[field] is True:
-                    user_order.paid = True
-                    user_order.paid_time = datetime.utcnow()
-                else:
-                    user_order.paid = False
-                    user_order.paid_time = None
-            elif field == "completed":
+            if field == "completed":
                 if update_data[field] is True:
                     user_order.completed = True
                     user_order.completed_at = datetime.utcnow()
                 else:
                     user_order.completed = False
                     user_order.completed_at = None
+            elif field == "paid":
+                if update_data[field] is True:
+                    user_order.paid = True
+                    user_order.paid_time = datetime.utcnow()
+                else:
+                    user_order.paid = False
+                    user_order.paid_time = None
+
             else:
                 setattr(user_order, field, update_data[field])
 
     await user_order.save_changes()
-    logger.info(f"Updated UserOrder [order_id={user_order_in.order_id} user_id={user_order_in.user_id}]")
+    logger.info(f"Updated UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
     return user_order
 
 

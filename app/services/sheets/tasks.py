@@ -20,34 +20,37 @@ from . import models, service
 
 
 async def boosters_from_order_sync(
-    order_db: order_models.Order, order: models.OrderReadSheets, users_in: list[auth_models.User]
+    order_db: order_models.Order,
+    order: models.OrderReadSheets,
+    users_in: dict[str, auth_models.User],
+    users_in_ids: dict[PydanticObjectId, auth_models.User],
 ) -> None:
     boosters = await accounting_service.get_by_order_id(order_db.id)
-    if await accounting_service.boosters_to_str_sync(order, boosters, users_in) != order.booster:
-        boosters_db_map: dict[PydanticObjectId, auth_models.User] = {d.user_id: d for d in boosters}
-        users_in_map: dict[str, auth_models.User] = {user.name: user for user in users_in}
+    boosters_db_map: dict[PydanticObjectId, accounting_models.UserOrder] = {d.user_id: d for d in boosters}
+    if await accounting_service.boosters_to_str_sync(order, boosters, users_in_ids.values()) != order.booster:
         for booster, price in accounting_service.boosters_from_str(order.booster).items():
-            user = users_in_map.get(booster)
-            if user:
-                if boosters_db_map.get(user.id) is None:
-                    if price is None:
-                        await accounting_flows.add_booster(order_db, user)
-                    else:
-                        dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
-                        await accounting_flows.add_booster_with_price(order_db, user, dollars)
+            user = users_in.get(booster)
+            if user and boosters_db_map.get(user.id) is None:
+                if price is None:
+                    await accounting_flows.add_booster(order_db, user)
                 else:
-                    if order_db.status != order.status or order_db.status_paid != order.status_paid:
-                        update_model = accounting_models.UserOrderUpdate(
-                            completed=True if order.status == order_models.OrderStatus.Completed else False,
-                            paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
-                        )
-                        await accounting_flows.update_booster(order_db, user, update_model)
+                    dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
+                    await accounting_flows.add_booster_with_price(order_db, user, dollars)
+
+    if order_db.status != order.status or order_db.status_paid != order.status_paid:
+        update_model = accounting_models.UserOrderUpdate(
+            completed=True if order.status == order_models.OrderStatus.Completed else False,
+            paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
+        )
+        for b in boosters:
+            await accounting_flows.update_booster(order_db, users_in_ids[b.user_id], update_model)
 
 
 async def sync_data_from(
     cfg: models.OrderSheetParseRead,
     orders: dict[str, models.OrderReadSheets],
-    users: list[auth_models.User],
+    users: dict[str, auth_models.User],
+    users_ids: dict[PydanticObjectId, auth_models.User],
     orders_db: dict[str, order_models.Order],
 ) -> None:
     t = time.time()
@@ -57,27 +60,26 @@ async def sync_data_from(
 
     for order_id, order_db in orders_db.items():
         order = orders.get(order_id)
-        if order is not None and order.status != order_models.OrderStatus.Refund:
-            orders.pop(order_id)
-            if DeepDiff(order.model_dump(exclude=exclude), order_db.model_dump(exclude=exclude)):
+        orders.pop(order_id)
+        if order is not None:
+            await boosters_from_order_sync(order_db, order, users, users_ids)
+            diff = DeepDiff(
+                order.model_dump(exclude=exclude), order_db.model_dump(exclude=exclude), truncate_datetime="second"
+            )
+            if diff:
+                logging.info(diff)
                 await order_service.update(order_db, order_models.OrderUpdate.model_validate(order.model_dump()))
                 changed += 1
-            await boosters_from_order_sync(order_db, order, users)
         else:
-            orders.pop(order_id)
             await order_service.delete(order_db.id)
             deleted += 1
 
     insert_data = []
     inserted_orders = []
     for order in orders.values():
-        if (
-            order.shop_order_id is not None
-            and order.status != order_models.OrderStatus.Refund
-            and order.price.price_booster_dollar is not None
-        ):
+        if order.shop_order_id is not None:
             try:
-                insert_data.append(order_models.OrderCreate.model_validate(order, from_attributes=True))
+                insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
                 inserted_orders.append(order)
             except ValidationError:
                 pass
@@ -86,7 +88,7 @@ async def sync_data_from(
         ids = await order_service.bulk_create(insert_data)
         orders_db = {o.order_id: o for o in await order_service.get_by_ids(ids)}
         for order in inserted_orders:
-            await boosters_from_order_sync(orders_db[order.order_id], order, users)
+            await boosters_from_order_sync(orders_db[order.order_id], order, users, users_ids)
 
     logging.info(
         f"Syncing data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
@@ -137,12 +139,14 @@ async def sync_orders() -> None:
         logging.warning("Synchronization skipped, google token for first superuser missing")
         return
     users = await auth_service.get_all()
+    users_names_dict = {user.name: user for user in users}
+    users_ids_dict = {user.id: user for user in users}
     for cfg in await service.get_all_not_default_user_read():
         orders = service.get_all_data(superuser.google, models.OrderReadSheets, cfg)
         orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id)
         order_dict = {order.order_id: order for order in orders}
         order_db_dict = {order.order_id: order for order in orders_db}
-        await sync_data_from(cfg, order_dict.copy(), users, order_db_dict.copy())
+        await sync_data_from(cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy())
         if config.app.sync_boosters:
             await sync_data_to(superuser.google, cfg, order_dict.copy(), users, order_db_dict.copy())
     logging.info(f"Synchronization completed in {time.time() - t}")

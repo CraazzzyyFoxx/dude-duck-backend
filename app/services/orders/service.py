@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from beanie import PydanticObjectId
+from loguru import logger
 
 from app.services.accounting import service as accounting_service
 from app.services.auth import service as auth_service
@@ -78,35 +79,39 @@ async def update(order: models.Order, order_in: models.OrderUpdate) -> models.Or
     old = order.model_copy(deep=True)
     update_price = False
     order_data = dict(order)
+    order_data_dump = order.model_dump()
     update_data = order_in.model_dump(exclude_none=True)
-    for field in order_data:
-        if field in update_data:
+    for field in update_data:
+        if field in order_data:
             if isinstance(update_data[field], dict):
                 sub_order_data = order_data[field]
                 sub_update_data = update_data[field]
-                for sub_field in sub_update_data:
-                    setattr(sub_order_data, sub_field, sub_update_data[sub_field])
+                for sf in sub_update_data:
+                    if sf in order_data_dump[field]:
+                        setattr(sub_order_data, sf, sub_update_data[sf])
+                setattr(order, field, sub_order_data)
             else:
                 setattr(order, field, update_data[field])
             if field.startswith("price"):
                 update_price = True
-
-    await order.save_changes()
-
+    await order.save()
     if update_price:
         await accounting_service.update_booster_price(old, order)
-
+    logger.info(f"Order updated [id={order.id} order_id={order.order_id}]]")
     return order
 
 
 async def delete(order_id: PydanticObjectId) -> None:
     order = await get(order_id)
     await order.delete()
+    logger.info(f"Order deleted [id={order.id} order_id={order.order_id}]]")
 
 
 async def create(order_in: models.OrderCreate) -> models.Order:
     order = models.Order.model_validate(order_in)
-    return await order.create()
+    created = await order.create()
+    logger.info(f"Order updated [id={created.id} order_id={created.order_id}]]")
+    return created
 
 
 async def bulk_create(orders_in: list[models.OrderCreate]) -> list[PydanticObjectId]:

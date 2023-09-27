@@ -2,6 +2,7 @@ import typing
 from datetime import datetime
 
 from beanie import PydanticObjectId
+from loguru import logger
 from starlette import status
 
 from app.core import errors, config
@@ -194,12 +195,12 @@ async def update_booster(order: order_models.Order, user: auth_models.User, upda
             detail=[errors.DudeDuckException(msg="The user is not a booster of this order", code="not_exist")],
         )
     else:
-        if update_model.dollars:
+        if update_model.dollars is not None:
             await update_price(order, update_model.dollars)
         try:
             return await service.update(boosters_map[user.id], update_model)
         except Exception as e:
-            if update_model.dollars:
+            if update_model.dollars is not None:
                 await update_price(order, update_model.dollars, add=False)
             raise e
 
