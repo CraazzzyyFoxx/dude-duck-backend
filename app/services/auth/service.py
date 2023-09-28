@@ -214,6 +214,7 @@ async def forgot_password(user: models.User) -> None:
     }
     token = utils.generate_jwt(token_data, config.app.secret, 900)
     logger.warning(token)
+    return
 
 
 async def reset_password(token: str, password: str) -> models.User:
@@ -235,7 +236,7 @@ async def reset_password(token: str, password: str) -> models.User:
                 )
             ],
         ) from None
-
+    logger.warning(f"Try reset password for user {user_id}")
     user = await get(user_id)
     if not user:
         raise errors.DudeDuckHTTPException(
@@ -247,6 +248,7 @@ async def reset_password(token: str, password: str) -> models.User:
             ],
         )
     valid_password_fingerprint, _ = utils.verify_and_update_password(user.hashed_password, password_fingerprint)
+    logger.warning(f"Try reset password for user, password validation = {valid_password_fingerprint}")
     if not valid_password_fingerprint:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
