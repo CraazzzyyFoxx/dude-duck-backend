@@ -237,7 +237,7 @@ async def reset_password(token: str, password: str) -> models.User:
             ],
         ) from None
     logger.warning(f"Try reset password for user {user_id}")
-    user = await get(user_id)
+    user = await get(PydanticObjectId(user_id))
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
