@@ -10,12 +10,15 @@ from app.services.sheets import models as sheets_models
 from app.services.sheets import service as sheets_service
 from app.services.sheets import tasks as sheets_tasks
 
+from . import celery_config
+
 celery = Celery(
     __name__,
     broker=app.celery_broker_url.unicode_string(),
     backend=app.celery_result_backend.unicode_string(),
     broker_connection_retry_on_startup=True,
 )
+celery.config_from_object(celery_config)
 
 celery.conf.beat_schedule = {
     "sync-data-every-5-minutes": {
@@ -26,7 +29,7 @@ celery.conf.beat_schedule = {
 celery.conf.timezone = "UTC"
 
 
-@celery.task(allow_async=True, name="sync_data")
+@celery.task(name="sync_data")
 def sync_data():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(sheets_tasks.sync_orders())

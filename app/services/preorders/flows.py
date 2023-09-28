@@ -45,7 +45,7 @@ async def delete(order_id: PydanticObjectId) -> None:
     order = await service.get(order_id)
     if not order:
         return
-    if not order.has_response:
+    if order.has_response is False:
         parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
         creds = await auth_service.get_first_superuser()
         sheets_service.clear_row(creds.google, parser, order.row_id)

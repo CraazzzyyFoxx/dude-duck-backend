@@ -24,7 +24,7 @@ services :
     build:
       context: .
       dockerfile: Dockerfile
-    command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info
+    command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info --concurrency=2
     volumes:
       - ./app:/app
     environment:
