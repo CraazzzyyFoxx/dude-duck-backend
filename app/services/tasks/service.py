@@ -27,7 +27,7 @@ celery.config_from_object(celery_config)
 @signals.celeryd_init.connect
 def init_sentry(**kwargs):
     sentry_sdk.init(
-        dsn="<PROJECT DSN>",
+        dsn=config.app.sentry_dsn,
         integrations=[CeleryIntegration(monitor_beat_tasks=True)],
         environment="development" if config.app.debug else "production",
         release=config.app.project_version,
