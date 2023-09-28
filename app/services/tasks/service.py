@@ -1,6 +1,9 @@
 import asyncio
 
+import sentry_sdk
 from celery import Celery
+from celery.platforms import signals
+from sentry_sdk.integrations.celery import CeleryIntegration
 
 from app.core import config
 from app.core.config import app
@@ -19,6 +22,17 @@ celery = Celery(
     broker_connection_retry_on_startup=True,
 )
 celery.config_from_object(celery_config)
+
+
+@signals.celeryd_init.connect
+def init_sentry(**kwargs):
+    sentry_sdk.init(
+        dsn="<PROJECT DSN>",
+        integrations=[CeleryIntegration(monitor_beat_tasks=True)],
+        environment="development" if config.app.debug else "production",
+        release=config.app.project_version,
+    )
+
 
 celery.conf.beat_schedule = {
     "sync-data-every-5-minutes": {
