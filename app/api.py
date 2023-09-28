@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.services.accounting.views import router as accounting_router
+from app.services.admin.views import router as admin_router
 from app.services.auth.views import router as auth_router
 from app.services.orders.views import router as orders_router
 from app.services.preorders.views import router as preorders_router
@@ -9,7 +10,6 @@ from app.services.settings.views import router as settings_router
 from app.services.sheets.views import router as sheets_router
 from app.services.telegram.views import router as telegram_router
 from app.services.users.views import router as users_router
-from app.services.admin.views import router as admin_router
 
 router = APIRouter()
 router.include_router(auth_router)

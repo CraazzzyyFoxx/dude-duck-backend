@@ -40,7 +40,7 @@ async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
     return order
 
 
-async def delete(order_id: PydanticObjectId):
+async def delete(order_id: PydanticObjectId) -> None:
     await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
     order = await service.get(order_id)
     if not order:
@@ -53,6 +53,7 @@ async def delete(order_id: PydanticObjectId):
     await service.delete(order.id)
     payload = await message_service.order_delete(await format_preorder_system(order), pre=True)
     message_service.send_deleted_order_notify(order.order_id, payload)
+    return
 
 
 async def format_preorder_system(order: models.PreOrder):

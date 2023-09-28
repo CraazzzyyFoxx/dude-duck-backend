@@ -1,8 +1,8 @@
-import logging
 import time
 
 from beanie import PydanticObjectId, init_beanie
 from deepdiff import DeepDiff
+from loguru import logger
 from pydantic import ValidationError
 
 from app import db
@@ -27,7 +27,7 @@ async def boosters_from_order_sync(
 ) -> None:
     boosters = await accounting_service.get_by_order_id(order_db.id)
     boosters_db_map: dict[PydanticObjectId, accounting_models.UserOrder] = {d.user_id: d for d in boosters}
-    if await accounting_service.boosters_to_str_sync(order, boosters, users_in_ids.values()) != order.booster:
+    if await accounting_service.boosters_to_str_sync(order, boosters, list(users_in_ids.values())) != order.booster:
         for booster, price in accounting_service.boosters_from_str(order.booster).items():
             user = users_in.get(booster)
             if user and boosters_db_map.get(user.id) is None:
@@ -67,9 +67,13 @@ async def sync_data_from(
                 order.model_dump(exclude=exclude), order_db.model_dump(exclude=exclude), truncate_datetime="second"
             )
             if diff:
-                logging.info(diff)
-                await order_service.update(order_db, order_models.OrderUpdate.model_validate(order.model_dump()))
-                changed += 1
+                if config.app.debug:
+                    logger.debug(diff)
+                try:
+                    await order_service.update(order_db, order_models.OrderUpdate.model_validate(order.model_dump()))
+                    changed += 1
+                except ValidationError as e:
+                    logger.exception(e)
         else:
             await order_service.delete(order_db.id)
             deleted += 1
@@ -79,8 +83,11 @@ async def sync_data_from(
     for order in orders.values():
         if order.shop_order_id is not None:
             try:
-                insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
-                inserted_orders.append(order)
+                try:
+                    insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
+                    inserted_orders.append(order)
+                except ValidationError as e:
+                    logger.exception(e)
             except ValidationError:
                 pass
     created = len(insert_data)
@@ -90,7 +97,7 @@ async def sync_data_from(
         for order in inserted_orders:
             await boosters_from_order_sync(orders_db[order.order_id], order, users, users_ids)
 
-    logging.info(
+    logger.info(
         f"Syncing data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
         f"completed in {time.time() - t}. Created={created} Updated={changed} Deleted={deleted}"
     )
@@ -125,28 +132,31 @@ async def sync_data_to(
             to_sync.append((order.row_id, {"booster": booster}))
     if to_sync:
         service.update_rows_data(creds, cfg, to_sync)
-    logging.info(
+    logger.info(
         f"Syncing data to sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
         f"completed in {time.time() - t}. Updated {len(to_sync)} orders"
     )
 
 
 async def sync_orders() -> None:
-    t = time.time()
-    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
-    superuser = await auth_service.get_first_superuser()
-    if superuser.google is None:
-        logging.warning("Synchronization skipped, google token for first superuser missing")
-        return
-    users = await auth_service.get_all()
-    users_names_dict = {user.name: user for user in users}
-    users_ids_dict = {user.id: user for user in users}
-    for cfg in await service.get_all_not_default_user_read():
-        orders = service.get_all_data(superuser.google, models.OrderReadSheets, cfg)
-        orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id)
-        order_dict = {order.order_id: order for order in orders}
-        order_db_dict = {order.order_id: order for order in orders_db}
-        await sync_data_from(cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy())
-        if config.app.sync_boosters:
-            await sync_data_to(superuser.google, cfg, order_dict.copy(), users, order_db_dict.copy())
-    logging.info(f"Synchronization completed in {time.time() - t}")
+    try:
+        t = time.time()
+        await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
+        superuser = await auth_service.get_first_superuser()
+        if superuser.google is None:
+            logger.warning("Synchronization skipped, google token for first superuser missing")
+            return
+        users = await auth_service.get_all()
+        users_names_dict = {user.name: user for user in users}
+        users_ids_dict = {user.id: user for user in users}
+        for cfg in await service.get_all_not_default_user_read():
+            orders = service.get_all_data(superuser.google, models.OrderReadSheets, cfg)
+            orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id)
+            order_dict = {order.order_id: order for order in orders}
+            order_db_dict = {order.order_id: order for order in orders_db}
+            await sync_data_from(cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy())
+            if config.app.sync_boosters:
+                await sync_data_to(superuser.google, cfg, order_dict.copy(), users, order_db_dict.copy())
+        logger.info(f"Synchronization completed in {time.time() - t}")
+    except Exception as e:
+        logger.exception(f"Error while sync_orders Error: {e}")
