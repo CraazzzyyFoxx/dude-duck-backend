@@ -73,7 +73,7 @@ async def sync_data_from(
                     await order_service.update(order_db, order_models.OrderUpdate.model_validate(order.model_dump()))
                     changed += 1
                 except ValidationError as e:
-                    logger.exception(e)
+                    logger.error(e.errors(include_url=False))
         else:
             await order_service.delete(order_db.id)
             deleted += 1
@@ -87,7 +87,7 @@ async def sync_data_from(
                     insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
                     inserted_orders.append(order)
                 except ValidationError as e:
-                    logger.exception(e)
+                    logger.error(e.errors(include_url=False))
             except ValidationError:
                 pass
     created = len(insert_data)
