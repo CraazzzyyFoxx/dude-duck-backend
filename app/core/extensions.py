@@ -32,7 +32,6 @@ def configure_extensions() -> None:
                 sentry_logging,
             ],
             environment="development" if config.app.debug else "production",
-            auto_enabling_integrations=False,
             traces_sample_rate=1.0,
             profiles_sample_rate=1.0,
         )
