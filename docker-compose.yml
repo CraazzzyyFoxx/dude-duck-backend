@@ -7,7 +7,7 @@ services :
     ports:
       - "6379:6379"
   app:
-    restart: always
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -20,7 +20,7 @@ services :
     ports:
       - "${PORT}:${PORT}"
   worker:
-    restart: always
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
