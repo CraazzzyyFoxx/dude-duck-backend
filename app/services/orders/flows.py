@@ -25,7 +25,11 @@ async def get_by_order_id(order_id: str) -> models.Order:
     if not order:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A order with this id does not exist.", code="not_exist")],
+            detail=[
+                errors.DudeDuckException(
+                    msg=f"A order with this id does not exist. [order_id={order_id}]", code="not_exist"
+                )
+            ],
         )
     return order
 
@@ -35,7 +39,11 @@ async def create(order_in: models.OrderCreate) -> models.Order:
     if order:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[errors.DudeDuckException(msg="A order with this id already exist.", code="already_exist")],
+            detail=[
+                errors.DudeDuckException(
+                    msg=f"A order with this id already exist. [order_id={order_in.order_id}]", code="already_exist"
+                )
+            ],
         )
     order = await service.create(order_in)
     return order
