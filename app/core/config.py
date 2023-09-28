@@ -44,7 +44,7 @@ class AppConfig(BaseSettings):
     super_user_email: EmailStr
     super_user_password: str
 
-    username_regex: str = r"([\w{L}]+)"
+    username_regex: str = r"([a-zA-Z0-9_-]+)"
 
     # Celery
     celery_broker_url: RedisDsn
