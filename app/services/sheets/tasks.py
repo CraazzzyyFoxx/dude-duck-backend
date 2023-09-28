@@ -60,8 +60,8 @@ async def sync_data_from(
 
     for order_id, order_db in orders_db.items():
         order = orders.get(order_id)
-        orders.pop(order_id)
         if order is not None:
+            orders.pop(order_id)
             await boosters_from_order_sync(order_db, order, users, users_ids)
             diff = DeepDiff(
                 order.model_dump(exclude=exclude), order_db.model_dump(exclude=exclude), truncate_datetime="second"
