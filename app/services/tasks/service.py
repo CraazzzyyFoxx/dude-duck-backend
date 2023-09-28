@@ -2,7 +2,7 @@ import asyncio
 
 import sentry_sdk
 from celery import Celery
-from celery.platforms import signals
+from celery.signals import celeryd_init
 from sentry_sdk.integrations.celery import CeleryIntegration
 
 from app.core import config
@@ -24,7 +24,7 @@ celery = Celery(
 celery.config_from_object(celery_config)
 
 
-@signals.celeryd_init.connect
+@celeryd_init.connect
 def init_sentry(**kwargs):
     sentry_sdk.init(
         dsn=config.app.sentry_dsn,
