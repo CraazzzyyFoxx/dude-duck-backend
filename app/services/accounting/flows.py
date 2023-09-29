@@ -98,8 +98,7 @@ async def update_price(order: order_models.Order, price: float, *, add: bool = T
     if add:
         price = -price
     for booster in boosters:
-        booster.dollars += price * price_map[booster.id]
-        await booster.save(link_rule=WriteRules.DO_NOTHING)
+        await booster.inc({"dollars": price * price_map[booster.id]})
     await sync_boosters_sheet(order)
     return price_map
 
@@ -112,11 +111,12 @@ async def _add_booster(
     price: float,
     sync: bool = True,
 ) -> models.UserOrder:
-    try:
-        booster = await service.create(user, order, create_data)
-    except Exception as e:
-        await update_price(order, price, add=False)
-        raise e
+    # try:
+    #     booster = await service.create(user, order, create_data)
+    # except Exception as e:
+    #     await update_price(order, price, add=False)
+    #     raise e
+    booster = await service.create(user, order, create_data)
     if not boosters and sync:
         await order_service.update_with_sync(order, order_models.OrderUpdate(auth_date=datetime.utcnow()))
     await sync_boosters_sheet(order)
@@ -133,7 +133,7 @@ async def add_booster(order: order_models.Order, user: auth_models.User, sync: b
         )
     dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
     calculated_dollars = dollars / (len(boosters) + 1)
-    await update_price(order, calculated_dollars)
+    # await update_price(order, calculated_dollars)
     create_data = models.UserOrderCreate(
         order_id=order.id,
         user_id=user.id,
@@ -159,12 +159,13 @@ async def add_booster_with_price(
             status_code=status.HTTP_409_CONFLICT,
             detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
         )
-    if len(boosters) == 0:
-        minus_dollars = 0.0
-    else:
-        minus_dollars = price / len(boosters)
+    # if len(boosters) == 0:
+    #     minus_dollars = 0.0
+    # else:
+    #     minus_dollars = price / len(boosters)
     p = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
-    total = sum([abs(b.dollars - minus_dollars) for b in boosters]) + price
+    # total = sum([abs(b.dollars - minus_dollars) for b in boosters]) + price
+    total = sum(b.dollars for b in boosters) + price
     if p < total:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -176,7 +177,7 @@ async def add_booster_with_price(
                 )
             ],
         )
-    await update_price(order, price)
+    # await update_price(order, price)
     create_data = models.UserOrderCreate(
         order_id=order.id,
         user_id=user.id,

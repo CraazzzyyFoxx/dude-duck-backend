@@ -3,7 +3,7 @@ import typing
 from datetime import datetime
 
 from beanie import PydanticObjectId
-from bson import DBRef
+from beanie.odm.operators.find.comparison import In
 from loguru import logger
 
 from app.core import config
@@ -49,26 +49,25 @@ async def delete(user_order_id: PydanticObjectId) -> None:
 
 
 async def get_by_order_id(order_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"order_id": DBRef("order", order_id)}, fetch_links=True).to_list()
+    return await models.UserOrder.find(models.UserOrder.order_id.id == order_id).to_list()
 
 
 async def get_by_user_id(user_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"user_id": DBRef("user", user_id)}, fetch_links=True).to_list()
+    return await models.UserOrder.find(models.UserOrder.user_id.id == user_id).to_list()
 
 
 async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.UserOrder | None:
     return await models.UserOrder.find_one(
-        {"order_id": DBRef("order", order_id), "user_id": DBRef("user", user_id)}, fetch_links=True
+        models.UserOrder.order_id.id == order_id, models.UserOrder.user_id.id == user_id
     )
 
 
 async def get_all() -> list[models.UserOrder]:
-    return await models.UserOrder.find({}, fetch_links=True).to_list()
+    return await models.UserOrder.find({}).to_list()
 
 
 async def get_by_orders(orders_id: typing.Iterable[PydanticObjectId]) -> list[models.UserOrder]:
-    orders = [DBRef("order", order_id) for order_id in orders_id]
-    return await models.UserOrder.find({"order_id": {"$in": orders}}, fetch_links=True).to_list()
+    return await models.UserOrder.find(In(models.UserOrder.order_id.id, orders_id)).to_list()
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate) -> models.UserOrder:
@@ -101,11 +100,13 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
 
 async def bulk_update_price(order_id: PydanticObjectId, price: float, inc=False) -> None:
     func = "$inc" if inc else "$set"
-    await models.UserOrder.find({"order_id": DBRef("order", order_id)}).update({func: {"dollars": price}})
+    await models.UserOrder.find(models.UserOrder.order_id.id == order_id).update({func: {"dollars": price}})
 
 
 async def check_user_total_orders(user: auth_models.User) -> bool:
-    count = await models.UserOrder.find({"user_id": DBRef("user", user.id), "completed": False}).count()
+    count = await models.UserOrder.find(
+        models.UserOrder.user_id.id == user.id, models.UserOrder.completed == False
+    ).count()
     return bool(count < user.max_orders)
 
 
