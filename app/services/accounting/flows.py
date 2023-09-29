@@ -99,7 +99,7 @@ async def update_price(order: order_models.Order, price: float, *, add: bool = T
         price = -price
     for booster in boosters:
         booster.dollars += price * price_map[booster.id]
-        await booster.save_changes(link_rule=WriteRules.DO_NOTHING)
+        await booster.save(link_rule=WriteRules.DO_NOTHING)
     await sync_boosters_sheet(order)
     return price_map
 
