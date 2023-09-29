@@ -67,8 +67,12 @@ class UserOrderRead(BaseModel):
     completed_at: datetime | None
     method_payment: str
 
-    @field_validator("order_id", "user_id", mode="before")
-    def link_converter(self, v: Link) -> PydanticObjectId:
+    @field_validator("order_id", mode="before")
+    def link_converter_1(cls, v: Link) -> PydanticObjectId:
+        return v.ref.id
+
+    @field_validator("user_id", mode="before")
+    def link_converter_2(cls, v: Link) -> PydanticObjectId:
         return v.ref.id
 
 
