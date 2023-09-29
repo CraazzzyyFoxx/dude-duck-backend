@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId, DeleteRules
 from loguru import logger
 
 from app.services.accounting import service as accounting_service
@@ -103,7 +103,7 @@ async def update(order: models.Order, order_in: models.OrderUpdate) -> models.Or
 
 async def delete(order_id: PydanticObjectId) -> None:
     order = await get(order_id)
-    await order.delete()
+    await order.delete(link_rule=DeleteRules.DELETE_LINKS)
     logger.info(f"Order deleted [id={order.id} order_id={order.order_id}]]")
 
 
