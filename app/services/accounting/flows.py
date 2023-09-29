@@ -1,7 +1,7 @@
 import typing
 from datetime import datetime
 
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId, WriteRules
 from loguru import logger
 from starlette import status
 
@@ -99,7 +99,7 @@ async def update_price(order: order_models.Order, price: float, *, add: bool = T
         price = -price
     for booster in boosters:
         booster.dollars += price * price_map[booster.id]
-        await booster.save_changes()
+        await booster.save_changes(link_rule=WriteRules.DO_NOTHING)
     await sync_boosters_sheet(order)
     return price_map
 
