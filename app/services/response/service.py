@@ -17,7 +17,8 @@ async def create(response_in: models.ResponseCreate) -> models.Response:
 
 async def delete(response_id: PydanticObjectId) -> None:
     user_order = await models.Response.get(response_id)
-    await user_order.delete()
+    if user_order:
+        await user_order.delete()
 
 
 async def get_by_order_id(order_id: PydanticObjectId) -> list[models.Response]:

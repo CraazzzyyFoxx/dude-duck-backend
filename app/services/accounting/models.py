@@ -1,15 +1,17 @@
 from datetime import datetime
 
-from beanie import PydanticObjectId
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, constr, field_validator, model_validator
+from beanie import Link, PydanticObjectId
+from pydantic import BaseModel, Field, HttpUrl, constr, field_validator, model_validator
 from pymongo import IndexModel
 
 from app.core.db import TimeStampMixin
+from app.services.auth import models as auth_models
+from app.services.orders import models as order_models
 
 
 class UserOrder(TimeStampMixin):
-    order_id: PydanticObjectId
-    user_id: PydanticObjectId
+    order_id: Link[order_models.Order]
+    user_id: Link[auth_models.User]
     dollars: float
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)
@@ -57,20 +59,6 @@ class UserAccountReport(BaseModel):
 
     not_paid_orders: int
     paid_orders: int
-
-
-class UserOrderRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    order_id: PydanticObjectId
-    user_id: PydanticObjectId
-    dollars: float
-    completed: bool
-    paid: bool
-    paid_time: datetime | None
-    order_date: datetime
-    completed_at: datetime | None
-    method_payment: str
 
 
 class SheetBoosterOrderEntityCreate(BaseModel):

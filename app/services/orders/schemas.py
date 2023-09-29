@@ -3,16 +3,16 @@ import datetime
 from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict
 
-from .models import OrderCredentials, OrderInfo, OrderPaidStatus, OrderStatus
+from .models import OrderCredentials, OrderInfo, OrderPaidStatus, OrderStatus, OrderPrice
 
 
-class OrderPriceUser(BaseModel):
+class OrderPriceUser(OrderPrice):
     price_booster_dollar: float
     price_booster_rub: float
     price_booster_gold: float | None = None
 
 
-class OrderPriceSystem(BaseModel):
+class OrderPriceSystem(OrderPrice):
     price_dollar: float
     price_booster_dollar_without_fee: float
 

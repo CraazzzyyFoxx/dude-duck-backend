@@ -40,7 +40,7 @@ async def delete_order_booster(
     return await flows.remove_booster(order, user)
 
 
-@router.post("/paid/{payment_id}", response_model=models.UserOrderRead)
+@router.post("/paid/{payment_id}", response_model=schemas.UserOrderRead)
 async def paid_order(payment_id: PydanticObjectId, _=Depends(auth_flows.current_active_superuser_api)):
     return await flows.paid_order(payment_id)
 

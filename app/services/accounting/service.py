@@ -4,11 +4,12 @@ from datetime import datetime
 
 from beanie import PydanticObjectId
 from beanie.odm.operators.find.comparison import In
+from bson import DBRef
 from loguru import logger
 
 from app.core import config
-from app.services.auth import flows as auth_flows
 from app.services.auth import models as auth_models
+from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows
 from app.services.orders import models as order_models
 
@@ -22,10 +23,12 @@ async def get(order_id: PydanticObjectId) -> models.UserOrder | None:
     return await models.UserOrder.find_one({"_id": order_id})
 
 
-async def create(user_order_in: models.UserOrderCreate) -> models.UserOrder:
+async def create(
+    user: auth_models.User, order: order_models.Order, user_order_in: models.UserOrderCreate
+) -> models.UserOrder:
     user_order = models.UserOrder(
-        order_id=user_order_in.order_id,
-        user_id=user_order_in.user_id,
+        order_id=order,
+        user_id=user,
         dollars=user_order_in.dollars,
         completed=user_order_in.completed,
         paid=user_order_in.paid,
@@ -47,15 +50,15 @@ async def delete(user_order_id: PydanticObjectId) -> None:
 
 
 async def get_by_order_id(order_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"order_id": order_id}).to_list()
+    return await models.UserOrder.find({"order_id": DBRef("order", order_id)}).to_list()
 
 
 async def get_by_user_id(user_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"user_id": user_id}).to_list()
+    return await models.UserOrder.find({"user_id": DBRef("user", user_id)}).to_list()
 
 
 async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.UserOrder | None:
-    return await models.UserOrder.find_one({"order_id": order_id, "user_id": user_id})
+    return await models.UserOrder.find_one({"order_id": DBRef("order", order_id), "user_id": DBRef("user", user_id)})
 
 
 async def get_all() -> list[models.UserOrder]:
@@ -63,7 +66,7 @@ async def get_all() -> list[models.UserOrder]:
 
 
 async def get_by_orders(orders_id: typing.Iterable[PydanticObjectId]) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"order_id": {"$in": orders_id}}).to_list()
+    return await models.UserOrder.find(In(models.UserOrder.order_id.id, orders_id)).to_list()
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate) -> models.UserOrder:
@@ -97,13 +100,13 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
 
 async def bulk_update_price(order_id: PydanticObjectId, price: float, inc=False) -> None:
     if not inc:
-        await models.UserOrder.find({"order_id": order_id}).update({"$set": {"dollars": price}})
+        await models.UserOrder.find({"order_id": DBRef("order", order_id)}).update({"$set": {"dollars": price}})
     else:
-        await models.UserOrder.find({"order_id": order_id}).update({"$inc": {"dollars": price}})
+        await models.UserOrder.find({"order_id": DBRef("order", order_id)}).update({"$inc": {"dollars": price}})
 
 
 async def check_user_total_orders(user: auth_models.User) -> bool:
-    count = await models.UserOrder.find({"user_id": user.id, "completed": False}).count()
+    count = await models.UserOrder.find({"user_id": DBRef("user", user.id), "completed": False}).count()
     return bool(count < user.max_orders)
 
 
@@ -141,7 +144,7 @@ async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth
     resp = []
     users_map: dict[PydanticObjectId, auth_models.User] = {user.id: user for user in users}
     for d in data:
-        booster = users_map.get(d.user_id, None)
+        booster = users_map.get(d.user_id.ref.id, None)
         if booster:
             price = await currency_flows.usd_to_currency(d.dollars, order.date, currency="RUB", with_round=True)
             resp.append(f"{booster.name}({int(price)})")
@@ -151,11 +154,11 @@ async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth
 
 
 async def boosters_to_str(order, data: list[models.UserOrder]) -> str:
-    users = await auth_flows.models.User.find(In(auth_flows.models.User.id, [d.user_id for d in data])).to_list()
+    users = await auth_service.get_by_ids([d.user_id.ref.id for d in data])
     return await _boosters_to_str(order, data, users)
 
 
 async def boosters_to_str_sync(order, data: list[models.UserOrder], users_in: list[auth_models.User]) -> str | None:
-    search = [d.user_id for d in data]
+    search = [d.user_id.ref.id for d in data]
     users = [user_in for user_in in users_in if user_in.id in search]
     return await _boosters_to_str(order, data, users)

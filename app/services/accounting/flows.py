@@ -106,13 +106,14 @@ async def update_price(order: order_models.Order, price: float, *, add: bool = T
 
 async def _add_booster(
     order: order_models.Order,
+    user: auth_models.User,
     create_data: models.UserOrderCreate,
     boosters: list[models.UserOrder],
     price: float,
     sync: bool = True,
 ) -> models.UserOrder:
     try:
-        booster = await service.create(create_data)
+        booster = await service.create(user, order, create_data)
     except Exception as e:
         await update_price(order, price, add=False)
         raise e
@@ -125,7 +126,7 @@ async def _add_booster(
 async def add_booster(order: order_models.Order, user: auth_models.User, sync: bool = True) -> models.UserOrder:
     await can_user_pick(user)
     boosters = await service.get_by_order_id(order.id)
-    if user.id in [b.user_id for b in boosters]:
+    if user.id in [b.user_id.ref.id for b in boosters]:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
@@ -141,7 +142,7 @@ async def add_booster(order: order_models.Order, user: auth_models.User, sync: b
         completed=True if order.status == order_models.OrderStatus.Completed else False,
         paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
     )
-    return await _add_booster(order, create_data, boosters, calculated_dollars, sync)
+    return await _add_booster(order, user, create_data, boosters, calculated_dollars, sync)
 
 
 async def add_booster_with_price(
@@ -153,7 +154,7 @@ async def add_booster_with_price(
 ) -> models.UserOrder:
     await can_user_pick(user)
     boosters = await service.get_by_order_id(order.id)
-    if user.id in [b.user_id for b in boosters]:
+    if user.id in [b.user_id.ref.id for b in boosters]:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
@@ -186,12 +187,12 @@ async def add_booster_with_price(
     )
     if method_payment:
         create_data.method_payment = method_payment
-    return await _add_booster(order, create_data, boosters, price)
+    return await _add_booster(order, user, create_data, boosters, price, sync)
 
 
 async def update_booster(order: order_models.Order, user: auth_models.User, update_model: models.UserOrderUpdate):
     boosters = await service.get_by_order_id(order.id)
-    boosters_map = {b.user_id: b for b in boosters}
+    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.ref.id: b for b in boosters}
     if boosters_map.get(user.id) is None:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -210,7 +211,7 @@ async def update_booster(order: order_models.Order, user: auth_models.User, upda
 
 async def remove_booster(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
     boosters = await service.get_by_order_id(order.id)
-    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id: b for b in boosters}
+    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.ref.id: b for b in boosters}
     to_delete = boosters_map.get(user.id)
     if to_delete is None:
         raise errors.DudeDuckHTTPException(
@@ -224,40 +225,40 @@ async def remove_booster(order: order_models.Order, user: auth_models.User) -> m
     return to_delete
 
 
-async def update_boosters_percent(
-    order: order_service.models.Order, data: models.SheetUserOrderCreate
-) -> list[models.UserOrder]:
-    users: list[tuple[PydanticObjectId, float]] = []
-    users_id = []
-    for item in data.items:
-        user = await auth_flows.get_booster_by_name(item.username)
-        users.append((user.id, item.percent))
-        users_id.append(user.id)
-
-    boosters = await service.get_by_order_id(order.id)
-    boosters_map = {booster.user_id: booster for booster in boosters}
-    if [u[0] for u in users] == boosters_map.keys():
-        raise errors.DudeDuckHTTPException(
-            status_code=400,
-            detail=[errors.DudeDuckException(msg="The same boosters are indicated in the order", code="already_exist")],
-        )
-    add = len(boosters) < len(users)
-    if not add:
-        for _id in set(boosters_map.keys()) - set(users_id):
-            x = await get_by_order_id_user_id(order, boosters_map[_id])
-            await service.delete(x.id)
-
-    for _id, percent in users:
-        dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
-        dollars *= percent
-        if _id not in boosters_map.keys() and add:
-            created = models.UserOrderCreate(order_id=order.id, user_id=_id, dollars=dollars, order_date=order.date)
-            await service.create(created)
-        elif not boosters_map[_id].paid:
-            await service.update(boosters_map[_id], models.UserOrderUpdate(dollars=dollars))
-
-    boosters = await service.get_by_order_id(order.id)
-    return boosters
+# async def update_boosters_percent(
+#     order: order_service.models.Order, data: models.SheetUserOrderCreate
+# ) -> list[models.UserOrder]:
+#     users: list[tuple[PydanticObjectId, float]] = []
+#     users_id = []
+#     for item in data.items:
+#         user = await auth_flows.get_booster_by_name(item.username)
+#         users.append((user.id, item.percent))
+#         users_id.append(user.id)
+#
+#     boosters = await service.get_by_order_id(order.id)
+#     boosters_map = {booster.user_id: booster for booster in boosters}
+#     if [u[0] for u in users] == boosters_map.keys():
+#         raise errors.DudeDuckHTTPException(
+#             status_code=400,
+#             detail=[errors.DudeDuckException(msg="The same boosters are indicated in the order", code="already_exist")],
+#         )
+#     add = len(boosters) < len(users)
+#     if not add:
+#         for _id in set(boosters_map.keys()) - set(users_id):
+#             x = await get_by_order_id_user_id(order, boosters_map[_id])
+#             await service.delete(x.id)
+#
+#     for _id, percent in users:
+#         dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
+#         dollars *= percent
+#         if _id not in boosters_map.keys() and add:
+#             created = models.UserOrderCreate(order_id=order.id, user_id=_id, dollars=dollars, order_date=order.date)
+#             await service.create(order, user, created)
+#         elif not boosters_map[_id].paid:
+#             await service.update(boosters_map[_id], models.UserOrderUpdate(dollars=dollars))
+#
+#     boosters = await service.get_by_order_id(order.id)
+#     return boosters
 
 
 async def create_user_report(user: auth_models.User) -> models.UserAccountReport:
@@ -313,7 +314,7 @@ async def create_report(
         orders = await order_models.Order.find(query).to_list()
         orders_map: dict[PydanticObjectId, order_models.Order] = {o.id: o for o in orders}
         payments = await service.get_by_orders(list(orders_map.keys()))
-        user_ids = [payment.user_id for payment in payments]
+        user_ids: list[PydanticObjectId] = [payment.user_id.ref.id for payment in payments]
         users = await auth_service.get_by_ids(user_ids)
         users_map: dict[PydanticObjectId, auth_models.User] = {u.id: u for u in users}
     else:
@@ -335,8 +336,8 @@ async def create_report(
         orders_map: dict[PydanticObjectId, order_models.Order] = {order.id: order for order in orders}
 
     for payment in payments:
-        order = orders_map.get(payment.order_id)
-        user = users_map.get(payment.user_id)
+        order = orders_map.get(payment.order_id.ref.id)
+        user = users_map.get(payment.user_id.ref.id)
         if order and user:
             if user.binance_id:
                 payment_str: str = str(user.binance_id)
@@ -393,7 +394,7 @@ async def create_report(
 async def close_order(user: auth_models.User, order: order_service.models.Order, data: models.CloseOrderForm):
     f = False
     for price in await service.get_by_order_id(order.id):
-        if f := price.user_id == user.id:
+        if f := price.user_id.ref.id == user.id:
             break
     if not f:
         raise errors.DudeDuckHTTPException(
@@ -420,7 +421,7 @@ async def paid_order(payment_id: PydanticObjectId) -> models.UserOrder:
                 )
             ],
         )
-    order = await order_flows.get(data.order_id)
+    order = await order_flows.get(data.order_id.ref.id)
     await service.update(data, models.UserOrderUpdate(paid=True))
     boosters = await service.get_by_order_id(order.id)
     if all(booster.paid for booster in boosters):

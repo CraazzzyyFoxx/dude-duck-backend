@@ -16,8 +16,8 @@ class InterceptHandler(logging.Handler):
             level = record.levelno
 
         # Find caller from where originated the logged message.
-        frame, depth = sys._getframe(6), 6  # type: ignore
-        while frame and frame.f_code.co_filename == logging.__file__:  # type: ignore
+        frame, depth = sys._getframe(6), 6
+        while frame and frame.f_code.co_filename == logging.__file__:
             frame = frame.f_back
             depth += 1
 
