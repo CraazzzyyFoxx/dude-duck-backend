@@ -1,4 +1,7 @@
+from datetime import datetime, timedelta
+
 from beanie import PydanticObjectId, init_beanie
+from loguru import logger
 from starlette import status
 
 from app import db
@@ -41,19 +44,9 @@ async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
 
 
 async def delete(order_id: PydanticObjectId) -> None:
-    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
-    order = await service.get(order_id)
-    if not order:
-        return
-    if order.has_response is False:
-        parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
-        creds = await auth_service.get_first_superuser()
-        sheets_service.clear_row(creds.google, parser, order.row_id)
-
-    await service.delete(order.id)
-    payload = await message_service.order_delete(await format_preorder_system(order), pre=True)
-    message_service.send_deleted_order_notify(order.order_id, payload)
-    return
+    order = await get(order_id)
+    if order:
+        await service.delete(order.id)
 
 
 async def format_preorder_system(order: models.PreOrder):
@@ -86,3 +79,23 @@ async def format_preorder_perms(order: models.PreOrder):
         price = models.PreOrderPriceUser()
     data["price"] = price
     return models.PreOrderReadUser.model_validate(data)
+
+
+async def manage_preorders():
+    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
+    superuser = await auth_service.get_first_superuser()
+    settings = await settings_service.get()
+    if superuser.google is None:
+        logger.warning("Manage preorders skipped, google token for first superuser missing")
+        return
+
+    preorders = await service.get_all()
+    for preorder in preorders:
+        if preorder.created_at < datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive):
+            await preorder.delete()
+            payload = await message_service.order_delete(await format_preorder_system(preorder), pre=True)
+            if payload.deleted:
+                message_service.send_deleted_order_notify(preorder.order_id, payload)
+            if preorder.has_response is False:
+                parser = await sheets_service.get_by_spreadsheet_sheet_read(preorder.spreadsheet, preorder.sheet_id)
+                sheets_service.clear_row(superuser.google, parser, preorder.row_id)

@@ -8,7 +8,7 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from app.core import config
 from app.core.config import app
 from app.services.auth import models as auth_models
-from app.services.preorders import tasks as preorders_tasks
+from app.services.preorders import flows as preorders_flows
 from app.services.sheets import models as sheets_models
 from app.services.sheets import service as sheets_service
 from app.services.sheets import tasks as sheets_tasks
@@ -38,6 +38,10 @@ celery.conf.beat_schedule = {
     "sync-data-every-5-minutes": {
         "task": "sync_data",
         "schedule": config.app.celery_sheets_sync_time,
+    },
+    "manage_preorders-every-5-minutes": {
+        "task": "manage_preorders",
+        "schedule": config.app.celery_preorders_manage,
     },
 }
 celery.conf.timezone = "UTC"
@@ -77,14 +81,7 @@ def delete_booster(creds: str, parser: str, value: str):
     sheets_service.delete_booster(creds_model, parser_model, value)
 
 
-@celery.task(name="delete_preorder")
-def delete_preorder(creds: str, parser: str, row_id: int):
-    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    creds_model = auth_models.AdminGoogleToken.model_validate_json(creds)
-    sheets_service.clear_row(creds_model, parser_model, row_id)
-
-
-@celery.task(name="delete_expired_preorder")
-def delete_expired_preorder(order_id: str):
+@celery.task(name="manage_preorders")
+def manage_preorders():
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(preorders_tasks.delete(order_id))
+    loop.run_until_complete(preorders_flows.manage_preorders())

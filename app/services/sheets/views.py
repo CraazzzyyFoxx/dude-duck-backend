@@ -70,21 +70,6 @@ async def update_order_from_sheets(
     return await orders_service.update(order, model)
 
 
-@router.patch("/orders/{order_id}", response_model=list[accounting_models.UserOrderRead])
-async def patch_boosters(
-    order_id: str,
-    model: accounting_models.SheetUserOrderCreate,
-    by_sheets: bool = False,
-    _=Depends(auth_flows.current_active_superuser_api),
-):
-    if by_sheets:
-        order = await orders_flows.get_by_order_id(order_id)
-    else:
-        order = await orders_flows.get(order_id)  # type: ignore
-    data = await accounting_flows.update_boosters_percent(order, model)
-    return data
-
-
 @router.get("/parser", response_model=search_models.Paginated[models.OrderSheetParseRead])
 async def reads_google_sheets_parser(
     paging: search_models.PaginationParams = Depends(),

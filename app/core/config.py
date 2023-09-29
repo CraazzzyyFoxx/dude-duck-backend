@@ -50,6 +50,7 @@ class AppConfig(BaseSettings):
     celery_broker_url: RedisDsn
     celery_result_backend: RedisDsn
     celery_sheets_sync_time: int = 300
+    celery_preorders_manage: int = 300
 
     sync_boosters: bool
 

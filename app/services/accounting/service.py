@@ -3,7 +3,6 @@ import typing
 from datetime import datetime
 
 from beanie import PydanticObjectId
-from beanie.odm.operators.find.comparison import In
 from bson import DBRef
 from loguru import logger
 
@@ -36,7 +35,7 @@ async def create(
         order_date=user_order_in.order_date,
     )
     if user_order_in.completed:
-        user_order.completed_at = datetime.utcnow()
+        user_order.completed_at = order.end_date if order.end_date is not None else datetime.utcnow()
     if user_order_in.paid:
         user_order.paid_time = datetime.utcnow()
     logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
@@ -66,7 +65,8 @@ async def get_all() -> list[models.UserOrder]:
 
 
 async def get_by_orders(orders_id: typing.Iterable[PydanticObjectId]) -> list[models.UserOrder]:
-    return await models.UserOrder.find(In(models.UserOrder.order_id.id, orders_id)).to_list()
+    orders = [DBRef("order", order_id) for order_id in orders_id]
+    return await models.UserOrder.find({"order_id": {"$in": orders}}).to_list()
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate) -> models.UserOrder:
@@ -85,11 +85,10 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
             elif field == "paid":
                 if update_data[field] is True:
                     user_order.paid = True
-                    user_order.paid_time = datetime.utcnow()
+                    user_order.paid_at = datetime.utcnow()
                 else:
                     user_order.paid = False
-                    user_order.paid_time = None
-
+                    user_order.paid_at = None
             else:
                 setattr(user_order, field, update_data[field])
 
@@ -99,10 +98,8 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
 
 
 async def bulk_update_price(order_id: PydanticObjectId, price: float, inc=False) -> None:
-    if not inc:
-        await models.UserOrder.find({"order_id": DBRef("order", order_id)}).update({"$set": {"dollars": price}})
-    else:
-        await models.UserOrder.find({"order_id": DBRef("order", order_id)}).update({"$inc": {"dollars": price}})
+    func = "$inc" if inc else "$set"
+    await models.UserOrder.find({"order_id": DBRef("order", order_id)}).update({func: {"dollars": price}})
 
 
 async def check_user_total_orders(user: auth_models.User) -> bool:
@@ -117,9 +114,7 @@ async def update_booster_price(old: order_models.Order, new: order_models.Order)
     old_price = await currency_flows.usd_to_currency(old.price.price_booster_dollar, old.date)
     new_price = await currency_flows.usd_to_currency(new.price.price_booster_dollar, new.date)
     delta = (new_price - old_price) / len(boosters)
-    for booster in boosters:
-        booster.dollars += delta
-        await booster.save_changes()
+    await bulk_update_price(new.id, delta, inc=True)
 
 
 def boosters_from_str(string: str) -> dict[str, int | None]:
@@ -134,7 +129,6 @@ def boosters_from_str(string: str) -> dict[str, int | None]:
         booster = BOOSTER_REGEX.fullmatch(string.lower())
         if booster:
             resp[booster[0]] = None
-
     return resp
 
 
