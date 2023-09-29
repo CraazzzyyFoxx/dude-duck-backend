@@ -37,7 +37,7 @@ async def create(
     if user_order_in.completed:
         user_order.completed_at = order.end_date if order.end_date is not None else datetime.utcnow()
     if user_order_in.paid:
-        user_order.paid_time = datetime.utcnow()
+        user_order.paid_at = datetime.utcnow()
     logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
     return await user_order.create()
 
