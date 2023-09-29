@@ -6,7 +6,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from app import db
-from app.core import config
+from app.core import config, errors
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import models as accounting_models
 from app.services.accounting import service as accounting_service
@@ -35,7 +35,10 @@ async def boosters_from_order_sync(
                     await accounting_flows.add_booster(order_db, user, sync=False)
                 else:
                     dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
-                    await accounting_flows.add_booster_with_price(order_db, user, dollars, sync=False)
+                    try:
+                        await accounting_flows.add_booster_with_price(order_db, user, dollars, sync=False)
+                    except errors.DudeDuckHTTPException as e:
+                        logger.error(e.detail)
 
     if order_db.status != order.status or order_db.status_paid != order.status_paid:
         update_model = accounting_models.UserOrderUpdate(

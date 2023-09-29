@@ -159,12 +159,7 @@ async def add_booster_with_price(
             status_code=status.HTTP_409_CONFLICT,
             detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
         )
-    # if len(boosters) == 0:
-    #     minus_dollars = 0.0
-    # else:
-    #     minus_dollars = price / len(boosters)
     p = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
-    # total = sum([abs(b.dollars - minus_dollars) for b in boosters]) + price
     total = sum(b.dollars for b in boosters) + price
     if p < total:
         raise errors.DudeDuckHTTPException(
