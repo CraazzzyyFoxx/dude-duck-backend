@@ -66,7 +66,7 @@ def send_order_response_admin(
     user: auth_models.UserRead,
     response: response_models.ResponseRead,
 ) -> None:
-    data = {"preorder": order, "user": user, "response": response, "is_preorder": False}
+    data = {"order": order, "user": user, "response": response, "is_preorder": False}
     asyncio.create_task(service_request("message/order_admins", "POST", data=data))
 
 
