@@ -49,24 +49,26 @@ async def delete(user_order_id: PydanticObjectId) -> None:
 
 
 async def get_by_order_id(order_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"order_id": DBRef("order", order_id)}).to_list()
+    return await models.UserOrder.find({"order_id": DBRef("order", order_id)}, fetch_links=True).to_list()
 
 
 async def get_by_user_id(user_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find({"user_id": DBRef("user", user_id)}).to_list()
+    return await models.UserOrder.find({"user_id": DBRef("user", user_id)}, fetch_links=True).to_list()
 
 
 async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.UserOrder | None:
-    return await models.UserOrder.find_one({"order_id": DBRef("order", order_id), "user_id": DBRef("user", user_id)})
+    return await models.UserOrder.find_one(
+        {"order_id": DBRef("order", order_id), "user_id": DBRef("user", user_id)}, fetch_links=True
+    )
 
 
 async def get_all() -> list[models.UserOrder]:
-    return await models.UserOrder.find({}).to_list()
+    return await models.UserOrder.find({}, fetch_links=True).to_list()
 
 
 async def get_by_orders(orders_id: typing.Iterable[PydanticObjectId]) -> list[models.UserOrder]:
     orders = [DBRef("order", order_id) for order_id in orders_id]
-    return await models.UserOrder.find({"order_id": {"$in": orders}}).to_list()
+    return await models.UserOrder.find({"order_id": {"$in": orders}}, fetch_links=True).to_list()
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate) -> models.UserOrder:
@@ -92,7 +94,7 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
             else:
                 setattr(user_order, field, update_data[field])
 
-    await user_order.save_changes()
+    await user_order.save()
     logger.info(f"Updated UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
     return user_order
 
