@@ -16,7 +16,6 @@ from app.middlewares.time import TimeMiddleware
 from app.services.auth import models as auth_models
 from app.services.auth import service as auth_service
 from app.services.settings import service as settings_service
-from app.services.sheets.tasks import sync_orders
 from app.services.telegram import service as telegram_service
 
 if os.name != "nt":
@@ -46,7 +45,6 @@ async def lifespan(application: FastAPI):  # noqa
             )
         )
     await telegram_service.TelegramService.init()
-    await sync_orders()
     logger.info("Application... Online!")
     yield
 
