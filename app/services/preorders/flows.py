@@ -26,7 +26,7 @@ async def get(order_id: PydanticObjectId) -> models.PreOrder:
     return order
 
 
-async def get_order_id(order_id: str) -> models.PreOrder:
+async def get_by_order_id(order_id: str) -> models.PreOrder:
     order = await service.get_order_id(order_id)
     if not order:
         raise errors.DudeDuckHTTPException(
