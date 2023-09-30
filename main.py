@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from beanie import init_beanie
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
+from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.staticfiles import StaticFiles
 
 from app import api, db
@@ -15,6 +16,7 @@ from app.middlewares.time import TimeMiddleware
 from app.services.auth import models as auth_models
 from app.services.auth import service as auth_service
 from app.services.settings import service as settings_service
+from app.services.sheets.tasks import sync_orders
 from app.services.telegram import service as telegram_service
 
 if os.name != "nt":
@@ -44,12 +46,14 @@ async def lifespan(application: FastAPI):  # noqa
             )
         )
     await telegram_service.TelegramService.init()
+    await sync_orders()
     logger.info("Application... Online!")
     yield
 
 
 app = FastAPI(openapi_url="", lifespan=lifespan, default_response_class=ORJSONResponse, debug=config.app.debug)
 app.add_middleware(ExceptionMiddleware)
+app.add_middleware(SentryAsgiMiddleware)
 app.add_middleware(TimeMiddleware)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -60,6 +64,7 @@ api_app = FastAPI(
     default_response_class=ORJSONResponse,
 )
 api_app.add_middleware(ExceptionMiddleware)
+api_app.add_middleware(SentryAsgiMiddleware)
 api_app.include_router(api.router)
 
 if config.app.cors_origins:
