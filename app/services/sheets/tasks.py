@@ -77,22 +77,20 @@ async def sync_data_from(
                     changed += 1
                 except ValidationError as e:
                     logger.error(e.errors(include_url=False))
-        else:
-            await order_service.delete(order_db.id)
-            deleted += 1
+        # else:
+        #     await order_service.delete(order_db.id)
+        #     deleted += 1
 
     insert_data = []
     inserted_orders = []
     for order in orders.values():
         if order.shop_order_id is not None:
             try:
-                try:
-                    insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
-                    inserted_orders.append(order)
-                except ValidationError as e:
-                    logger.error(e.errors(include_url=False))
-            except ValidationError:
-                pass
+                insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
+                inserted_orders.append(order)
+            except ValidationError as e:
+                logger.error(e.errors(include_url=False))
+
     created = len(insert_data)
     if created > 0:
         ids = await order_service.bulk_create(insert_data)
