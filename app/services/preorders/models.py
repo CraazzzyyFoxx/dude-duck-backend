@@ -3,6 +3,7 @@ import datetime
 from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import Url
+from pymongo import IndexModel
 
 from app.core.db import TimeStampMixin
 from app.services.orders import models as order_models
@@ -56,6 +57,7 @@ class PreOrder(sheets_models.SheetEntity, TimeStampMixin):
         bson_encoders = {
             Url: lambda x: str(x),
         }
+        indexes = [IndexModel("order_id", unique=True)]
 
     def __hash__(self):
         return hash(str(self.id))
