@@ -87,7 +87,7 @@ async def format_order_active(order: models.Order, order_active: accounting_mode
         price_booster_gold=order.price.price_booster_gold,
     )
     data["price"] = price
-    data["paid_time"] = order_active.paid_time
+    data["paid_at"] = order_active.paid_at
     return schemas.OrderReadActive.model_validate(data)
 
 

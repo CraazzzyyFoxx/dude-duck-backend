@@ -1,4 +1,5 @@
 from beanie import PydanticObjectId
+from bson import DBRef, ObjectId
 from fastapi import APIRouter, Depends, UploadFile
 from starlette import status
 
@@ -60,16 +61,16 @@ async def get_active_orders(
     sorting: search_models.OrderSortingParams = Depends(),
     user=Depends(auth_flows.current_active_verified),
 ):
-    query = {"user_id": user.id}
+    query = {"user_id": DBRef("user", user.id)}
     if sorting.completed != search_models.OrderSelection.ALL:
         if sorting.completed == search_models.OrderSelection.Completed:
             query["completed"] = True
         else:
             query["completed"] = False
     data = await search_service.paginate(accounting_models.UserOrder.find(query), paging, sorting)
-    orders = await orders_service.get_by_ids([d.order_id for d in data["results"]])
+    orders = await orders_service.get_by_ids([d.order_id.ref.id for d in data["results"]])
     orders_map: dict[PydanticObjectId, orders_models.Order] = {order.id: order for order in orders}
-    results = [await orders_flows.format_order_active(orders_map[d.order_id], d) for d in data["results"]]
+    results = [await orders_flows.format_order_active(orders_map[d.order_id.ref.id], d) for d in data["results"]]
     data["results"] = results
     return data
 

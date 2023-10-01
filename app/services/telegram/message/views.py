@@ -45,7 +45,7 @@ async def create_sheets_order_messages(order_id: str, data: models.OrderPullCrea
         order = await orders_flows.format_order_system(await orders_flows.get_by_order_id(order_id))
         return await flows.create_order_message(order, data.categories, data.config_names, data.is_gold)
     else:
-        order = await preorders_flows.format_preorder_system(await preorders_flows.get_order_id(order_id))
+        order = await preorders_flows.format_preorder_system(await preorders_flows.get_by_order_id(order_id))
         return await flows.create_preorder_message(order, data.categories, data.config_names, data.is_gold)
 
 
@@ -55,7 +55,7 @@ async def delete_sheets_order_messages(order_id: str, preorder: bool):
         order = await orders_flows.format_order_system(await orders_flows.get_by_order_id(order_id))
         return await flows.delete_order_message(order)
     else:
-        order = await preorders_flows.format_preorder_system(await preorders_flows.get_order_id(order_id))
+        order = await preorders_flows.format_preorder_system(await preorders_flows.get_by_order_id(order_id))
         return await flows.delete_preorder_message(order)
 
 
@@ -65,7 +65,7 @@ async def update_sheets_order_message(order_id: str, data: models.OrderPullUpdat
         order = await orders_flows.format_order_system(await orders_flows.get_by_order_id(order_id))
         return await flows.update_order_message(order, data.config_names, data.is_gold)
     else:
-        order = await preorders_flows.format_preorder_system(await preorders_flows.get_order_id(order_id))
+        order = await preorders_flows.format_preorder_system(await preorders_flows.get_by_order_id(order_id))
         return await flows.update_preorder_message(order, data.config_names, data.is_gold)
 
 

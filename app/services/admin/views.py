@@ -21,7 +21,7 @@ router = APIRouter(
 async def get_users(
     paging: search_models.PaginationParams = Depends(),
     sorting: search_models.SortingParams = Depends(),
-    _: auth_flows.models.User = Depends(auth_flows.current_active_superuser),
+    _: auth_models.User = Depends(auth_flows.current_active_superuser),
 ):
     return await search_service.paginate(auth_models.User.all(), paging, sorting)
 
@@ -32,7 +32,7 @@ async def get_order(order_id: PydanticObjectId):
     return await order_flows.format_order_system(order)
 
 
-@router.get(path="/orders", response_model=search_service.models.Paginated[order_schemas.OrderReadSystem])
+@router.get(path="/orders", response_model=search_models.Paginated[order_schemas.OrderReadSystem])
 async def get_orders(
     paging: search_models.PaginationParams = Depends(),
     sorting: search_models.OrderSortingParams = Depends(),

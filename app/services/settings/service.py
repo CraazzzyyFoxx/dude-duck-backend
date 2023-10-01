@@ -11,7 +11,7 @@ async def get() -> models.Settings:
     if CACHE.get(0):
         return CACHE[0]
     settings: models.Settings = await models.Settings.find_one({})
-    CACHE[0] = settings  # type: ignore
+    CACHE[0] = settings
     return settings
 
 

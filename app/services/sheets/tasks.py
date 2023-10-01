@@ -6,7 +6,7 @@ from loguru import logger
 from pydantic import ValidationError
 
 from app import db
-from app.core import config
+from app.core import config, errors
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import models as accounting_models
 from app.services.accounting import service as accounting_service
@@ -26,7 +26,7 @@ async def boosters_from_order_sync(
     users_in_ids: dict[PydanticObjectId, auth_models.User],
 ) -> None:
     boosters = await accounting_service.get_by_order_id(order_db.id)
-    boosters_db_map: dict[PydanticObjectId, accounting_models.UserOrder] = {d.user_id: d for d in boosters}
+    boosters_db_map: dict[PydanticObjectId, accounting_models.UserOrder] = {d.user_id.ref.id: d for d in boosters}
     if await accounting_service.boosters_to_str_sync(order, boosters, list(users_in_ids.values())) != order.booster:
         for booster, price in accounting_service.boosters_from_str(order.booster).items():
             user = users_in.get(booster)
@@ -35,7 +35,10 @@ async def boosters_from_order_sync(
                     await accounting_flows.add_booster(order_db, user, sync=False)
                 else:
                     dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
-                    await accounting_flows.add_booster_with_price(order_db, user, dollars, sync=False)
+                    try:
+                        await accounting_flows.add_booster_with_price(order_db, user, dollars, sync=False)
+                    except errors.DudeDuckHTTPException as e:
+                        logger.error(e.detail)
 
     if order_db.status != order.status or order_db.status_paid != order.status_paid:
         update_model = accounting_models.UserOrderUpdate(
@@ -43,7 +46,7 @@ async def boosters_from_order_sync(
             paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
         )
         for b in boosters:
-            await accounting_flows.update_booster(order_db, users_in_ids[b.user_id], update_model)
+            await accounting_flows.update_booster(order_db, users_in_ids[b.user_id.ref.id], update_model)
 
 
 async def sync_data_from(
@@ -74,22 +77,20 @@ async def sync_data_from(
                     changed += 1
                 except ValidationError as e:
                     logger.error(e.errors(include_url=False))
-        else:
-            await order_service.delete(order_db.id)
-            deleted += 1
+        # else:
+        #     await order_service.delete(order_db.id)
+        #     deleted += 1
 
     insert_data = []
     inserted_orders = []
     for order in orders.values():
         if order.shop_order_id is not None:
             try:
-                try:
-                    insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
-                    inserted_orders.append(order)
-                except ValidationError as e:
-                    logger.error(e.errors(include_url=False))
-            except ValidationError:
-                pass
+                insert_data.append(order_models.OrderCreate.model_validate(order.model_dump()))
+                inserted_orders.append(order)
+            except ValidationError as e:
+                logger.error(e.errors(include_url=False))
+
     created = len(insert_data)
     if created > 0:
         ids = await order_service.bulk_create(insert_data)
@@ -116,7 +117,7 @@ async def sync_data_to(
     orders_db_map: dict[PydanticObjectId, list[accounting_service.models.UserOrder]] = {}
 
     for user_order in user_orders_db:
-        order = orders_db.get(user_order.order_id)
+        order = orders_db.get(user_order.order_id.ref.id)
         if orders_db_map.get(order.id, None):
             orders_db_map[order.id].append(user_order)
         else:

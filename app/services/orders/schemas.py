@@ -3,16 +3,16 @@ import datetime
 from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict
 
-from .models import OrderCredentials, OrderInfo, OrderPaidStatus, OrderStatus
+from .models import OrderCredentials, OrderInfo, OrderPaidStatus, OrderStatus, OrderPriceNone
 
 
-class OrderPriceUser(BaseModel):
+class OrderPriceUser(OrderPriceNone):
     price_booster_dollar: float
     price_booster_rub: float
     price_booster_gold: float | None = None
 
 
-class OrderPriceSystem(BaseModel):
+class OrderPriceSystem(OrderPriceNone):
     price_dollar: float
     price_booster_dollar_without_fee: float
 
@@ -79,6 +79,6 @@ class OrderReadActive(BaseModel):
     price: OrderPriceUser
     credentials: OrderCredentials
 
-    paid_time: datetime.datetime | None
+    paid_at: datetime.datetime | None
     auth_date: datetime.datetime | None = None
     end_date: datetime.datetime | None = None
