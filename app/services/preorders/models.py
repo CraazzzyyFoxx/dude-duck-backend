@@ -30,6 +30,7 @@ class PreOrderCreate(sheets_models.SheetEntity):
 
     info: order_models.OrderInfo
     price: PreOrderPriceUser
+    status: order_models.OrderStatus  # TODO: Убрать, нужен для обратной совместимости с обычным заказом
 
 
 class PreOrderUpdate(BaseModel):

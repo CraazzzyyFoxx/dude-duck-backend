@@ -126,7 +126,7 @@ async def _add_booster(
 async def add_booster(order: order_models.Order, user: auth_models.User, sync: bool = True) -> models.UserOrder:
     await can_user_pick(user)
     boosters = await service.get_by_order_id(order.id)
-    if user.id in [b.user_id.ref.id for b in boosters]:
+    if user.id in [b.user_id.id for b in boosters]:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
@@ -153,8 +153,8 @@ async def add_booster_with_price(
     sync: bool = True,
 ) -> models.UserOrder:
     await can_user_pick(user)
-    boosters = await service.get_by_order_id(order.id)
-    if user.id in [b.user_id.ref.id for b in boosters]:
+    boosters = await service.get_by_order_id(order.id, fetch_links=True)
+    if user.id in [b.user_id.id for b in boosters]:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
@@ -187,8 +187,8 @@ async def add_booster_with_price(
 
 
 async def update_booster(order: order_models.Order, user: auth_models.User, update_model: models.UserOrderUpdate):
-    boosters = await service.get_by_order_id(order.id)
-    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.ref.id: b for b in boosters}
+    boosters = await service.get_by_order_id(order.id, fetch_links=True)
+    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.id: b for b in boosters}
     if boosters_map.get(user.id) is None:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -206,8 +206,8 @@ async def update_booster(order: order_models.Order, user: auth_models.User, upda
 
 
 async def remove_booster(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
-    boosters = await service.get_by_order_id(order.id)
-    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.ref.id: b for b in boosters}
+    boosters = await service.get_by_order_id(order.id, fetch_links=True)
+    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.id: b for b in boosters}
     to_delete = boosters_map.get(user.id)
     if to_delete is None:
         raise errors.DudeDuckHTTPException(

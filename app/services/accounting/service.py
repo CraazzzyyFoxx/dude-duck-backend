@@ -48,17 +48,19 @@ async def delete(user_order_id: PydanticObjectId) -> None:
     await user_order.delete()
 
 
-async def get_by_order_id(order_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find(models.UserOrder.order_id.id == order_id).to_list()
+async def get_by_order_id(order_id: PydanticObjectId, fetch_links: bool = False) -> list[models.UserOrder]:
+    return await models.UserOrder.find(models.UserOrder.order_id.id == order_id, fetch_links=fetch_links).to_list()
 
 
-async def get_by_user_id(user_id: PydanticObjectId) -> list[models.UserOrder]:
-    return await models.UserOrder.find(models.UserOrder.user_id.id == user_id).to_list()
+async def get_by_user_id(user_id: PydanticObjectId, fetch_links: bool = False) -> list[models.UserOrder]:
+    return await models.UserOrder.find(models.UserOrder.user_id.id == user_id, fetch_links=fetch_links).to_list()
 
 
-async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.UserOrder | None:
+async def get_by_order_id_user_id(
+    order_id: PydanticObjectId, user_id: PydanticObjectId, fetch_links: bool = False
+) -> models.UserOrder | None:
     return await models.UserOrder.find_one(
-        models.UserOrder.order_id.id == order_id, models.UserOrder.user_id.id == user_id
+        models.UserOrder.order_id.id == order_id, models.UserOrder.user_id.id == user_id, fetch_links=fetch_links
     )
 
 
@@ -66,8 +68,10 @@ async def get_all() -> list[models.UserOrder]:
     return await models.UserOrder.find({}).to_list()
 
 
-async def get_by_orders(orders_id: typing.Iterable[PydanticObjectId]) -> list[models.UserOrder]:
-    return await models.UserOrder.find(In(models.UserOrder.order_id.id, orders_id)).to_list()
+async def get_by_orders(
+    orders_id: typing.Iterable[PydanticObjectId], fetch_links: bool = False
+) -> list[models.UserOrder]:
+    return await models.UserOrder.find(In(models.UserOrder.order_id.id, orders_id), fetch_links=fetch_links).to_list()
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate) -> models.UserOrder:
