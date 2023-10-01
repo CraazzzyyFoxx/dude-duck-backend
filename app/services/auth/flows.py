@@ -1,6 +1,5 @@
 from typing import Annotated
 
-from beanie import PydanticObjectId
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
 from starlette import status
@@ -13,7 +12,7 @@ oauth2_scheme = OAuth2PasswordBearer("auth/login", auto_error=False)
 bearer_scheme_api = HTTPBearer(bearerFormat="Bearer")
 
 
-async def get(user_id: PydanticObjectId):
+async def get(user_id: int):
     user = await service.get(user_id)
     if not user:
         raise errors.DudeDuckHTTPException(
@@ -116,7 +115,7 @@ current_active_superuser_api = current_user_api(active=True, superuser=True)
 
 
 async def resolve_user(
-    user_id: PydanticObjectId | str,
+    user_id: int | str,
     user: models.User = Depends(current_active),
 ) -> models.User:
     if user_id == "@me":
@@ -126,7 +125,7 @@ async def resolve_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[errors.DudeDuckException(msg="A user with this id does not exist.", code="not_exist")],
         )
-    user = await service.get(PydanticObjectId(user_id))
+    user = await service.get(int(user_id))
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

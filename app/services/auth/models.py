@@ -2,13 +2,10 @@ import datetime
 import enum
 import re
 
-from beanie import Link, PydanticObjectId
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
-from pydantic_core import Url
+from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl, constr, field_validator, model_validator
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from pymongo import IndexModel
-from pymongo.collation import Collation
+from tortoise import fields
 
 from app.core import config
 from app.core.db import TimeStampMixin
@@ -37,7 +34,7 @@ class AdminGoogleToken(BaseModel):
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     email: EmailStr
     is_active: bool = True
     is_superuser: bool = False
@@ -60,7 +57,7 @@ class UserRead(BaseModel):
 class UserReadSheets(SheetEntity):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     email: EmailStr
     name: str
     telegram: str
@@ -131,60 +128,36 @@ class UserUpdateAdmin(BaseUserUpdate):
 
 
 class User(TimeStampMixin):
-    email: EmailStr
-    hashed_password: str
-    is_active: bool = True
-    is_superuser: bool = False
-    is_verified: bool = False
+    email: str = fields.TextField()
+    hashed_password: str = fields.TextField()
+    is_active: bool = fields.BooleanField(default=True)
+    is_superuser: bool = fields.BooleanField(default=False)
+    is_verified: bool = fields.BooleanField(default=False)
 
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
-    telegram: str
-    phone: PhoneNumber | None = None
-    bank: str | None = None
-    bankcard: PaymentCardNumber | None = None
-    binance_email: EmailStr | None = None
-    binance_id: int | None = None
-    discord: str | None = None
-    language: UserLanguage = UserLanguage.EN
+    name: str = fields.CharField(max_length=20)
+    telegram: str = fields.TextField()
+    phone: PhoneNumber | None = fields.TextField(null=True)
+    bank: str | None = fields.TextField(null=True)
+    bankcard: PaymentCardNumber | None = fields.TextField(null=True)
+    binance_email: EmailStr | None = fields.TextField(null=True)
+    binance_id: int | None = fields.IntField(null=True)
+    discord: str | None = fields.TextField(null=True)
+    language: UserLanguage = fields.CharEnumField(UserLanguage, default=UserLanguage.EN)
 
-    google: AdminGoogleToken | None = None
+    google: AdminGoogleToken | None = fields.JSONField(null=True, decoder=AdminGoogleToken.model_validate_json)
+    max_orders: int = fields.IntField(default=3)
 
-    max_orders: int = Field(default=3)
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
-
-    class Settings:
+    class Config:
         name = "user"
-        email_collation = Collation("en", strength=2)
-        indexes = [
-            IndexModel("email", unique=True),
-            IndexModel("name", unique=True),
-            IndexModel("email", name="case_insensitive_email_index", collation=email_collation),
-        ]
-        bson_encoders = {
-            Url: lambda x: str(x),
-            PhoneNumber: lambda x: str(x),
-            PaymentCardNumber: lambda x: str(x),
-        }
-        use_state_management = True
-        state_management_save_previous = True
-        validate_on_save = True
 
 
 class AccessToken(TimeStampMixin):
-    token: str
-    user_id: Link[User]
-
-    class Settings:
-        name = "access_token"
-        indexes = [IndexModel("token", unique=True)]
-        validate_on_save = True
+    id: int = fields.BigIntField(pk=True)
+    token: str = fields.CharField(unique=True, max_length=100)
+    user_id: int = fields.BigIntField()
 
 
 class AccessTokenAPI(TimeStampMixin):
-    token: str
-    user_id: Link[User]
-
-    class Settings:
-        name = "access_token_api"
-        indexes = [IndexModel("user_id", unique=True)]
-        validate_on_save = True
+    id: int = fields.BigIntField(pk=True)
+    token: str = fields.CharField(unique=True, max_length=100)
+    user_id: int = fields.BigIntField(unique=True)
