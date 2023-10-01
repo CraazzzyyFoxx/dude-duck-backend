@@ -1,4 +1,3 @@
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends
 
 from app.core import enums
@@ -27,7 +26,7 @@ async def get_users(
 
 
 @router.get(path="/orders/{order_id}", response_model=order_schemas.OrderReadSystem)
-async def get_order(order_id: PydanticObjectId):
+async def get_order(order_id: int):
     order = await order_flows.get(order_id)
     return await order_flows.format_order_system(order)
 
@@ -43,18 +42,18 @@ async def get_orders(
 
 
 @router.patch("/users/{user_id}", response_model=auth_models.UserRead)
-async def update_user(user_update: auth_models.UserUpdateAdmin, user_id: PydanticObjectId):
+async def update_user(user_update: auth_models.UserUpdateAdmin, user_id: int):
     user = await auth_flows.get(user_id)
     return await user_flows.update_user(user_update, user)
 
 
 @router.get("/users/{user_id}", response_model=auth_models.UserRead)
-async def get_user(user_id: PydanticObjectId):
+async def get_user(user_id: int):
     user = await auth_flows.get(user_id)
     return auth_models.UserRead.model_validate(user)
 
 
 @router.get("/users/{user_id}/payment/report", response_model=accounting_models.UserAccountReport)
-async def get_accounting_report(user_id: PydanticObjectId):
+async def get_accounting_report(user_id: int):
     user = await auth_flows.get(user_id)
     return await accounting_flows.create_user_report(user)

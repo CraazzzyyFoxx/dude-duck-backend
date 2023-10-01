@@ -60,6 +60,11 @@ class SortingParams(BaseModel):
     sort: str = "created_at"
     order: SortOrder = SortOrder.ASC
 
+    @property
+    def order_by(self):
+        order_by = "-" if self.order == SortOrder.DESC else "+"
+        return f"{order_by}{self.sort}"
+
 
 class OrderSortingParams(SortingParams):
     completed: OrderSelection = OrderSelection.ALL

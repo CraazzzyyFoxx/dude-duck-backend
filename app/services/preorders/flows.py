@@ -39,7 +39,6 @@ async def get_by_order_id(order_id: str) -> models.PreOrder:
 async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
     order = await service.create(order_in)
     settings = await settings_service.get()
-    tasks_service.delete_expired_preorder.apply_async((str(order.id),), countdown=settings.preorder_time_alive)
     return order
 
 

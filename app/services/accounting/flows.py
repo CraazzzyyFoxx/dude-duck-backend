@@ -1,7 +1,6 @@
 import typing
 from datetime import datetime
 
-from beanie import PydanticObjectId, WriteRules
 from loguru import logger
 from starlette import status
 
@@ -31,7 +30,7 @@ async def get_by_order_id_user_id(order: order_service.models.Order, user: auth_
     return order_user
 
 
-async def get(payment_id: PydanticObjectId) -> models.UserOrder:
+async def get(payment_id: int) -> models.UserOrder:
     order_user = await service.get(payment_id)
     if not order_user:
         raise errors.DudeDuckHTTPException(
@@ -89,12 +88,12 @@ async def sync_boosters_sheet(order: order_models.Order) -> None:
             )
 
 
-async def update_price(order: order_models.Order, price: float, *, add: bool = True) -> dict[PydanticObjectId, float]:
+async def update_price(order: order_models.Order, price: float, *, add: bool = True) -> dict[int, float]:
     boosters = await service.get_by_order_id(order.id)
     dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
     total_dollars = sum(b.dollars for b in boosters)
     free_dollars = dollars - total_dollars
-    price_map: dict[PydanticObjectId, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
+    price_map: dict[int, float] = {b.id: b.dollars / (dollars - free_dollars) for b in boosters}
     if add:
         price = -price
     for booster in boosters:
@@ -188,7 +187,7 @@ async def add_booster_with_price(
 
 async def update_booster(order: order_models.Order, user: auth_models.User, update_model: models.UserOrderUpdate):
     boosters = await service.get_by_order_id(order.id, fetch_links=True)
-    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.id: b for b in boosters}
+    boosters_map: dict[int, models.UserOrder] = {b.user_id.id: b for b in boosters}
     if boosters_map.get(user.id) is None:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -207,7 +206,7 @@ async def update_booster(order: order_models.Order, user: auth_models.User, upda
 
 async def remove_booster(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
     boosters = await service.get_by_order_id(order.id, fetch_links=True)
-    boosters_map: dict[PydanticObjectId, models.UserOrder] = {b.user_id.id: b for b in boosters}
+    boosters_map: dict[int, models.UserOrder] = {b.user_id.id: b for b in boosters}
     to_delete = boosters_map.get(user.id)
     if to_delete is None:
         raise errors.DudeDuckHTTPException(
@@ -224,7 +223,7 @@ async def remove_booster(order: order_models.Order, user: auth_models.User) -> m
 # async def update_boosters_percent(
 #     order: order_service.models.Order, data: models.SheetUserOrderCreate
 # ) -> list[models.UserOrder]:
-#     users: list[tuple[PydanticObjectId, float]] = []
+#     users: list[tuple[int, float]] = []
 #     users_id = []
 #     for item in data.items:
 #         user = await auth_flows.get_booster_by_name(item.username)
@@ -308,11 +307,11 @@ async def create_report(
         if sheet_id is not None:
             query.update({"spreadsheet": spreadsheet, "sheet_id": sheet_id})
         orders = await order_models.Order.find(query).to_list()
-        orders_map: dict[PydanticObjectId, order_models.Order] = {o.id: o for o in orders}
+        orders_map: dict[int, order_models.Order] = {o.id: o for o in orders}
         payments = await service.get_by_orders(list(orders_map.keys()))
-        user_ids: list[PydanticObjectId] = [payment.user_id.ref.id for payment in payments]
+        user_ids: list[int] = [payment.user_id.ref.id for payment in payments]
         users = await auth_service.get_by_ids(user_ids)
-        users_map: dict[PydanticObjectId, auth_models.User] = {u.id: u for u in users}
+        users_map: dict[int, auth_models.User] = {u.id: u for u in users}
     else:
         chosen_user = await auth_flows.get_booster_by_name(username)
         payments = await service.get_by_user_id(chosen_user.id)
@@ -329,7 +328,7 @@ async def create_report(
                 }
             )
         orders = await order_models.Order.find(query).to_list()
-        orders_map: dict[PydanticObjectId, order_models.Order] = {order.id: order for order in orders}
+        orders_map: dict[int, order_models.Order] = {order.id: order for order in orders}
 
     for payment in payments:
         order = orders_map.get(payment.order_id.ref.id)
@@ -405,7 +404,7 @@ async def close_order(user: auth_models.User, order: order_service.models.Order,
     return new_order
 
 
-async def paid_order(payment_id: PydanticObjectId) -> models.UserOrder:
+async def paid_order(payment_id: int) -> models.UserOrder:
     data = await get(payment_id)
     if data.paid:
         raise errors.DudeDuckHTTPException(

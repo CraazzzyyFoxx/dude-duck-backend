@@ -75,7 +75,7 @@ async def reads_google_sheets_parser(
     sorting: search_models.SortingParams = Depends(),
     _: auth_models.User = Depends(auth_flows.current_active_superuser),
 ):
-    return await search_service.paginate(models.OrderSheetParse.find({}), paging, sorting)
+    return await search_service.paginate(models.OrderSheetParse.filter(), paging, sorting)
 
 
 @router.get("/parser/{spreadsheet}/{sheet_id}", response_model=models.OrderSheetParseRead)

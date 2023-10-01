@@ -1,8 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from beanie import Link, PydanticObjectId
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.services.orders import models as order_models
 
@@ -44,7 +43,7 @@ class AccountingReportItem(BaseModel):
     payment: str
     bank: str
     status: order_models.OrderStatus
-    payment_id: PydanticObjectId
+    payment_id: int
 
 
 class AccountingReport(BaseModel):
@@ -57,8 +56,8 @@ class AccountingReport(BaseModel):
 class UserOrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    order_id: PydanticObjectId
-    user_id: PydanticObjectId
+    order_id: int
+    user_id: int
     dollars: float
     completed: bool
     paid: bool
@@ -67,16 +66,8 @@ class UserOrderRead(BaseModel):
     completed_at: datetime | None
     method_payment: str
 
-    @field_validator("order_id", mode="before")
-    def link_converter_1(cls, v: Link) -> PydanticObjectId:
-        return v.ref.id
-
-    @field_validator("user_id", mode="before")
-    def link_converter_2(cls, v: Link) -> PydanticObjectId:
-        return v.ref.id
-
 
 class OrderBoosterCreate(BaseModel):
-    user_id: PydanticObjectId
+    user_id: int
     dollars: float | None = None
     method_payment: str | None = None

@@ -2,9 +2,8 @@ import re
 import typing
 from datetime import datetime
 
-from beanie import PydanticObjectId
-from beanie.odm.operators.find.comparison import In
 from loguru import logger
+from tortoise.expressions import F
 
 from app.core import config
 from app.services.auth import models as auth_models
@@ -12,14 +11,14 @@ from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows
 from app.services.orders import models as order_models
 
-from . import models
+from . import models, schemas
 
 BOOSTER_WITH_PRICE_REGEX = re.compile(config.app.username_regex + r" ?(\(\d+\))", flags=re.UNICODE & re.MULTILINE)
 BOOSTER_REGEX = re.compile(config.app.username_regex, flags=re.UNICODE & re.MULTILINE)
 
 
-async def get(order_id: PydanticObjectId) -> models.UserOrder | None:
-    return await models.UserOrder.find_one({"_id": order_id})
+async def get(user_order_id: int) -> models.UserOrder | None:
+    return await models.UserOrder.filter(id=user_order_id).first()
 
 
 async def create(
@@ -42,40 +41,30 @@ async def create(
     return await user_order.create()
 
 
-async def delete(user_order_id: PydanticObjectId) -> None:
+async def delete(user_order_id: int) -> None:
     user_order = await get(user_order_id)
     logger.info(f"Deleted UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
     await user_order.delete()
 
 
-async def get_by_order_id(order_id: PydanticObjectId, fetch_links: bool = False) -> list[models.UserOrder]:
-    return await models.UserOrder.find(models.UserOrder.order_id.id == order_id, fetch_links=fetch_links).to_list()
+async def get_by_order_id(order_id: int, fetch_links: bool = False) -> list[models.UserOrder]:
+    return await models.UserOrder.filter(order_id=order_id)
 
 
-async def get_by_user_id(user_id: PydanticObjectId, fetch_links: bool = False) -> list[models.UserOrder]:
-    return await models.UserOrder.find(models.UserOrder.user_id.id == user_id, fetch_links=fetch_links).to_list()
+async def get_by_user_id(user_id: int, fetch_links: bool = False) -> list[models.UserOrder]:
+    return await models.UserOrder.filter(user_id=user_id)
 
 
-async def get_by_order_id_user_id(
-    order_id: PydanticObjectId, user_id: PydanticObjectId, fetch_links: bool = False
-) -> models.UserOrder | None:
-    return await models.UserOrder.find_one(
-        models.UserOrder.order_id.id == order_id, models.UserOrder.user_id.id == user_id, fetch_links=fetch_links
-    )
+async def get_by_order_id_user_id(order_id: int, user_id: int, fetch_links: bool = False) -> models.UserOrder | None:
+    return await models.UserOrder.filter(order_id=order_id, user_id=user_id).first()
 
 
-async def get_all() -> list[models.UserOrder]:
-    return await models.UserOrder.find({}).to_list()
-
-
-async def get_by_orders(
-    orders_id: typing.Iterable[PydanticObjectId], fetch_links: bool = False
-) -> list[models.UserOrder]:
-    return await models.UserOrder.find(In(models.UserOrder.order_id.id, orders_id), fetch_links=fetch_links).to_list()
+async def get_by_orders(orders_id: typing.Iterable[int], fetch_links: bool = False) -> list[models.UserOrder]:
+    return await models.UserOrder.filter(order_id__in=orders_id)
 
 
 async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUpdate) -> models.UserOrder:
-    user_order_data = user_order.model_dump()
+    user_order_data = schemas.UserOrderRead.model_validate(user_order, from_attributes=True).model_dump()
     update_data = user_order_in.model_dump(exclude_none=True)
 
     for field in user_order_data:
@@ -102,15 +91,13 @@ async def update(user_order: models.UserOrder, user_order_in: models.UserOrderUp
     return user_order
 
 
-async def bulk_update_price(order_id: PydanticObjectId, price: float, inc=False) -> None:
-    func = "$inc" if inc else "$set"
-    await models.UserOrder.find(models.UserOrder.order_id.id == order_id).update({func: {"dollars": price}})
+async def bulk_update_price(order_id: int, price: float, inc=False) -> None:
+    func = F("dollars") + price if inc else price
+    await models.UserOrder.filter(order_id=order_id).update(dollars=func)
 
 
 async def check_user_total_orders(user: auth_models.User) -> bool:
-    count = await models.UserOrder.find(
-        models.UserOrder.user_id.id == user.id, models.UserOrder.completed == False
-    ).count()
+    count = await models.UserOrder.filter(user_id=user.id, completed=False).count()
     return bool(count < user.max_orders)
 
 
@@ -143,7 +130,7 @@ async def _boosters_to_str(order, data: list[models.UserOrder], users: list[auth
     if len(users) == 1:
         return users[0].name
     resp = []
-    users_map: dict[PydanticObjectId, auth_models.User] = {user.id: user for user in users}
+    users_map: dict[int, auth_models.User] = {user.id: user for user in users}
     for d in data:
         booster = users_map.get(d.user_id.ref.id, None)
         if booster:

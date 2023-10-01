@@ -1,11 +1,10 @@
 import time
 
-from beanie import PydanticObjectId, init_beanie
 from deepdiff import DeepDiff
 from loguru import logger
 from pydantic import ValidationError
+from tortoise import Tortoise
 
-from app import db
 from app.core import config, errors
 from app.services.accounting import flows as accounting_flows
 from app.services.accounting import models as accounting_models
@@ -23,10 +22,10 @@ async def boosters_from_order_sync(
     order_db: order_models.Order,
     order: models.OrderReadSheets,
     users_in: dict[str, auth_models.User],
-    users_in_ids: dict[PydanticObjectId, auth_models.User],
+    users_in_ids: dict[int, auth_models.User],
 ) -> None:
     boosters = await accounting_service.get_by_order_id(order_db.id)
-    boosters_db_map: dict[PydanticObjectId, accounting_models.UserOrder] = {d.user_id.ref.id: d for d in boosters}
+    boosters_db_map: dict[int, accounting_models.UserOrder] = {d.user_id.ref.id: d for d in boosters}
     if await accounting_service.boosters_to_str_sync(order, boosters, list(users_in_ids.values())) != order.booster:
         for booster, price in accounting_service.boosters_from_str(order.booster).items():
             user = users_in.get(booster)
@@ -53,7 +52,7 @@ async def sync_data_from(
     cfg: models.OrderSheetParseRead,
     orders: dict[str, models.OrderReadSheets],
     users: dict[str, auth_models.User],
-    users_ids: dict[PydanticObjectId, auth_models.User],
+    users_ids: dict[int, auth_models.User],
     orders_db: dict[str, order_models.Order],
 ) -> None:
     t = time.time()
@@ -65,9 +64,10 @@ async def sync_data_from(
         order = orders.get(order_id)
         if order is not None:
             orders.pop(order_id)
+            por = models.OrderReadSheets.model_validate(order_db, from_attributes=True)
             await boosters_from_order_sync(order_db, order, users, users_ids)
             diff = DeepDiff(
-                order.model_dump(exclude=exclude), order_db.model_dump(exclude=exclude), truncate_datetime="second"
+                order.model_dump(exclude=exclude), por.model_dump(exclude=exclude), truncate_datetime="second"
             )
             if diff:
                 if config.app.debug:
@@ -109,12 +109,12 @@ async def sync_data_to(
     cfg: models.OrderSheetParseRead,
     orders: dict[str, models.OrderReadSheets],
     users: list[auth_models.User],
-    orders_db: dict[PydanticObjectId, order_models.Order],
+    orders_db: dict[int, order_models.Order],
 ) -> None:
     t = time.time()
     to_sync = []
     user_orders_db = await accounting_service.get_by_orders([order.id for order in orders_db.values()])
-    orders_db_map: dict[PydanticObjectId, list[accounting_service.models.UserOrder]] = {}
+    orders_db_map: dict[int, list[accounting_service.models.UserOrder]] = {}
 
     for user_order in user_orders_db:
         order = orders_db.get(user_order.order_id.ref.id)
@@ -142,7 +142,7 @@ async def sync_data_to(
 async def sync_orders() -> None:
     try:
         t = time.time()
-        await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
+        await Tortoise.init(config=config.tortoise)
         superuser = await auth_service.get_first_superuser()
         if superuser.google is None:
             logger.warning("Synchronization skipped, google token for first superuser missing")

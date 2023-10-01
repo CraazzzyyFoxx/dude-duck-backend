@@ -4,7 +4,6 @@ import typing
 from typing import Callable
 
 import gspread
-from beanie import PydanticObjectId
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
@@ -71,39 +70,39 @@ def get_type(type_name: str, null: bool):
     return type_map[type_name]
 
 
-async def get(parser_id: PydanticObjectId) -> models.OrderSheetParse | None:
-    return await models.OrderSheetParse.find_one({"_id": parser_id})
+async def get(parser_id: int) -> models.OrderSheetParse | None:
+    return await models.OrderSheetParse.filter(id=parser_id).first()
 
 
-async def create(parser_in: models.OrderSheetParseCreate) -> models.OrderSheetParse:
-    parser = models.OrderSheetParse(**parser_in.model_dump())
-    return await parser.create()
+async def create(parser_in: models.OrderSheetParseCreate):
+    return await models.OrderSheetParse.create(**parser_in.model_dump())
 
 
-async def delete(parser_id: PydanticObjectId) -> None:
-    user_order = await models.OrderSheetParse.get(parser_id)
-    await user_order.delete()
+async def delete(parser_id: int):
+    parser = await get(parser_id)
+    if parser is not None:
+        await parser.delete()
     if _CACHE.get(parser_id, None):
         _CACHE.pop(parser_id)
 
 
 async def get_by_spreadsheet(spreadsheet: str) -> list[models.OrderSheetParse]:
-    return await models.OrderSheetParse.find({"spreadsheet": spreadsheet}).to_list()
+    return await models.OrderSheetParse.filter(spreadsheet=spreadsheet)
 
 
 async def get_by_spreadsheet_sheet(spreadsheet: str, sheet: int) -> models.OrderSheetParse | None:
-    return await models.OrderSheetParse.find_one({"spreadsheet": spreadsheet, "sheet_id": sheet})
+    return await models.OrderSheetParse.filter(spreadsheet=spreadsheet, sheet_id=sheet).first()
 
 
 async def get_by_spreadsheet_sheet_read(spreadsheet: str, sheet: int) -> models.OrderSheetParseRead | None:
     parser = await get_by_spreadsheet_sheet(spreadsheet, sheet)
     if parser:
-        return models.OrderSheetParseRead.model_validate(parser)
+        return models.OrderSheetParseRead.model_validate(parser, from_attributes=True)
     return None
 
 
 async def get_default_booster() -> models.OrderSheetParse | None:
-    return await models.OrderSheetParse.find_one({"is_user": True})
+    return await models.OrderSheetParse.filter(is_user=True).first()
 
 
 async def get_default_booster_read() -> models.OrderSheetParseRead:
@@ -114,7 +113,7 @@ async def get_default_booster_read() -> models.OrderSheetParseRead:
 
 
 async def get_all_not_default_user() -> list[models.OrderSheetParse]:
-    return await models.OrderSheetParse.find({"is_user": False}).to_list()
+    return await models.OrderSheetParse.filter(is_user=False)
 
 
 async def get_all_not_default_user_read() -> list[models.OrderSheetParseRead]:
@@ -123,18 +122,18 @@ async def get_all_not_default_user_read() -> list[models.OrderSheetParseRead]:
 
 
 async def get_all() -> list[models.OrderSheetParse]:
-    return await models.OrderSheetParse.find({}).to_list()
+    return await models.OrderSheetParse.all()
 
 
 async def update(parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate) -> models.OrderSheetParse:
-    parser_data = parser.model_dump()
+    parser_data = dict(parser)
     update_data = parser_in.model_dump(exclude_none=True)
 
     for field in parser_data:
         if field in update_data:
             setattr(parser, field, update_data[field])
 
-    await parser.save_changes()
+    await parser.save()
     if _CACHE.get(parser.id, None):
         _CACHE.pop(parser.id)
     return parser

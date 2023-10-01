@@ -29,8 +29,13 @@ class AppConfig(BaseSettings):
     telegram_url: str
     telegram_integration: bool
 
-    # MongoDB
-    mongo_dsn: str
+    # Postgres
+    postgres_user: str
+    postgres_password: str
+    postgres_db: str
+    postgres_host: str
+    postgres_port: str
+    postgres_port_app: str
 
     # JWT
     secret: str
@@ -56,3 +61,35 @@ class AppConfig(BaseSettings):
 
 
 app = AppConfig(_env_file=".env", _env_file_encoding="utf-8")
+
+
+tortoise = {
+    "connections": {
+        "default": {
+            "engine": "tortoise.backends.asyncpg",
+            "credentials": {
+                "database": app.postgres_db,
+                "host": app.postgres_host,  # db for docker
+                "password": app.postgres_password,
+                "port": app.postgres_port_app,
+                "user": app.postgres_user,
+            },
+        }
+    },
+    "apps": {
+        "main": {
+            "models": [
+                "app.services.auth.models",
+                "app.services.accounting.models",
+                "app.services.auth.models",
+                "app.services.currency.models",
+                "app.services.orders.models",
+                "app.services.preorders.models",
+                "app.services.response.models",
+                "app.services.settings.models",
+                "app.services.sheets.models",
+                "aerich.models",
+            ],
+        }
+    },
+}

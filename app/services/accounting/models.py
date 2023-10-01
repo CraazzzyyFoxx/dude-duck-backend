@@ -1,8 +1,7 @@
 from datetime import datetime
 
-from beanie import Link, PydanticObjectId
-from pydantic import BaseModel, Field, HttpUrl, constr, field_validator, model_validator
-from pymongo import IndexModel
+from pydantic import BaseModel, Field, HttpUrl, constr
+from tortoise import fields
 
 from app.core.db import TimeStampMixin
 from app.services.auth import models as auth_models
@@ -10,31 +9,24 @@ from app.services.orders import models as order_models
 
 
 class UserOrder(TimeStampMixin):
-    order_id: Link[order_models.Order]
-    user_id: Link[auth_models.User]
-    dollars: float
-    completed: bool = Field(default=False)
-    paid: bool = Field(default=False)
-    method_payment: str = Field(default="$")
+    order: int = fields.BigIntField()
+    user: int = fields.BigIntField()
+    dollars: float = fields.FloatField()
+    completed: bool = fields.BooleanField(default=False)
+    paid: bool = fields.BooleanField(default=False)
+    paid_at: datetime | None = fields.DatetimeField(null=True)
+    method_payment: str = fields.CharField(max_length=20, default="$")
 
-    order_date: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    paid_at: datetime | None = Field(default=None)
-    completed_at: datetime | None = Field(default=None)
+    order_date: datetime = fields.DatetimeField()
+    completed_at: datetime | None = fields.DatetimeField(null=True)
 
-    class Settings:
-        name = "order_user"
-        indexes = [
-            IndexModel(["order_id", "user_id"], unique=True),
-        ]
-        use_state_management = True
-        state_management_save_previous = True
-        validate_on_save = True
+    class Meta:
+        unique_together = ("order_id", "user_id")
 
 
 class UserOrderCreate(BaseModel):
-    order_id: PydanticObjectId
-    user_id: PydanticObjectId
+    order_id: int
+    user_id: int
     dollars: float
     completed: bool = Field(default=False)
     paid: bool = Field(default=False)

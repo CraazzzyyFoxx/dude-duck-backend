@@ -1,5 +1,6 @@
 from beanie import PydanticObjectId
 from starlette import status
+from tortoise.expressions import Q
 
 from app.core import errors
 from app.services.accounting import models as accounting_models
@@ -92,10 +93,10 @@ async def format_order_active(order: models.Order, order_active: accounting_mode
 
 
 async def get_filter(paging: search_models.PaginationParams, sorting: search_models.OrderSortingParams):
-    query = {}
+    query = []
     if sorting.completed != search_models.OrderSelection.ALL:
         if sorting.completed == search_models.OrderSelection.Completed:
-            query = models.Order.status == sorting.completed
+            query.append(Q(completed=True))
         else:
-            query = models.Order.status == sorting.completed
-    return await search_service.paginate(models.Order.find(query), paging, sorting)
+            query.append(Q(completed=False))
+    return await search_service.paginate(accounting_models.UserOrder.filter(Q(*query)), paging, sorting)

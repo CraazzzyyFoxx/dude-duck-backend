@@ -1,6 +1,8 @@
 from datetime import datetime
 
+import orjson
 from pydantic import BaseModel, ConfigDict, Field, constr
+from tortoise import fields
 
 from app.core.db import TimeStampMixin
 
@@ -23,23 +25,40 @@ default_currencies = [
 ]
 
 
-class Settings(TimeStampMixin):
-    api_layer_currency: list[ApiLayerCurrencyToken] = Field(default=[])
-    currencies: list[AvailableCurrency] = Field(default=default_currencies)
-    preorder_time_alive: int = 60
-    accounting_fee: float = 0.95
+def decode_api_layer_currency(data: str):
+    return [ApiLayerCurrencyToken.model_validate(d) for d in orjson.loads(data)]
 
-    currency_wow: float = 0.031
-    collect_currency_wow_by_sheets: bool = False
-    currency_wow_spreadsheet: str | None = None
-    currency_wow_sheet_id: int | None = None
-    currency_wow_cell: str | None = None
+
+def decode_currencies(data: str):
+    return [AvailableCurrency.model_validate(d) for d in orjson.loads(data)]
+
+
+def encode_api_layer_currency(data: list[ApiLayerCurrencyToken]):
+    return orjson.dumps([d.model_dump() for d in data]).decode()
+
+
+def encode_currencies(data: list[AvailableCurrency]):
+    return orjson.dumps([d.model_dump() for d in data]).decode()
+
+
+class Settings(TimeStampMixin):
+    api_layer_currency: list[ApiLayerCurrencyToken] = fields.JSONField(
+        decoder=decode_api_layer_currency, encoder=encode_api_layer_currency, default=[]
+    )
+    currencies: list[AvailableCurrency] = fields.JSONField(
+        default=default_currencies, decoder=decode_currencies, encoder=encode_currencies
+    )
+    preorder_time_alive: int = fields.IntField(default=60)
+    accounting_fee: float = fields.FloatField(default=0.95)
+
+    currency_wow: float = fields.FloatField(default=0.031)
+    collect_currency_wow_by_sheets: bool = fields.BooleanField(default=False)
+    currency_wow_spreadsheet: str | None = fields.TextField(null=True)
+    currency_wow_sheet_id: int | None = fields.BigIntField(null=True)
+    currency_wow_cell: str | None = fields.TextField(null=True)
 
     class Settings:
         name = "settings"
-        use_state_management = True
-        state_management_save_previous = True
-        validate_on_save = True
 
     def get_precision(self, currency: str) -> int:
         for cur in self.currencies:
