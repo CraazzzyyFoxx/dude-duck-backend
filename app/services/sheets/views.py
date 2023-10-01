@@ -69,6 +69,20 @@ async def update_order_from_sheets(
         return await preorder_service.update(order, preorder_models.PreOrderUpdate.model_validate(model.model_dump()))
 
 
+@router.delete("/orders", response_model=orders_schemas.OrderReadSystem | preorders_schemes.PreOrderReadSystem)
+async def delete_order_from_sheets(
+    data: models.SheetEntity,
+    user: auth_models.User = Depends(auth_flows.current_active_superuser_api),
+):
+    model = await flows.get_order_from_sheets(data, user)
+    if model.shop_order_id:
+        order = await orders_flows.get_by_order_id(model.order_id)
+        return await orders_service.delete(order.id)
+    else:
+        preorder = await preorders_flows.get_by_order_id(model.order_id)
+        return await preorder_service.delete(preorder.id)
+
+
 @router.get("/parser", response_model=search_models.Paginated[models.OrderSheetParseRead])
 async def reads_google_sheets_parser(
     paging: search_models.PaginationParams = Depends(),
