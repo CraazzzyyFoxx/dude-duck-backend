@@ -10,7 +10,6 @@ from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows
 from app.services.settings import service as settings_service
 from app.services.sheets import service as sheets_service
-from app.services.tasks import service as tasks_service
 from app.services.telegram.message import service as message_service
 
 from . import models, service
@@ -38,8 +37,6 @@ async def get_by_order_id(order_id: str) -> models.PreOrder:
 
 async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
     order = await service.create(order_in)
-    settings = await settings_service.get()
-    tasks_service.delete_expired_preorder.apply_async((str(order.id),), countdown=settings.preorder_time_alive)
     return order
 
 
