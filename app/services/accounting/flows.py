@@ -125,7 +125,7 @@ async def _add_booster(
 
 async def add_booster(order: order_models.Order, user: auth_models.User, sync: bool = True) -> models.UserOrder:
     await can_user_pick(user)
-    boosters = await service.get_by_order_id(order.id)
+    boosters = await service.get_by_order_id(order.id, fetch_links=True)
     if user.id in [b.user_id.id for b in boosters]:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_409_CONFLICT,
