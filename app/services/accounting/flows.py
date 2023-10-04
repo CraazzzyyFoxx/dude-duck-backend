@@ -123,7 +123,7 @@ async def price_collision_fix(order: order_models.Order, boosters: list[models.U
                         dollars=booster.dollars + free_dollars * price_map[booster.id]
                     ),
                 )
-        else:
+        elif len(boosters) > 0:
             booster = boosters[0]
             await service.patch(booster, user_order_in=models.UserOrderUpdate(dollars=booster.dollars + free_dollars))
 
