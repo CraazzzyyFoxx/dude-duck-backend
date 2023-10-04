@@ -37,6 +37,7 @@ cryptography = "^41.0.4"
 ciso8601 = "^2.3.0"
 asyncpg = "^0.28.0"
 tortoise-orm = "^0.20.0"
+aerich = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.5.1"
@@ -123,6 +124,10 @@ warn_required_dynamic_aliases = true
 [tool.isort]
 skip_glob = "**/__init__.pyi"
 
+[tool.aerich]
+tortoise_orm = "app.core.config.tortoise"
+location = "./migrations"
+src_folder = "./."
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
