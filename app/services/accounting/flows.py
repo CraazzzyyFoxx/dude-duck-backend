@@ -143,7 +143,7 @@ async def _add_booster(
         order_date=order.date,
         completed=True if order.status == order_models.OrderStatus.Completed else False,
         paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
-        method_payment=method_payment if method_payment else None
+        method_payment=method_payment if method_payment else "$"
     )
     try:
         await update_price(order, price)
