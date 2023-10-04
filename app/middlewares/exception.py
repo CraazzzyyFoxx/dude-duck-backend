@@ -9,7 +9,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from tortoise.exceptions import IntegrityError
 
-from app.core import config
+from app.core import config, errors
 
 
 class ExceptionMiddleware(BaseHTTPMiddleware):
@@ -29,8 +29,10 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]},
             )
+        except errors.DudeDuckException as e:
+            response = ORJSONResponse(content={"detail": e.detail}, status_code=e.status_code)
         except HTTPException as e:
-            response = ORJSONResponse({"detail": e.detail}, status_code=e.status_code)
+            response = ORJSONResponse(content={"detail": [e.detail]}, status_code=e.status_code)
         except IntegrityError as e:
             logger.exception("What!?")
             response = ORJSONResponse(
