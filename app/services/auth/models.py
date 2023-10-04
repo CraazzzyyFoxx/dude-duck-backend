@@ -2,6 +2,7 @@ import datetime
 import enum
 import re
 
+import orjson
 from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl, constr, field_validator, model_validator, Field
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -99,25 +100,25 @@ class UserCreate(BaseModel):
 
 
 class BaseUserUpdate(BaseModel):
-    password: str | None = Field(default=...)
-    email: EmailStr | None = Field(default=...)
-    is_active: bool | None = Field(default=...)
-    is_superuser: bool | None = Field(default=...)
-    is_verified: bool | None = Field(default=...)
+    password: str | None = Field(default=None)
+    email: EmailStr | None = Field(default=None)
+    is_active: bool | None = Field(default=None)
+    is_superuser: bool | None = Field(default=None)
+    is_verified: bool | None = Field(default=None)
 
 
 class UserUpdate(BaseUserUpdate):
-    language: UserLanguage | None = Field(default=...)
+    language: UserLanguage | None = Field(default=None)
 
 
 class UserUpdateAdmin(BaseUserUpdate):
-    phone: PhoneNumber | None = Field(default=...)
-    bank: str | None = Field(default=...)
-    bankcard: PaymentCardNumber | None = Field(default=...)
-    binance_email: EmailStr | None = Field(default=...)
-    binance_id: int | None = Field(default=...)
-    max_orders: int | None = Field(default=...)
-    google: AdminGoogleToken | None = Field(default=...)
+    phone: PhoneNumber | None = Field(default=None)
+    bank: str | None = Field(default=None)
+    bankcard: PaymentCardNumber | None = Field(default=None)
+    binance_email: EmailStr | None = Field(default=None)
+    binance_id: int | None = Field(default=None)
+    max_orders: int | None = Field(default=None)
+    google: AdminGoogleToken | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "UserUpdateAdmin":
@@ -125,6 +126,12 @@ class UserUpdateAdmin(BaseUserUpdate):
             raise ValueError("When filling in the phone number, you must also fill in the name of the bank")
 
         return self
+
+
+def encoder_google(data):
+    if isinstance(data, AdminGoogleToken):
+        return data.model_dump_json()
+    return orjson.dumps(data)
 
 
 class User(TimeStampMixin):
@@ -142,7 +149,8 @@ class User(TimeStampMixin):
     binance_id: int | None = fields.IntField(null=True)
     discord: str | None = fields.TextField(null=True)
     language: UserLanguage = fields.CharEnumField(UserLanguage, default=UserLanguage.EN)
-    google: AdminGoogleToken | None = fields.JSONField(null=True, decoder=AdminGoogleToken.model_validate_json)
+    google: AdminGoogleToken | None = fields.JSONField(
+        null=True, decoder=AdminGoogleToken.model_validate_json, encoder=encoder_google)
     max_orders: int = fields.IntField(default=3)
 
 
