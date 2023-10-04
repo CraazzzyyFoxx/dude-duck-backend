@@ -2,8 +2,7 @@ import datetime
 import enum
 import re
 
-from pydantic import (BaseModel, ConfigDict, EmailStr, HttpUrl, constr,
-                      field_validator, model_validator)
+from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl, constr, field_validator, model_validator, Field
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from tortoise import fields
@@ -100,25 +99,25 @@ class UserCreate(BaseModel):
 
 
 class BaseUserUpdate(BaseModel):
-    password: str | None = None
-    email: EmailStr | None = None
-    is_active: bool | None = None
-    is_superuser: bool | None = None
-    is_verified: bool | None = None
+    password: str | None = Field(default=...)
+    email: EmailStr | None = Field(default=...)
+    is_active: bool | None = Field(default=...)
+    is_superuser: bool | None = Field(default=...)
+    is_verified: bool | None = Field(default=...)
 
 
 class UserUpdate(BaseUserUpdate):
-    language: UserLanguage | None = None
+    language: UserLanguage | None = Field(default=...)
 
 
 class UserUpdateAdmin(BaseUserUpdate):
-    phone: PhoneNumber | None = None
-    bank: str | None = None
-    bankcard: PaymentCardNumber | None = None
-    binance_email: EmailStr | None = None
-    binance_id: int | None = None
-    max_orders: int | None = None
-    google: AdminGoogleToken | None = None
+    phone: PhoneNumber | None = Field(default=...)
+    bank: str | None = Field(default=...)
+    bankcard: PaymentCardNumber | None = Field(default=...)
+    binance_email: EmailStr | None = Field(default=...)
+    binance_id: int | None = Field(default=...)
+    max_orders: int | None = Field(default=...)
+    google: AdminGoogleToken | None = Field(default=...)
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "UserUpdateAdmin":

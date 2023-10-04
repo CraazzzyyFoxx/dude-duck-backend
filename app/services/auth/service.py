@@ -85,7 +85,7 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
     exclude_fields = {"password", }
     if safe:
         exclude_fields.update({"is_superuser", "is_active", "is_verified"})
-    update_data = user_in.model_dump(exclude=exclude_fields, exclude_unset=exclude, mode="json")
+    update_data = user_in.model_dump(exclude=exclude_fields, exclude_unset=exclude, exclude_defaults=True, mode="json")
 
     if update_data.get("phone") is not None:
         user.phone = update_data.get("phone").replace("tel:", "")
