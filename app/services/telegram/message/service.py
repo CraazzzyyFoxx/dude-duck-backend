@@ -1,7 +1,5 @@
 import asyncio
 
-from beanie import PydanticObjectId
-
 from app.services.auth import models as auth_models
 from app.services.orders import schemas as order_schemas
 from app.services.preorders import models as preorder_models
@@ -58,7 +56,7 @@ def send_preorder_response_admin(
     response: response_models.ResponseRead,
 ) -> None:
     data = {"preorder": order, "user": user, "response": response, "is_preorder": True}
-    asyncio.create_task(service_request("message/order_admins", "POST", data=data))
+    asyncio.create_task(service_request("message/order_admins", "POST", data=data, is_raise=False))
 
 
 def send_order_response_admin(
@@ -67,63 +65,61 @@ def send_order_response_admin(
     response: response_models.ResponseRead,
 ) -> None:
     data = {"order": order, "user": user, "response": response, "is_preorder": False}
-    asyncio.create_task(service_request("message/order_admins", "POST", data=data))
+    asyncio.create_task(service_request("message/order_admins", "POST", data=data, is_raise=False))
 
 
-def send_response_approve(
-    user: auth_models.UserRead, order_id: PydanticObjectId, response: response_models.ResponseRead
-) -> None:
+def send_response_approve(user: auth_models.UserRead, order_id: int, response: response_models.ResponseRead) -> None:
     data = {"order_id": str(order_id), "user": user, "response": response}
-    asyncio.create_task(service_request("message/user_resp_approved_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/user_resp_approved_notify", "POST", data=data, is_raise=False))
 
 
 def send_response_decline(user: auth_models.UserRead, order_id: str) -> None:
     data = {"order_id": order_id, "user": user}
-    asyncio.create_task(service_request("message/user_resp_declined_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/user_resp_declined_notify", "POST", data=data, is_raise=False))
 
 
 def send_logged_notify(user: auth_models.UserRead) -> None:
-    asyncio.create_task(service_request("message/logged_notify", "POST", data=user))
+    asyncio.create_task(service_request("message/logged_notify", "POST", data=user, is_raise=False))
 
 
 def send_registered_notify(user: auth_models.UserRead) -> None:
-    asyncio.create_task(service_request("message/registered_notify", "POST", data=user))
+    asyncio.create_task(service_request("message/registered_notify", "POST", data=user, is_raise=False))
 
 
 def send_request_verify(user: auth_models.UserRead, token: str) -> None:
     data = {"user": user, "token": token}
-    asyncio.create_task(service_request("message/request_verify_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/request_verify_notify", "POST", data=data, is_raise=False))
 
 
 def send_verified_notify(user: auth_models.UserRead) -> None:
-    asyncio.create_task(service_request("message/verified_notify", "POST", data=user))
+    asyncio.create_task(service_request("message/verified_notify", "POST", data=user, is_raise=False))
 
 
 def send_order_close_notify(user: auth_models.UserRead, order_id: str, url: str, message: str) -> None:
     data = {"user": user, "order_id": order_id, "url": url, "message": message}
-    asyncio.create_task(service_request("message/order_close_request_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/order_close_request_notify", "POST", data=data, is_raise=False))
 
 
 def send_sent_order_notify(order_id: str, payload: models.OrderResponse) -> None:
     data = {"order_id": order_id, "pull_payload": payload}
-    asyncio.create_task(service_request("message/order_sent_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/order_sent_notify", "POST", data=data, is_raise=False))
 
 
 def send_edited_order_notify(order_id: str, payload: models.OrderResponse) -> None:
     data = {"order_id": order_id, "pull_payload": payload}
-    asyncio.create_task(service_request("message/order_edited_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/order_edited_notify", "POST", data=data, is_raise=False))
 
 
 def send_deleted_order_notify(order_id: str, payload: models.OrderResponse) -> None:
     data = {"order_id": order_id, "pull_payload": payload}
-    asyncio.create_task(service_request("message/order_deleted_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/order_deleted_notify", "POST", data=data, is_raise=False))
 
 
 def send_response_chose_notify(order_id: str, user: auth_models.UserRead, responses: int) -> None:
     data = {"order_id": order_id, "user": user, "responses": responses}
-    asyncio.create_task(service_request("message/response_chose_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/response_chose_notify", "POST", data=data, is_raise=False))
 
 
 def send_order_paid_notify(order: order_schemas.OrderReadSystem, user: auth_models.UserRead) -> None:
     data = {"order": order, "user": user}
-    asyncio.create_task(service_request("message/order_paid_notify", "POST", data=data))
+    asyncio.create_task(service_request("message/order_paid_notify", "POST", data=data, is_raise=False))

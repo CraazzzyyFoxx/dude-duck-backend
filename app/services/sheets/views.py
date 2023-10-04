@@ -10,15 +10,15 @@ from app.services.auth import flows as auth_flows
 from app.services.auth import models as auth_models
 from app.services.currency import flows as currency_flows
 from app.services.orders import flows as orders_flows
+from app.services.orders import models as order_models
 from app.services.orders import schemas as orders_schemas
 from app.services.orders import service as orders_service
 from app.services.preorders import flows as preorders_flows
+from app.services.preorders import models as preorder_models
 from app.services.preorders import models as preorders_schemes
+from app.services.preorders import service as preorder_service
 from app.services.search import models as search_models
 from app.services.search import service as search_service
-from app.services.orders import models as order_models
-from app.services.preorders import models as preorder_models
-from app.services.preorders import service as preorder_service
 
 from . import flows, models
 
@@ -55,7 +55,7 @@ async def fetch_order_from_sheets(
         return await preorders_flows.create(preorder_models.PreOrderCreate.model_validate(model.model_dump()))
 
 
-@router.patch("/orders", response_model=orders_schemas.OrderReadSystem | preorders_schemes.PreOrderReadSystem)
+@router.put("/orders", response_model=orders_schemas.OrderReadSystem | preorders_schemes.PreOrderReadSystem)
 async def update_order_from_sheets(
     data: models.SheetEntity,
     user: auth_models.User = Depends(auth_flows.current_active_superuser_api),
@@ -67,6 +67,20 @@ async def update_order_from_sheets(
     else:
         order = await preorders_flows.get_by_order_id(model.order_id)
         return await preorder_service.update(order, preorder_models.PreOrderUpdate.model_validate(model.model_dump()))
+
+
+@router.patch("/orders", response_model=orders_schemas.OrderReadSystem | preorders_schemes.PreOrderReadSystem)
+async def patch_order_from_sheets(
+    data: models.SheetEntity,
+    user: auth_models.User = Depends(auth_flows.current_active_superuser_api),
+):
+    model = await flows.get_order_from_sheets(data, user)
+    if model.shop_order_id:
+        order = await orders_flows.get_by_order_id(model.order_id)
+        return await orders_service.patch(order, order_models.OrderUpdate.model_validate(model.model_dump()))
+    else:
+        order = await preorders_flows.get_by_order_id(model.order_id)
+        return await preorder_service.patch(order, preorder_models.PreOrderUpdate.model_validate(model.model_dump()))
 
 
 @router.get("/parser", response_model=search_models.Paginated[models.OrderSheetParseRead])

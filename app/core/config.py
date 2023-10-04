@@ -57,7 +57,7 @@ class AppConfig(BaseSettings):
     celery_sheets_sync_time: int = 300
     celery_preorders_manage: int = 300
 
-    sync_boosters: bool
+    sync_boosters: bool = False
 
 
 app = AppConfig(_env_file=".env", _env_file_encoding="utf-8")

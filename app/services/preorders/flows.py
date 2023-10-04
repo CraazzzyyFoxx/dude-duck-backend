@@ -1,22 +1,20 @@
 from datetime import datetime, timedelta
 
-from beanie import PydanticObjectId, init_beanie
 from loguru import logger
 from starlette import status
+from tortoise import Tortoise
 
-from app import db
 from app.core import config, errors
 from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows
 from app.services.settings import service as settings_service
 from app.services.sheets import service as sheets_service
-from app.services.tasks import service as tasks_service
 from app.services.telegram.message import service as message_service
 
 from . import models, service
 
 
-async def get(order_id: PydanticObjectId) -> models.PreOrder:
+async def get(order_id: int) -> models.PreOrder:
     order = await service.get(order_id)
     if not order:
         raise errors.DudeDuckHTTPException(
@@ -38,11 +36,10 @@ async def get_by_order_id(order_id: str) -> models.PreOrder:
 
 async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
     order = await service.create(order_in)
-    settings = await settings_service.get()
     return order
 
 
-async def delete(order_id: PydanticObjectId) -> None:
+async def delete(order_id: int) -> None:
     order = await get(order_id)
     if order:
         await service.delete(order.id)
@@ -81,7 +78,7 @@ async def format_preorder_perms(order: models.PreOrder):
 
 
 async def manage_preorders():
-    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
+    await Tortoise.init(config=config.tortoise)
     superuser = await auth_service.get_first_superuser()
     settings = await settings_service.get()
     if superuser.google is None:

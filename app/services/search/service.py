@@ -1,12 +1,11 @@
 from typing import TypeVar
 
-from beanie import Document
-from beanie.odm.queries.find import FindMany
+from tortoise import Model
 from tortoise.queryset import QuerySet
 
 from . import models
 
-DocumentType = TypeVar("DocumentType", bound=Document)
+ModelType = TypeVar("ModelType", bound=Model)
 
 
 async def paginate(

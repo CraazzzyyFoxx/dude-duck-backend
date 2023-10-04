@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from pydantic import BaseModel, field_validator
 from tortoise import fields
@@ -7,7 +7,6 @@ from app.core.db import TimeStampMixin
 
 
 class Currency(TimeStampMixin):
-    id: int = fields.BigIntField(pk=True)
     date: datetime = fields.DatetimeField(unique=True)
     timestamp: int = fields.IntField()
     quotes: dict[str, float] = fields.JSONField()

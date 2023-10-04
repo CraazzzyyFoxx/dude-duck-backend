@@ -138,7 +138,7 @@
       "name": "manager_comment",
       "row": 16,
       "null": true,
-      "generated": false,
+      "generated": true,
       "valid_values": [],
       "type": "str"
     },

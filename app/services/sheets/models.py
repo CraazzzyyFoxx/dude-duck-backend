@@ -59,15 +59,14 @@ def encode(data: list[OrderSheetParseItem]) -> str:
 
 
 class OrderSheetParse(TimeStampMixin):
-    spreadsheet: str = fields.TextField()
-    sheet_id: int = fields.BigIntField()
-    start: int = fields.IntField(default=2)
-    items: list[OrderSheetParseItem] = fields.JSONField(decoder=decode)
-    is_user: bool = fields.BooleanField(default=False)
+    spreadsheet: str = fields.TextField()  # noqa
+    sheet_id: int = fields.BigIntField()  # noqa
+    start: int = fields.IntField(default=2)  # noqa
+    items: list[OrderSheetParseItem] = fields.JSONField(decoder=decode)  # noqa
+    is_user: bool = fields.BooleanField(default=False)  # noqa
 
     class Meta:
         unique_together = ("spreadsheet", "sheet_id")
-        name = "order_sheet_parse"
 
 
 class OrderSheetParseRead(BaseModel):

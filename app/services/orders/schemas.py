@@ -1,12 +1,12 @@
 import datetime
 
-from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict
 
-from .models import OrderCredentials, OrderInfo, OrderPaidStatus, OrderStatus, OrderPriceNone
+from .models import (OrderCredentialsRead, OrderInfoRead, OrderPaidStatus,
+                     OrderPriceMeta, OrderPriceNone, OrderStatus)
 
 
-class OrderPriceUser(OrderPriceNone):
+class OrderPriceUser(OrderPriceMeta):
     price_booster_dollar: float
     price_booster_rub: float
     price_booster_gold: float | None = None
@@ -22,21 +22,21 @@ class OrderPriceSystem(OrderPriceNone):
 
 
 class OrderReadHasPerms(BaseModel):
-    id: PydanticObjectId
+    id: int
     order_id: str
     screenshot: str | None
     status: OrderStatus
 
-    info: OrderInfo
+    info: OrderInfoRead
     price: OrderPriceUser
-    credentials: OrderCredentials
+    credentials: OrderCredentialsRead
 
 
 class OrderReadNoPerms(BaseModel):
-    id: PydanticObjectId
+    id: int
     order_id: str
 
-    info: OrderInfo
+    info: OrderInfoRead
     price: OrderPriceUser
 
 
@@ -47,7 +47,7 @@ class OrderReadSystemBase(BaseModel):
     date: datetime.datetime
 
     shop: str | None
-    shop_order_id: str | int | None
+    shop_order_id: str | None
     contact: str | None
 
     screenshot: str | None
@@ -55,29 +55,29 @@ class OrderReadSystemBase(BaseModel):
     status: OrderStatus
     status_paid: OrderPaidStatus
 
-    info: OrderInfo
+    info: OrderInfoRead
     price: OrderPriceSystem
-    credentials: OrderCredentials
+    credentials: OrderCredentialsRead
 
     auth_date: datetime.datetime | None = None
     end_date: datetime.datetime | None = None
 
 
 class OrderReadSystem(OrderReadSystemBase):
-    id: PydanticObjectId
+    id: int
 
 
 class OrderReadActive(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     order_id: str
     screenshot: str | None
     status: OrderStatus
 
-    info: OrderInfo
+    info: OrderInfoRead
     price: OrderPriceUser
-    credentials: OrderCredentials
+    credentials: OrderCredentialsRead
 
     paid_at: datetime.datetime | None
     auth_date: datetime.datetime | None = None

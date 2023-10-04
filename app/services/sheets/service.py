@@ -7,7 +7,8 @@ import gspread
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
+from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
+                      create_model, field_validator)
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -197,6 +198,8 @@ def parse_row(
         value = row[getter.row]
         if getter.type == "float" and isinstance(value, str):
             value = value.replace(",", ".")
+        if getter.type == "str" and isinstance(value, int):
+            value = str(value)
         data_for_valid[getter.name] = value if value not in ["", " "] else None
     try:
         valid_model = generate_model(parser)(**data_for_valid)
@@ -227,7 +230,7 @@ def parse_row(
                     data[key][getter.name] = validated_data[getter.name]
                     break
     try:
-        return model.model_validate(data)
+        return model(**data)
     except ValidationError as error:
         if is_raise:
             logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
@@ -264,11 +267,12 @@ def parse_all_data(
     sheet_id: int,
     rows_in: list[list[typing.Any]],
     parser_in: models.OrderSheetParseRead,
+    is_raise: bool = False,
 ) -> list[BaseModel]:
     t = time.time()
     resp: list[BaseModel] = []
     for row_id, row in enumerate(rows_in, parser_in.start):
-        data = parse_row(parser_in, model, row_id, row, is_raise=False)
+        data = parse_row(parser_in, model, row_id, row, is_raise=is_raise)
         if data:
             resp.append(data)
     logger.info(f"Parsing data from spreadsheet={spreadsheet} sheet_id={sheet_id} completed in {time.time() - t}")
@@ -279,6 +283,7 @@ def get_all_data(
     creds: auth_models.AdminGoogleToken,
     model: typing.Type[models.SheetEntity],
     parser: models.OrderSheetParseRead,
+    is_raise: bool = False,
 ) -> list[BaseModel]:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
@@ -294,7 +299,7 @@ def get_all_data(
         value_render_option=ValueRenderOption.unformatted,
         date_time_render_option=DateTimeOption.formatted_string,
     )
-    return parse_all_data(model, parser.spreadsheet, parser.sheet_id, rows, parser)
+    return parse_all_data(model, parser.spreadsheet, parser.sheet_id, rows, parser, is_raise=is_raise)
 
 
 def update_rows_data(
@@ -441,5 +446,5 @@ def get_cell(creds: auth_models.AdminGoogleToken, spreadsheet: str, sheet_id: in
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(spreadsheet)
     sheet = sh.get_worksheet_by_id(sheet_id)
-    value: gspread.worksheet.ValueRange = sheet.get(cell)
-    return value[0][0]
+    value = sheet.acell(cell)
+    return value.value

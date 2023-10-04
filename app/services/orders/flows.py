@@ -1,4 +1,3 @@
-from beanie import PydanticObjectId
 from starlette import status
 from tortoise.expressions import Q
 
@@ -11,8 +10,8 @@ from app.services.search import service as search_service
 from . import models, schemas, service
 
 
-async def get(order_id: PydanticObjectId) -> models.Order:
-    order = await service.get(order_id)
+async def get(order_id: int, prefetch: bool = True) -> models.Order:
+    order = await service.get(order_id, prefetch=prefetch)
     if not order:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -61,6 +60,8 @@ async def format_order_system(order: models.Order):
         price_booster_gold=order.price.price_booster_gold,
     )
     data["price"] = price
+    data["info"] = dict(order.info)
+    data["credentials"] = dict(order.credentials)
     return schemas.OrderReadSystem.model_validate(data)
 
 
@@ -73,6 +74,8 @@ async def format_order_perms(order: models.Order, *, has: bool = False):
         price_booster_gold=order.price.price_booster_gold,
     )
     data["price"] = price
+    data["info"] = dict(order.info)
+    data["credentials"] = dict(order.credentials)
     if has:
         return schemas.OrderReadHasPerms.model_validate(data)
     return schemas.OrderReadNoPerms.model_validate(data)
@@ -89,6 +92,8 @@ async def format_order_active(order: models.Order, order_active: accounting_mode
     )
     data["price"] = price
     data["paid_at"] = order_active.paid_at
+    data["info"] = dict(order.info)
+    data["credentials"] = dict(order.credentials)
     return schemas.OrderReadActive.model_validate(data)
 
 

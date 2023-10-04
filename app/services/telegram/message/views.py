@@ -1,4 +1,3 @@
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends
 
 from app.core import enums
@@ -14,7 +13,7 @@ router_user = APIRouter(dependencies=[Depends(auth_flows.current_active_superuse
 
 
 @router_user.post("/{order_id}", response_model=models.OrderResponse)
-async def create_order_messages(order_id: PydanticObjectId, data: models.OrderPullCreate):
+async def create_order_messages(order_id: int, data: models.OrderPullCreate):
     if not data.preorder:
         order = await orders_flows.format_order_system(await orders_flows.get(order_id))
         return await flows.create_order_message(order, data.categories, data.config_names, data.is_gold)
@@ -24,13 +23,13 @@ async def create_order_messages(order_id: PydanticObjectId, data: models.OrderPu
 
 
 @router_user.delete("/{order_id}", response_model=models.OrderResponse)
-async def delete_order_messages(order_id: PydanticObjectId):
+async def delete_order_messages(order_id: int):
     order = await orders_flows.format_order_system(await orders_flows.get(order_id))
     return await flows.delete_order_message(order)
 
 
 @router_user.patch("/{order_id}", response_model=models.OrderResponse)
-async def update_order_message(order_id: PydanticObjectId, data: models.OrderPullUpdate):
+async def update_order_message(order_id: int, data: models.OrderPullUpdate):
     if not data.preorder:
         order = await orders_flows.format_order_system(await orders_flows.get(order_id))
         return await flows.update_order_message(order, data.config_names, data.is_gold)

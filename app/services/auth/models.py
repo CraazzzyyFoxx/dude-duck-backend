@@ -2,7 +2,8 @@ import datetime
 import enum
 import re
 
-from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl, constr, field_validator, model_validator
+from pydantic import (BaseModel, ConfigDict, EmailStr, HttpUrl, constr,
+                      field_validator, model_validator)
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from tortoise import fields
@@ -42,9 +43,9 @@ class UserRead(BaseModel):
 
     name: str
     telegram: str
-    phone: PhoneNumber | None
+    phone: str | None
     bank: str | None
-    bankcard: PaymentCardNumber | None
+    bankcard: str | None
     binance_email: EmailStr | None
     binance_id: int | None
     discord: str | None
@@ -61,9 +62,9 @@ class UserReadSheets(SheetEntity):
     email: EmailStr
     name: str
     telegram: str
-    phone: PhoneNumber | None
+    phone: str | None
     bank: str | None
-    bankcard: PaymentCardNumber | None
+    bankcard: str | None
     binance_email: EmailStr | None
     binance_id: int | None
     discord: str | None
@@ -128,36 +129,31 @@ class UserUpdateAdmin(BaseUserUpdate):
 
 
 class User(TimeStampMixin):
-    email: str = fields.TextField()
+    email: str = fields.CharField(unique=True, max_length=100)
     hashed_password: str = fields.TextField()
     is_active: bool = fields.BooleanField(default=True)
     is_superuser: bool = fields.BooleanField(default=False)
     is_verified: bool = fields.BooleanField(default=False)
-
-    name: str = fields.CharField(max_length=20)
-    telegram: str = fields.TextField()
-    phone: PhoneNumber | None = fields.TextField(null=True)
+    name: str = fields.CharField(max_length=20, unique=True)
+    telegram: str = fields.CharField(max_length=32, unique=True)
+    phone: str | None = fields.TextField(null=True)
     bank: str | None = fields.TextField(null=True)
-    bankcard: PaymentCardNumber | None = fields.TextField(null=True)
-    binance_email: EmailStr | None = fields.TextField(null=True)
+    bankcard: str | None = fields.TextField(null=True)
+    binance_email: str | None = fields.TextField(null=True)
     binance_id: int | None = fields.IntField(null=True)
     discord: str | None = fields.TextField(null=True)
     language: UserLanguage = fields.CharEnumField(UserLanguage, default=UserLanguage.EN)
-
     google: AdminGoogleToken | None = fields.JSONField(null=True, decoder=AdminGoogleToken.model_validate_json)
     max_orders: int = fields.IntField(default=3)
-
-    class Config:
-        name = "user"
 
 
 class AccessToken(TimeStampMixin):
     id: int = fields.BigIntField(pk=True)
     token: str = fields.CharField(unique=True, max_length=100)
-    user_id: int = fields.BigIntField()
+    user: fields.ForeignKeyRelation[User] = fields.ForeignKeyField("main.User", to_field="id")
 
 
 class AccessTokenAPI(TimeStampMixin):
     id: int = fields.BigIntField(pk=True)
     token: str = fields.CharField(unique=True, max_length=100)
-    user_id: int = fields.BigIntField(unique=True)
+    user: fields.ForeignKeyRelation[User] = fields.OneToOneField("main.User", to_field="id")

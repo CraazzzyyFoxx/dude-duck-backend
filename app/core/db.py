@@ -1,6 +1,7 @@
 import typing
 from datetime import datetime
 
+from loguru import logger
 from tortoise import Model, fields
 from tortoise.signals import pre_save
 
@@ -13,5 +14,7 @@ class TimeStampMixin(Model):
 
 @pre_save(TimeStampMixin)
 async def signal_pre_save(
-        sender: typing.Type[TimeStampMixin], instance: TimeStampMixin, using_db, update_fields) -> None:
+    sender: typing.Type[TimeStampMixin], instance: TimeStampMixin, using_db, update_fields
+) -> None:
+    logger.warning(1)
     sender.updated_at = datetime.utcnow()

@@ -1,4 +1,3 @@
-from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends
 from starlette import status
 
@@ -28,7 +27,7 @@ async def get_channels(
 
 
 @router.get("/{channel_id}", response_model=models.ChannelRead)
-async def read_order_channel(channel_id: PydanticObjectId):
+async def read_order_channel(channel_id: int):
     response = await service_request(f"channel/{channel_id}", "GET")
     if response.status_code == 404:
         raise errors.DudeDuckHTTPException(
@@ -50,7 +49,7 @@ async def create_order_channel(channel: models.ChannelCreate):
 
 
 @router.delete("/{channel_id}", response_model=models.ChannelRead)
-async def delete_order_channel(channel_id: PydanticObjectId):
+async def delete_order_channel(channel_id: int):
     response = await service_request(f"channel/{channel_id}", "DELETE")
     if response.status_code == 404:
         raise errors.DudeDuckHTTPException(
@@ -61,7 +60,7 @@ async def delete_order_channel(channel_id: PydanticObjectId):
 
 
 @router.patch("/{channel_id}", response_model=models.ChannelRead)
-async def update_order_channel(channel_id: PydanticObjectId, data: models.ChannelUpdate):
+async def update_order_channel(channel_id: int, data: models.ChannelUpdate):
     response = await service_request(f"channel/{channel_id}", "PATCH", data=data.model_dump())
     if response.status_code == 404:
         raise errors.DudeDuckHTTPException(

@@ -1,20 +1,21 @@
 from enum import Enum
-from typing import Any, Generic, List, TypedDict, TypeVar
+from typing import Generic, List, TypedDict, TypeVar
 
-from beanie.odm.enums import SortDirection
 from pydantic import BaseModel, Field
+from tortoise.models import Model
 
 __all__ = ("Paginated", "PaginationParams", "SortingParams", "OrderSortingParams")
 
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=Model)
 
 
-class PaginationDict(TypedDict):
+class PaginationDict(TypedDict, Generic[ModelType]):
     page: int
     per_page: int
     total: int
-    results: List[Any]
+    results: List[ModelType]
 
 
 class Paginated(BaseModel, Generic[SchemaType]):
@@ -41,13 +42,9 @@ class SortOrder(Enum):
     ASC = "asc"
     DESC = "desc"
 
-    def __int__(self) -> int:
-        """Converts the enum to an integer to be used by MongoDB."""
-        return 1 if self.value == "asc" else -1
-
     @property
-    def direction(self) -> SortDirection:
-        return SortDirection(int(self))
+    def direction(self) -> str:
+        return "-" if self.value == "asc" else "+"
 
 
 class OrderSelection(Enum):
@@ -62,7 +59,7 @@ class SortingParams(BaseModel):
 
     @property
     def order_by(self):
-        order_by = "-" if self.order == SortOrder.DESC else "+"
+        order_by = "-" if self.order == SortOrder.DESC else ""
         return f"{order_by}{self.sort}"
 
 

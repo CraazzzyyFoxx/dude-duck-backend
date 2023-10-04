@@ -32,8 +32,10 @@ class TelegramServiceMeta:
 TelegramService = TelegramServiceMeta()
 
 
-async def request(endpoint: str, method: str, data: dict | BaseModel | None = None) -> httpx.Response:
-    if config.app.telegram_integration is False:
+async def request(
+    endpoint: str, method: str, data: dict | BaseModel | None = None, is_raise: bool = False
+) -> httpx.Response:
+    if config.app.telegram_integration is False and is_raise:
         raise errors.DudeDuckHTTPException(
             status_code=500,
             detail=[errors.DudeDuckException(msg="Telegram Bot integration disabled", code="disabled")],
@@ -48,28 +50,7 @@ async def request(endpoint: str, method: str, data: dict | BaseModel | None = No
         )
     except TimeoutException as err:
         logger.exception(err)
-        raise errors.DudeDuckHTTPException(
-            status_code=500,
-            detail=[
-                errors.DudeDuckException(
-                    msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
-                    code="internal_error",
-                )
-            ],
-        ) from None
-    except HTTPError as err:
-        logger.exception(err)
-        raise errors.DudeDuckHTTPException(
-            status_code=500,
-            detail=[
-                errors.DudeDuckException(
-                    msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
-                    code="internal_error",
-                )
-            ],
-        ) from None
-    else:
-        if response.status_code not in (200, 201, 404):
+        if is_raise:
             raise errors.DudeDuckHTTPException(
                 status_code=500,
                 detail=[
@@ -79,5 +60,29 @@ async def request(endpoint: str, method: str, data: dict | BaseModel | None = No
                     )
                 ],
             ) from None
+    except HTTPError as err:
+        logger.exception(err)
+        if is_raise:
+            raise errors.DudeDuckHTTPException(
+                status_code=500,
+                detail=[
+                    errors.DudeDuckException(
+                        msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
+                        code="internal_error",
+                    )
+                ],
+            ) from None
+    else:
+        if response.status_code not in (200, 201, 404):
+            if is_raise:
+                raise errors.DudeDuckHTTPException(
+                    status_code=500,
+                    detail=[
+                        errors.DudeDuckException(
+                            msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
+                            code="internal_error",
+                        )
+                    ],
+                ) from None
         logger.info(response.json())
         return response

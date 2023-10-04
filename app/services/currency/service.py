@@ -85,7 +85,12 @@ async def get_currency_historical(date: datetime.datetime) -> models.CurrencyApi
     date_str = normalize_date(date)
     token = await get_token()
     headers = {"apikey": token.token}
-    response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
+    try:
+        response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
+    except Exception as e:
+        raise errors.DudeDuckHTTPException(
+            status_code=500, detail=[errors.DudeDuckException(msg="Api Layer is not responding", code="internal_error")]
+        ) from e
     if response.status_code == 429:
         raise RuntimeError("API Layer currency request limit exceeded.")
     json = response.json()

@@ -1,10 +1,12 @@
 from datetime import datetime, timedelta
 
-from beanie import PydanticObjectId
-from pydantic import BaseModel, ConfigDict, Field
-from pymongo import IndexModel
+from pydantic import BaseModel, ConfigDict
+from tortoise import fields
 
 from app.core.db import TimeStampMixin
+from app.services.auth import models as auth_models
+from app.services.orders import models as order_models
+from app.services.preorders import models as preorder_models
 
 
 class ResponseExtra(BaseModel):
@@ -14,44 +16,62 @@ class ResponseExtra(BaseModel):
     eta: timedelta | None = None
 
 
-class Response(TimeStampMixin):
-    order_id: PydanticObjectId
-    user_id: PydanticObjectId
+class BaseResponse:
+    user: fields.ForeignKeyRelation[auth_models.User] = fields.ForeignKeyField("main.User")
 
-    refund: bool = Field(default=False)
-    approved: bool = Field(default=False)
-    closed: bool = Field(default=False)
-    extra: ResponseExtra
+    refund: bool = fields.BooleanField(default=False)
+    approved: bool = fields.BooleanField(default=False)
+    closed: bool = fields.BooleanField(default=False)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    approved_at: datetime | None = None
+    text: str | None = fields.TextField(null=True)
+    price: float | None = fields.FloatField(null=True)
+    start_date: datetime | None = fields.DatetimeField(null=True)
+    eta: timedelta | None = fields.TimeDeltaField(null=True)
 
-    class Settings:
-        name = "response"
-        indexes = [
-            IndexModel(["order_id", "user_id"], unique=True),
-        ]
-        use_state_management = True
-        state_management_save_previous = True
-        validate_on_save = True
+    approved_at: datetime | None = fields.DatetimeField(null=True)
+
+    user_id: int
+    order_id: int
+
+
+class Response(BaseResponse, TimeStampMixin):
+    order: fields.ForeignKeyRelation[order_models.Order] = fields.ForeignKeyField("main.Order")
+
+    class Meta:
+        unique_together = ("order_id", "user_id")
+
+
+class PreResponse(BaseResponse, TimeStampMixin):
+    order: fields.ForeignKeyRelation[preorder_models.PreOrder] = fields.ForeignKeyField("main.PreOrder")
+
+    class Meta:
+        unique_together = ("order_id", "user_id")
 
 
 class ResponseCreate(BaseModel):
-    order_id: PydanticObjectId
-    user_id: PydanticObjectId
-    extra: ResponseExtra
+    order_id: int
+    user_id: int
+
+    text: str | None = None
+    price: float | None = None
+    start_date: datetime | None = None
+    eta: timedelta | None = None
 
 
 class ResponseRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    order_id: PydanticObjectId
-    user_id: PydanticObjectId
+    order_id: int
+    user_id: int
 
     refund: bool
     approved: bool
     closed: bool
-    extra: ResponseExtra
+
+    text: str | None
+    price: float | None
+    start_date: datetime | None
+    eta: timedelta | None
 
 
 class ResponseUpdate(BaseModel):

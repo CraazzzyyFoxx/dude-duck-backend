@@ -82,20 +82,14 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
 
 
 async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool = False, exclude=True) -> models.User:
-    update_data = (
-        user_in.model_dump(
-            exclude={"is_superuser", "is_active", "is_verified", "oauth_accounts", "password"},
-            exclude_unset=True,
-            mode="json",
-        )
-        if safe
-        else user_in.model_dump(exclude={"password"}, mode="json", exclude_unset=exclude)
-    )
+    exclude_fields = {"password", }
+    if safe:
+        exclude_fields.update({"is_superuser", "is_active", "is_verified"})
+    update_data = user_in.model_dump(exclude=exclude_fields, exclude_unset=exclude, mode="json")
 
-    user_data = dict(user)
-    for field in user_data:
-        if field in update_data:
-            setattr(user, field, update_data[field])
+    if update_data.get("phone") is not None:
+        user.phone = update_data.get("phone").replace("tel:", "")
+        update_data.pop("phone")
 
     if user_in.password:
         user.hashed_password = utils.hash_password(user_in.password)
@@ -280,10 +274,12 @@ async def read_token(token: str | None) -> models.User | None:
         return None
 
     max_age = datetime.now(timezone.utc) - timedelta(seconds=24 * 3600)
-    access_token = await models.AccessToken.filter(token=token, created_at__gte=max_age).first()
+    access_token = await (
+        models.AccessToken.filter(token=token, created_at__gte=max_age).prefetch_related("user").first()
+    )
     if access_token is None:
         return None
-    return await get(access_token.user_id)
+    return access_token.user
 
 
 async def write_token(user: models.User) -> str:
@@ -301,18 +297,17 @@ async def destroy_token(token: str) -> None:
 async def read_token_api(token: str | None) -> models.User | None:
     if token is None:
         return None
-    access_token = await models.AccessTokenAPI.filter(token=token).first()
+    access_token = await models.AccessTokenAPI.filter(token=token).prefetch_related("user").first()
     if access_token is None:
         return None
-    return await get(access_token.user_id)
+    return access_token.user
 
 
 async def write_token_api(user: models.User) -> str:
     access_token = await models.AccessTokenAPI.filter(user_id=user.id).first()
     if access_token:
         await access_token.delete()
-    access_token = models.AccessTokenAPI(user_id=user, token=secrets.token_urlsafe())
-    access_token = await access_token.create()
+    access_token = await models.AccessTokenAPI.create(user_id=user.id, token=secrets.token_urlsafe())
     return access_token.token
 
 

@@ -67,7 +67,7 @@ async def get_active_orders(
         else:
             query.append(Q(completed=False))
     data = await search_service.paginate(accounting_models.UserOrder.filter(Q(*query)), paging, sorting)
-    orders = await orders_service.get_by_ids([d.order_id for d in data["results"]])
+    orders = await orders_service.get_by_ids([d.order_id for d in data["results"]], prefetch=True)
     orders_map: dict[int, orders_models.Order] = {order.id: order for order in orders}
     results = [await orders_flows.format_order_active(orders_map[d.order_id], d) for d in data["results"]]
     data["results"] = results
