@@ -236,7 +236,6 @@ def parse_row(
             logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
             logger.error(errors.APIValidationError.from_pydantic(error))
             raise error
-            # return
         else:
             return None
 

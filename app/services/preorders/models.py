@@ -9,18 +9,18 @@ from app.services.sheets import models as sheets_models
 
 
 class PreOrderPriceUser(BaseModel):
-    price_booster_dollar: float | None = Field(default=...)
-    price_booster_rub: float | None = Field(default=...)
-    price_booster_gold: float | None = Field(default=...)
+    price_booster_dollar: float | None = None
+    price_booster_rub: float | None = None
+    price_booster_gold: float | None = None
 
 
 class PreOrderPriceSystem(BaseModel):
-    price_dollar: float | None = Field(default=...)
-    price_booster_dollar_without_fee: float | None = Field(default=...)
+    price_dollar: float | None = None
+    price_booster_dollar_without_fee: float | None = None
 
-    price_booster_dollar: float | None = Field(default=...)
-    price_booster_rub: float | None = Field(default=...)
-    price_booster_gold: float | None = Field(default=...)
+    price_booster_dollar: float | None = None
+    price_booster_rub: float | None = None
+    price_booster_gold: float | None = None
 
 
 class PreOrderCreate(sheets_models.SheetEntity):
@@ -32,9 +32,9 @@ class PreOrderCreate(sheets_models.SheetEntity):
 
 
 class PreOrderUpdate(BaseModel):
-    info: order_models.OrderInfoRead | None = Field(default=...)
-    price: PreOrderPriceUser | None = Field(default=...)
-    has_response: bool | None = Field(default=...)
+    info: order_models.OrderInfoRead | None = None
+    price: PreOrderPriceUser | None = None
+    has_response: bool | None = None
 
 
 class PreOrder(TimeStampMixin):

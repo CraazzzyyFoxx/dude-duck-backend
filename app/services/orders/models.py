@@ -19,16 +19,16 @@ class OrderPaidStatus(Enum):
 
 
 class OrderInfoMetaRead(BaseModel):
-    boost_type: str | None = Field(default=...)
-    region_fraction: str | None = Field(default=...)
-    server: str | None = Field(default=...)
-    category: str | None = Field(default=...)
-    character_class: str | None = Field(default=...)
-    platform: str | None = Field(default=...)
-    game: str | None = Field(default=...)
-    purchase: str | None = Field(default=...)
-    comment: str | None = Field(default=...)
-    eta: str | None = Field(default=...)
+    boost_type: str | None = None
+    region_fraction: str | None = None
+    server: str | None = None
+    category: str | None = None
+    character_class: str | None = None
+    platform: str | None = None
+    game: str | None = None
+    purchase: str | None = None
+    comment: str | None = None
+    eta: str | None = None
 
 
 class OrderInfoRead(OrderInfoMetaRead):
@@ -38,12 +38,12 @@ class OrderInfoRead(OrderInfoMetaRead):
 
 
 class OrderPriceMeta(BaseModel):
-    price_booster_dollar: float | None = Field(default=...)
-    price_booster_gold: float | None = Field(default=...)
+    price_booster_dollar: float | None = None
+    price_booster_gold: float | None = None
 
 
 class OrderPriceNone(OrderPriceMeta):
-    price_dollar: float | None = Field(default=...)
+    price_dollar: float | None = None
 
 
 class OrderPriceRead(OrderPriceNone):
@@ -52,12 +52,12 @@ class OrderPriceRead(OrderPriceNone):
 
 
 class OrderCredentialsRead(BaseModel):
-    battle_tag: str | None = Field(default=...)
-    nickname: str | None = Field(default=...)
-    login: str | None = Field(default=...)
-    password: str | None = Field(default=...)
-    vpn: str | None = Field(default=...)
-    discord: str | None = Field(default=...)
+    battle_tag: str | None = None
+    nickname: str | None = None
+    login: str | None = None
+    password: str | None = None
+    vpn: str | None = None
+    discord: str | None = None
 
 
 class OrderCreate(BaseModel):
@@ -86,21 +86,21 @@ class OrderCreate(BaseModel):
 
 
 class OrderUpdate(BaseModel):
-    shop: str | None = Field(default=...)
-    shop_order_id: str | None = Field(default=...)
-    contact: str | None = Field(default=...)
+    shop: str | None = None
+    shop_order_id: str | None = None
+    contact: str | None = None
 
-    screenshot: str | None = Field(default=...)
+    screenshot: str | None = None
 
-    status: OrderStatus | None = Field(default=...)
-    status_paid: OrderPaidStatus | None = Field(default=...)
+    status: OrderStatus | None = None
+    status_paid: OrderPaidStatus | None = None
 
     info: OrderInfoMetaRead | None = None
     price: OrderPriceNone | None = None
     credentials: OrderCredentialsRead | None = None
 
-    auth_date: datetime.datetime | None = Field(default=...)
-    end_date: datetime.datetime | None = Field(default=...)
+    auth_date: datetime.datetime | None = None
+    end_date: datetime.datetime | None = None
 
 
 class Order(TimeStampMixin):
