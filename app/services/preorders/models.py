@@ -66,8 +66,8 @@ class PreOrderInfo(TimeStampMixin):
 
 class PreOrderPrice(TimeStampMixin):
     order: fields.ForeignKeyRelation[PreOrder] = fields.OneToOneField("main.PreOrder", related_name="price")
-    price_dollar: float = fields.FloatField()
-    price_booster_dollar: float = fields.FloatField()
+    price_dollar: float = fields.FloatField(null=True)
+    price_booster_dollar: float = fields.FloatField(null=True)
     price_booster_gold: float | None = fields.FloatField(null=True)
 
 

@@ -78,6 +78,7 @@ tortoise = {
     "apps": {
         "main": {
             "models": [
+                "aerich.models",
                 "app.services.auth.models",
                 "app.services.accounting.models",
                 "app.services.auth.models",
@@ -87,7 +88,6 @@ tortoise = {
                 "app.services.response.models",
                 "app.services.settings.models",
                 "app.services.sheets.models",
-                "aerich.models",
             ],
         }
     },
