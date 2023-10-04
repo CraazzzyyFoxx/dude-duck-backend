@@ -29,6 +29,7 @@ configure_extensions()
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await Tortoise.init(config=config.tortoise)
+    await Tortoise.generate_schemas()
     await settings_service.create()
 
     if not await auth_service.get_first_superuser():
