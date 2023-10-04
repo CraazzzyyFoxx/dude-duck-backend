@@ -59,6 +59,7 @@ async def format_preorder_system(order: models.PreOrder):
     else:
         price = models.PreOrderPriceSystem(price_dollar=order.price.price_dollar)
     data["price"] = price
+    data["info"] = dict(order.info)
     return models.PreOrderReadSystem.model_validate(data)
 
 
@@ -74,6 +75,7 @@ async def format_preorder_perms(order: models.PreOrder):
     else:
         price = models.PreOrderPriceUser()
     data["price"] = price
+    data["info"] = dict(order.info)
     return models.PreOrderReadUser.model_validate(data)
 
 
