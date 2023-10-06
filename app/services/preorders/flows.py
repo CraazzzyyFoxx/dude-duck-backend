@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import pytz
 from loguru import logger
 from starlette import status
 from tortoise import Tortoise
@@ -89,7 +90,8 @@ async def manage_preorders():
 
     preorders = await service.get_all()
     for preorder in preorders:
-        if preorder.created_at < datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive):
+        delta = (datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive)).astimezone(pytz.UTC)
+        if preorder.created_at < delta:
             await preorder.delete()
             payload = await message_service.order_delete(await format_preorder_system(preorder), pre=True)
             if payload.deleted:
