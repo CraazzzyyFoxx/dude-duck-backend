@@ -11,6 +11,7 @@ from app.services.currency import flows as currency_flows
 from app.services.settings import service as settings_service
 from app.services.sheets import service as sheets_service
 from app.services.telegram.message import service as message_service
+from app.services.orders import service as order_service
 
 from . import models, service
 
@@ -90,12 +91,14 @@ async def manage_preorders():
 
     preorders = await service.get_all()
     for preorder in preorders:
-        delta = (datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive)).astimezone(pytz.UTC)
-        if preorder.created_at < delta:
-            await preorder.delete()
-            payload = await message_service.order_delete(await format_preorder_system(preorder), pre=True)
-            if payload.deleted:
-                message_service.send_deleted_order_notify(preorder.order_id, payload)
-            if preorder.has_response is False:
-                parser = await sheets_service.get_by_spreadsheet_sheet_read(preorder.spreadsheet, preorder.sheet_id)
-                sheets_service.clear_row(superuser.google, parser, preorder.row_id)
+        order = await order_service.get_order_id(preorder.order_id)
+        if order is None:
+            delta = (datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive)).astimezone(pytz.UTC)
+            if preorder.created_at < delta:
+                await preorder.delete()
+                payload = await message_service.order_delete(await format_preorder_system(preorder), pre=True)
+                if payload.deleted:
+                    message_service.send_deleted_order_notify(preorder.order_id, payload)
+                if preorder.has_response is False:
+                    parser = await sheets_service.get_by_spreadsheet_sheet_read(preorder.spreadsheet, preorder.sheet_id)
+                    sheets_service.clear_row(superuser.google, parser, preorder.row_id)
