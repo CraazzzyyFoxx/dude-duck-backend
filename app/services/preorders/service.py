@@ -26,10 +26,8 @@ async def get_order_id(order_id: str) -> models.PreOrder | None:
 
 
 async def patch(order: models.PreOrder, order_in: models.PreOrderUpdate) -> models.PreOrder:
-    await order.fetch_related("price", "info", "credentials")
-    update_data = order_in.model_dump(
-        exclude_defaults=True, exclude_unset=True, exclude={"price", "info", "credentials"}
-    )
+    await order.fetch_related("price", "info")
+    update_data = order_in.model_dump(exclude_defaults=True, exclude_unset=True, exclude={"price", "info"})
     order = await order.update_from_dict(update_data)
     if order_in.info:
         info_update = order_in.info.model_dump(exclude_defaults=True, exclude_unset=True)
@@ -40,25 +38,25 @@ async def patch(order: models.PreOrder, order_in: models.PreOrderUpdate) -> mode
         await order.price.update_from_dict(price_update)
         await order.price.save(update_fields=price_update.keys())
     await order.save(update_fields=update_data.keys())
-    logger.info(f"Order patched [id={order.id} order_id={order.order_id}]]")
+    logger.info(f"PreOrder patched [id={order.id} order_id={order.order_id}]]")
     return order
 
 
 async def update(order: models.PreOrder, order_in: models.PreOrderUpdate) -> models.PreOrder:
-    await order.fetch_related("price", "info", "credentials")
-    update_data = order_in.model_dump(exclude={"price", "info", "credentials"})
+    await order.fetch_related("price", "info")
+    update_data = order_in.model_dump(exclude={"price", "info"})
     order = await order.update_from_dict(update_data)
     await order.info.update_from_dict(order_in.info.model_dump(exclude_defaults=True))
     await order.info.save()
     await order.price.update_from_dict(order_in.price.model_dump(exclude_defaults=True))
     await order.price.save()
     await order.save()
-    logger.info(f"Order updated [id={order.id} order_id={order.order_id}]]")
+    logger.info(f"PreOrder updated [id={order.id} order_id={order.order_id}]]")
     return order
 
 
 async def create(pre_order_in: models.PreOrderCreate) -> models.PreOrder:
-    pre_order = await models.PreOrder.create(**pre_order_in.model_dump(exclude={"price", "info", "credentials"}))
+    pre_order = await models.PreOrder.create(**pre_order_in.model_dump(exclude={"price", "info"}))
     await models.PreOrderInfo.create(**pre_order_in.info.model_dump(), order_id=pre_order.id)
     await models.PreOrderPrice.create(**pre_order_in.price.model_dump(), order_id=pre_order.id)
     logger.info(f"PreOrder created [id={pre_order.id} order_id={pre_order.order_id}]]")
