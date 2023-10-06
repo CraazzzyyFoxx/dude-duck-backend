@@ -92,13 +92,12 @@ async def manage_preorders():
     preorders = await service.get_all()
     for preorder in preorders:
         order = await order_service.get_order_id(preorder.order_id)
-        if order is None:
-            delta = (datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive)).astimezone(pytz.UTC)
-            if preorder.created_at < delta:
-                await preorder.delete()
-                payload = await message_service.order_delete(await format_preorder_system(preorder), pre=True)
-                if payload.deleted:
-                    message_service.send_deleted_order_notify(preorder.order_id, payload)
-                if preorder.has_response is False:
-                    parser = await sheets_service.get_by_spreadsheet_sheet_read(preorder.spreadsheet, preorder.sheet_id)
-                    sheets_service.clear_row(superuser.google, parser, preorder.row_id)
+        delta = (datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive)).astimezone(pytz.UTC)
+        if preorder.created_at < delta:
+            await preorder.delete()
+            payload = await message_service.order_delete(await format_preorder_system(preorder), pre=True)
+            if payload.deleted:
+                message_service.send_deleted_order_notify(preorder.order_id, payload)
+            if preorder.has_response is False and order is None:
+                parser = await sheets_service.get_by_spreadsheet_sheet_read(preorder.spreadsheet, preorder.sheet_id)
+                sheets_service.clear_row(superuser.google, parser, preorder.row_id)
