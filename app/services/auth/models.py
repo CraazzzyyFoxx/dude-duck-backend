@@ -119,6 +119,8 @@ class UserUpdateAdmin(BaseUserUpdate):
     binance_id: int | None = Field(default=None)
     max_orders: int | None = Field(default=None)
     google: AdminGoogleToken | None = Field(default=None)
+    telegram: str | None = Field(default=None)
+    discord: str | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "UserUpdateAdmin":
