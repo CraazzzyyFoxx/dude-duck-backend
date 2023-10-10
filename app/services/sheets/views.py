@@ -133,7 +133,7 @@ async def update_google_sheets_parser(
 @router.post("/report", response_model=accounting_models.AccountingReport)
 async def generate_payment_report(
     data: accounting_models.AccountingReportSheetsForm,
-    _: auth_models.User = Depends(auth_flows.current_active_superuser),
+    _: auth_models.User = Depends(auth_flows.current_active_superuser_api),
 ):
     return await accounting_flows.create_report(
         data.start_date,
