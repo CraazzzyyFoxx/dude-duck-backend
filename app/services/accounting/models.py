@@ -104,6 +104,7 @@ class AccountingReportItem(BaseModel):
     order_id: str
     date: datetime
     username: str
+    dollars_income: float
     dollars: float
     rub: float
     dollars_fee: float
