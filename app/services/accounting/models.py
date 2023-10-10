@@ -90,6 +90,8 @@ class AccountingReportSheetsForm(BaseModel):
     username: str | None = Field(default=None)
     first_sort: FirstSort
     second_sort: SecondSort
+    is_completed: bool = Field(default=True)
+    is_paid: bool = Field(default=False)
 
     @model_validator(mode="after")
     def spreadsheet_sheet_together(self) -> "AccountingReportSheetsForm":

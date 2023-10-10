@@ -7,8 +7,7 @@ import gspread
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
-                      create_model, field_validator)
+from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -244,9 +243,6 @@ def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, 
     row = {}
     data = {}
 
-    if to_dict.get("_id"):
-        to_dict["id"] = to_dict.pop("_id")
-
     for key, value in to_dict.items():
         if isinstance(value, dict):
             for key_2, value_2 in value.items():
@@ -318,6 +314,7 @@ def update_rows_data(
 
     sheet.batch_update(
         data_range,
+        value_input_option=ValueInputOption.user_entered,
         response_value_render_option=ValueRenderOption.formatted,
         response_date_time_render_option=DateTimeOption.formatted_string,
     )
@@ -388,6 +385,9 @@ def create_row_data(
         if not value:
             break
         index += 1
+
+    if index < parser.start:
+        index = parser.start
 
     update_row_data(creds, parser, index, data)
     return get_row_data(model, creds, parser, index)

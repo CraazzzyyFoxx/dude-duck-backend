@@ -57,4 +57,6 @@ async def generate_payment_report(data: models.AccountingReportSheetsForm):
         data.spreadsheet,
         data.sheet_id,
         data.username,
+        data.is_completed,
+        data.is_paid
     )

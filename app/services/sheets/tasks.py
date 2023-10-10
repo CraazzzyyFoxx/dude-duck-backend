@@ -147,8 +147,8 @@ async def sync_orders() -> None:
             order_dict = {order.order_id: order for order in orders}
             order_db_dict = {order.order_id: order for order in orders_db}
             await sync_data_from(cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy())
-            # if config.app.sync_boosters:
-            #     await sync_data_to(superuser.google, cfg, order_dict.copy(), users, order_db_dict.copy())
+            if config.app.sync_boosters:
+                await sync_data_to(superuser.google, cfg, order_dict.copy(), users, order_db_dict.copy())
         logger.info(f"Synchronization completed in {time.time() - t}")
     except Exception as e:
         logger.exception(f"Error while sync_orders Error: {e}")

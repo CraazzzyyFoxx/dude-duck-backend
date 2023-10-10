@@ -19,6 +19,8 @@ from app.services.preorders import models as preorders_schemes
 from app.services.preorders import service as preorder_service
 from app.services.search import models as search_models
 from app.services.search import service as search_service
+from app.services.accounting import flows as accounting_flows
+from app.services.accounting import models as accounting_models
 
 from . import flows, models
 
@@ -126,3 +128,21 @@ async def update_google_sheets_parser(
     _: auth_models.User = Depends(auth_flows.current_active_superuser),
 ):
     return await flows.update(spreadsheet, sheet_id, data)
+
+
+@router.post("/report", response_model=accounting_models.AccountingReport)
+async def generate_payment_report(
+    data: accounting_models.AccountingReportSheetsForm,
+    _: auth_models.User = Depends(auth_flows.current_active_superuser),
+):
+    return await accounting_flows.create_report(
+        data.start_date,
+        data.end_date,
+        data.first_sort,
+        data.second_sort,
+        data.spreadsheet,
+        data.sheet_id,
+        data.username,
+        data.is_completed,
+        data.is_paid,
+    )

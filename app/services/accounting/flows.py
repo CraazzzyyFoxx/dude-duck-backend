@@ -143,7 +143,7 @@ async def _add_booster(
         order_date=order.date,
         completed=True if order.status == order_models.OrderStatus.Completed else False,
         paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
-        method_payment=method_payment if method_payment else "$"
+        method_payment=method_payment if method_payment else "$",
     )
     try:
         await update_price(order, price)
@@ -271,9 +271,12 @@ async def create_report(
     spreadsheet: str | None = None,
     sheet_id: int | None = None,
     username: str | None = None,
+    is_completed: bool = True,
+    is_paid: bool = False,
 ) -> models.AccountingReport:
     items: list[models.AccountingReportItem] = []
-    query = [Q(date__gte=start), Q(date__lte=end)]
+    completed = order_models.OrderStatus.Completed if is_completed else order_models.OrderStatus.InProgress
+    query = [Q(date__gte=start), Q(date__lte=end), Q(status=completed)]
 
     users_map: dict[int, auth_models.User] = {}
     orders_map: dict[int, order_models.Order] = {}
@@ -282,12 +285,12 @@ async def create_report(
         query.extend([Q(spreadsheet=spreadsheet), Q(sheet_id=sheet_id)])
     if username is None:
         orders_map.update({o.id: o for o in await order_models.Order.filter(*query).prefetch_related("price")})
-        payments.extend(await service.get_by_orders(list(orders_map.keys())))
+        payments.extend(await models.UserOrder.filter(order_id__in=orders_map.keys(), paid=is_paid))
         users_map.update({u.id: u for u in await auth_service.get_by_ids([payment.user_id for payment in payments])})
     else:
         chosen_user = await auth_flows.get_booster_by_name(username)
         query.extend([Q(id__in=[p.order_id for p in payments])])
-        payments.extend(await service.get_by_user_id(chosen_user.id))
+        payments.extend(await models.UserOrder.filter(user_id=chosen_user.id, paid=is_paid))
         users_map.update({chosen_user.id: chosen_user})
         orders_map.update({o.id: o for o in await order_models.Order.filter(*query).prefetch_related("price")})
     total = 0
