@@ -251,8 +251,9 @@ def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, 
             data[key] = value
 
     for getter in parser.items:
-        if not getter.generated and data.get(getter.name) is not None:
-            row[getter.row] = jsonable_encoder(data[getter.name])
+        if not getter.generated and getter.name in to_dict.keys():
+            to_insert = data[getter.name] if data[getter.name] is not None else ""
+            row[getter.row] = jsonable_encoder(to_insert)
     return row
 
 
