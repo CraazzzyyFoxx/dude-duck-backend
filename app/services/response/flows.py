@@ -92,7 +92,7 @@ async def create_order_response(
         auth_models.UserRead.model_validate(user, from_attributes=True),
         models.ResponseRead.model_validate(resp),
     )
-    return resp  # noqa
+    return resp  # type: ignore
 
 
 async def create_preorder_response(
@@ -107,7 +107,7 @@ async def create_preorder_response(
         auth_models.UserRead.model_validate(user, from_attributes=True),
         models.ResponseRead.model_validate(resp),
     )
-    return resp  # noqa
+    return resp  # type: ignore
 
 
 async def approve_response(user: auth_models.User, order: order_models.Order) -> models.Response:
@@ -122,10 +122,10 @@ async def approve_response(user: auth_models.User, order: order_models.Order) ->
                 await service.patch(resp, models.ResponseUpdate(approved=True, closed=True))
                 messages_service.send_response_approve(user_read, order.id, models.ResponseRead.model_validate(resp))
             else:
-                await _decline_response(resp, order)
+                await _decline_response(resp, order)  # type: ignore
     await messages_service.order_delete(await order_flows.format_order_system(order))
     messages_service.send_response_chose_notify(order.order_id, user_read, len(responds))
-    return await get_by_order_id_user_id(order.id, user.id)  # noqa
+    return await get_by_order_id_user_id(order.id, user.id)  # type: ignore
 
 
 async def _decline_response(response: models.Response, order: order_models.Order) -> None:
@@ -138,8 +138,8 @@ async def decline_response(user: auth_models.User, order: order_models.Order) ->
     responds = await service.get_by_order_id(order.id)
     for resp in responds:
         if resp.user_id == user.id:
-            await _decline_response(resp, order)
-    return await get_by_order_id_user_id(order.id, user.id)  # noqa
+            await _decline_response(resp, order)  # type: ignore
+    return await get_by_order_id_user_id(order.id, user.id)  # type: ignore
 
 
 async def approve_preorder_response(user: auth_models.User, order: preorder_models.PreOrder) -> models.PreResponse:
@@ -147,7 +147,7 @@ async def approve_preorder_response(user: auth_models.User, order: preorder_mode
     for resp in await service.get_by_order_id(order_id=order.id):
         await service.patch(resp, models.ResponseUpdate(approved=resp.user_id == user.id, closed=True))
     await preorder_service.update(order, preorder_models.PreOrderUpdate(has_response=True))
-    return await get_by_order_id_user_id(order.id, user.id, pre=True)  # noqa
+    return await get_by_order_id_user_id(order.id, user.id, pre=True)  # type: ignore
 
 
 async def _decline_preorder_response(response: models.PreResponse, order: preorder_models.PreOrder) -> None:
@@ -160,5 +160,5 @@ async def decline_preorder_response(user: auth_models.User, order: preorder_mode
     responds = await service.get_by_order_id(order.id)
     for resp in responds:
         if resp.user_id == user.id:
-            await _decline_preorder_response(resp, order)
-    return await get_by_order_id_user_id(order.id, user.id, pre=True)  # noqa
+            await _decline_preorder_response(resp, order)  # type: ignore
+    return await get_by_order_id_user_id(order.id, user.id, pre=True)  # type: ignore

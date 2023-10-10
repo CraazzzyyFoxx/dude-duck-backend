@@ -9,8 +9,7 @@ async def get(currency_date: datetime) -> models.Currency:
     currency = await service.get_by_date(currency_date)
     if currency is None:
         data = await service.get_currency_historical(currency_date)
-        await service.create(data)
-        return await service.get_by_date(currency_date)
+        currency = await service.create(data)
     return currency
 
 

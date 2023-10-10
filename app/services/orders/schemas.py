@@ -2,8 +2,7 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from .models import (OrderCredentialsRead, OrderInfoRead, OrderPaidStatus,
-                     OrderPriceMeta, OrderPriceNone, OrderStatus)
+from .models import OrderCredentialsRead, OrderInfoRead, OrderPaidStatus, OrderPriceMeta, OrderPriceNone, OrderStatus
 
 
 class OrderPriceUser(OrderPriceMeta):
@@ -16,9 +15,7 @@ class OrderPriceSystem(OrderPriceNone):
     price_dollar: float
     price_booster_dollar_without_fee: float
 
-    price_booster_dollar: float
     price_booster_rub: float
-    price_booster_gold: float | None = None
 
 
 class OrderReadHasPerms(BaseModel):

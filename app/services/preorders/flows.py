@@ -8,10 +8,10 @@ from tortoise import Tortoise
 from app.core import config, errors
 from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows
+from app.services.orders import service as order_service
 from app.services.settings import service as settings_service
 from app.services.sheets import service as sheets_service
 from app.services.telegram.message import service as message_service
-from app.services.orders import service as order_service
 
 from . import models, service
 

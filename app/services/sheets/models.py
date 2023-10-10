@@ -1,6 +1,6 @@
 import typing
 
-from orjson import orjson
+import orjson
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from tortoise import fields
 
@@ -50,7 +50,7 @@ class OrderSheetParseItem(BaseModel):
         return v
 
 
-def decode(data: str) -> list[OrderSheetParseItem]:
+def decode(data: str | bytes) -> list[OrderSheetParseItem]:
     return [OrderSheetParseItem.model_validate(d) for d in orjson.loads(data)]
 
 

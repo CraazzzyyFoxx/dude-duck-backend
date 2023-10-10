@@ -19,7 +19,7 @@ from app.services.telegram.message import service as messages_service
 from . import models, service
 
 
-async def get_by_order_id_user_id(order: order_service.models.Order, user: auth_models.User) -> models.UserOrder:
+async def get_by_order_id_user_id(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
     order_user = await service.get_by_order_id_user_id(order.id, user.id)
     if not order_user:
         raise errors.DudeDuckHTTPException(
@@ -54,7 +54,7 @@ async def can_user_pick(user: auth_models.User) -> bool:
     return True
 
 
-async def can_user_pick_order(user: auth_models.User, order: order_service.models.Order) -> bool:
+async def can_user_pick_order(user: auth_models.User, order: order_models.Order) -> bool:
     await can_user_pick(user)
     order_user = await service.get_by_order_id_user_id(order.id, user.id)
     if order_user:
@@ -83,7 +83,7 @@ async def sync_boosters_sheet(order: order_models.Order) -> None:
     if config.app.sync_boosters:
         parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
         creds = await auth_service.get_first_superuser()
-        if creds.google is not None:
+        if creds.google is not None and parser is not None:
             tasks_service.update_order.delay(
                 creds.google.model_dump_json(),
                 parser.model_dump_json(),
@@ -168,7 +168,7 @@ async def add_booster(
 
 
 async def add_booster_with_price(
-    order: order_service.models.Order,
+    order: order_models.Order,
     user: auth_models.User,
     price: float,
     method_payment: str | None = None,
@@ -293,27 +293,26 @@ async def create_report(
         payments.extend(await models.UserOrder.filter(user_id=chosen_user.id, paid=is_paid))
         users_map.update({chosen_user.id: chosen_user})
         orders_map.update({o.id: o for o in await order_models.Order.filter(*query).prefetch_related("price")})
-    total = 0
-    earned = 0
+    total = 0.0
+    earned = 0.0
     for payment in payments:
         order = orders_map.get(payment.order_id)
         user = users_map.get(payment.user_id)
         if order and user:
+            payment_str: str = "Хуй знает"
+            bank: str = "Хуй знает"
             if user.binance_id:
-                payment_str: str = str(user.binance_id)
-                bank: str = "Binance ID"
+                payment_str = str(user.binance_id)
+                bank = "Binance ID"
             elif user.binance_email:
-                payment_str: str = user.binance_email
-                bank: str = "Binance Email"
-            elif user.phone:
-                payment_str: str = user.phone
-                bank: str = user.bank
-            elif user.bankcard:
-                payment_str: str = user.phone
-                bank: str = user.bank
-            else:
-                payment_str: str = "Хуй знает"
-                bank: str = "Хуй знает"
+                payment_str = user.binance_email
+                bank = "Binance Email"
+            elif user.phone and user.bank:
+                payment_str = user.phone
+                bank = user.bank
+            elif user.bankcard and user.bank:
+                payment_str = user.bankcard
+                bank = user.bank
 
             rub = await currency_flows.usd_to_currency(payment.dollars, payment.order_date, currency="RUB")
             total += order.price.price_dollar
@@ -350,7 +349,7 @@ async def create_report(
     )
 
 
-async def close_order(user: auth_models.User, order: order_service.models.Order, data: models.CloseOrderForm):
+async def close_order(user: auth_models.User, order: order_models.Order, data: models.CloseOrderForm):
     f = False
     for price in await service.get_by_order_id(order.id):
         if f := price.user_id == user.id:
@@ -360,7 +359,7 @@ async def close_order(user: auth_models.User, order: order_service.models.Order,
             status_code=status.HTTP_403_FORBIDDEN,
             detail=[errors.DudeDuckException(msg="You don't have access to the order", code="forbidden")],
         )
-    update_model = order_service.models.OrderUpdate(screenshot=str(data.url), end_date=datetime.utcnow())
+    update_model = order_models.OrderUpdate(screenshot=str(data.url), end_date=datetime.utcnow())
     new_order = await order_service.update_with_sync(order, update_model)
     messages_service.send_order_close_notify(
         auth_models.UserRead.model_validate(user), order.order_id, str(data.url), data.message

@@ -39,7 +39,7 @@ async def create_preorder_response(
     data: models.ResponseExtra,
     user=Depends(auth_flows.current_active_verified),
 ):
-    order = await order_flows.get(order_id, prefetch=True)
+    order = await preorder_flows.get(order_id)
     return await flows.create_preorder_response(user, order, data)
 
 

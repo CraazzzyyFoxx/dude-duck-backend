@@ -105,17 +105,17 @@ async def sync_data_to(
     t = time.time()
     to_sync = []
     user_orders_db = await accounting_service.get_by_orders([order.id for order in orders_db.values()])
-    orders_db_map: dict[int, list[accounting_service.models.UserOrder]] = {}
+    orders_db_map: dict[int, list[accounting_models.UserOrder]] = {}
 
     for user_order in user_orders_db:
-        order = orders_db.get(user_order.order_id)
+        order = orders_db[user_order.order_id]
         if orders_db_map.get(order.id, None):
             orders_db_map[order.id].append(user_order)
         else:
             orders_db_map[order.id] = [user_order]
 
     for order_id, user_orders in orders_db_map.items():
-        order = orders_db.get(order_id)
+        order = orders_db[order_id]
         order_sheet = orders.get(order.order_id)
         if order_sheet is None:
             continue
@@ -142,13 +142,16 @@ async def sync_orders() -> None:
         users_names_dict = {user.name: user for user in users}
         users_ids_dict = {user.id: user for user in users}
         for cfg in await service.get_all_not_default_user_read():
-            orders = service.get_all_data(superuser.google, models.OrderReadSheets, cfg)
+            orders: list[models.OrderReadSheets] = service.get_all_data(  # type: ignore
+                superuser.google, models.OrderReadSheets, cfg
+            )
             orders_db = await order_service.get_all_by_sheet(cfg.spreadsheet, cfg.sheet_id, prefetch=True)
             order_dict = {order.order_id: order for order in orders}
             order_db_dict = {order.order_id: order for order in orders_db}
+            order_db_ids_dict = {order.id: order for order in orders_db}
             await sync_data_from(cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy())
             if config.app.sync_boosters:
-                await sync_data_to(superuser.google, cfg, order_dict.copy(), users, order_db_dict.copy())
+                await sync_data_to(superuser.google, cfg, order_dict.copy(), users, order_db_ids_dict)
         logger.info(f"Synchronization completed in {time.time() - t}")
     except Exception as e:
         logger.exception(f"Error while sync_orders Error: {e}")

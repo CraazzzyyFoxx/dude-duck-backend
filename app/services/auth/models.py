@@ -3,7 +3,7 @@ import enum
 import re
 
 import orjson
-from pydantic import BaseModel, ConfigDict, EmailStr, HttpUrl, constr, field_validator, model_validator, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from tortoise import fields
@@ -77,7 +77,7 @@ class UserCreate(BaseModel):
     is_superuser: bool | None = False
     is_verified: bool | None = False
 
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
+    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)  # noqa
     telegram: str
     discord: str
 
@@ -150,7 +150,8 @@ class User(TimeStampMixin):
     discord: str | None = fields.TextField(null=True)
     language: UserLanguage = fields.CharEnumField(UserLanguage, default=UserLanguage.EN)
     google: AdminGoogleToken | None = fields.JSONField(
-        null=True, decoder=AdminGoogleToken.model_validate_json, encoder=encoder_google)
+        null=True, decoder=AdminGoogleToken.model_validate_json, encoder=encoder_google
+    )
     max_orders: int = fields.IntField(default=3)
 
 

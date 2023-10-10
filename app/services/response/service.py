@@ -3,12 +3,12 @@ from datetime import datetime
 from . import models
 
 
-async def get(response_id: int, pre: bool = False) -> models.Response | models.PreResponse | None:
+async def get(response_id: int, pre: bool = False) -> models.BaseResponse | None:
     model = models.Response if not pre else models.PreResponse
     return await model.filter(id=response_id).first()
 
 
-async def create(response_in: models.ResponseCreate, pre: bool = False) -> models.Response | models.PreResponse:
+async def create(response_in: models.ResponseCreate, pre: bool = False) -> models.BaseResponse:
     model = models.Response if not pre else models.PreResponse
     response = model(**response_in.model_dump())
     response.created_at = datetime.utcnow()
@@ -22,9 +22,7 @@ async def delete(response_id: int, pre: bool = False) -> None:
         await response.delete()
 
 
-async def get_by_order_id(
-    order_id: int, prefetch: bool = False, pre: bool = False
-) -> list[models.Response | models.PreResponse]:
+async def get_by_order_id(order_id: int, prefetch: bool = False, pre: bool = False) -> list[models.BaseResponse]:
     model = models.Response if not pre else models.PreResponse
     query = model.filter(order_id=order_id)
     if prefetch:
@@ -37,20 +35,18 @@ async def get_by_user_id(user_id: int, pre: bool = False) -> list[models.BaseRes
     return await model.filter(user_id=user_id)
 
 
-async def get_by_order_id_user_id(
-    order_id: int, user_id: int, pre: bool = False
-) -> models.Response | models.PreResponse | None:
+async def get_by_order_id_user_id(order_id: int, user_id: int, pre: bool = False) -> models.BaseResponse | None:
     model = models.Response if not pre else models.PreResponse
     return await model.filter(order_id=order_id, user_id=user_id).first()
 
 
-async def get_all(pre: bool = False) -> list[models.Response | models.PreResponse]:
+async def get_all(pre: bool = False) -> list[models.BaseResponse]:
     model = models.Response if not pre else models.PreResponse
     return await model.filter().all()
 
 
 async def update(
-    response: models.Response | models.PreResponse,
+    response: models.BaseResponse,
     response_in: models.ResponseUpdate,
 ) -> models.BaseResponse:
     update_data = response_in.model_dump()
@@ -62,7 +58,7 @@ async def update(
 
 
 async def patch(
-    response: models.Response | models.PreResponse,
+    response: models.BaseResponse,
     response_in: models.ResponseUpdate,
 ) -> models.BaseResponse:
     update_data = response_in.model_dump(exclude_none=True, exclude_defaults=True)

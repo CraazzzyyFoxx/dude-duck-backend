@@ -11,8 +11,8 @@ async def get() -> models.Settings:
     if CACHE.get(0):
         return CACHE[0]
     settings = await models.Settings.first()
-    CACHE[0] = settings
-    return settings
+    CACHE[0] = settings  # noqa
+    return settings  # noqa
 
 
 async def create() -> models.Settings:

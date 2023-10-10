@@ -25,11 +25,11 @@ default_currencies = [
 ]
 
 
-def decode_api_layer_currency(data: str):
+def decode_api_layer_currency(data: str | bytes):
     return [ApiLayerCurrencyToken.model_validate(d) for d in orjson.loads(data)]
 
 
-def decode_currencies(data: str):
+def decode_currencies(data: str | bytes):
     return [AvailableCurrency.model_validate(d) for d in orjson.loads(data)]
 
 

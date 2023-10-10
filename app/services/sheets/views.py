@@ -6,6 +6,8 @@ from lxml.etree import tostring
 from starlette.responses import Response
 
 from app.core import enums
+from app.services.accounting import flows as accounting_flows
+from app.services.accounting import models as accounting_models
 from app.services.auth import flows as auth_flows
 from app.services.auth import models as auth_models
 from app.services.currency import flows as currency_flows
@@ -19,8 +21,6 @@ from app.services.preorders import models as preorders_schemes
 from app.services.preorders import service as preorder_service
 from app.services.search import models as search_models
 from app.services.search import service as search_service
-from app.services.accounting import flows as accounting_flows
-from app.services.accounting import models as accounting_models
 
 from . import flows, models
 
@@ -67,8 +67,10 @@ async def update_order_from_sheets(
         order = await orders_flows.get_by_order_id(model.order_id)
         return await orders_service.update(order, order_models.OrderUpdate.model_validate(model.model_dump()))
     else:
-        order = await preorders_flows.get_by_order_id(model.order_id)
-        return await preorder_service.update(order, preorder_models.PreOrderUpdate.model_validate(model.model_dump()))
+        preorder = await preorders_flows.get_by_order_id(model.order_id)
+        return await preorder_service.update(
+            preorder, preorder_models.PreOrderUpdate.model_validate(model.model_dump())
+        )
 
 
 @router.patch("/orders", response_model=orders_schemas.OrderReadSystem | preorders_schemes.PreOrderReadSystem)
@@ -81,8 +83,8 @@ async def patch_order_from_sheets(
         order = await orders_flows.get_by_order_id(model.order_id)
         return await orders_service.patch(order, order_models.OrderUpdate.model_validate(model.model_dump()))
     else:
-        order = await preorders_flows.get_by_order_id(model.order_id)
-        return await preorder_service.patch(order, preorder_models.PreOrderUpdate.model_validate(model.model_dump()))
+        preorder = await preorders_flows.get_by_order_id(model.order_id)
+        return await preorder_service.patch(preorder, preorder_models.PreOrderUpdate.model_validate(model.model_dump()))
 
 
 @router.get("/parser", response_model=search_models.Paginated[models.OrderSheetParseRead])

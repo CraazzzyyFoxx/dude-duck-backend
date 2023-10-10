@@ -16,17 +16,17 @@ from app.services.telegram.message import service as message_service
 from . import models, utils
 
 
-async def get(user_id: int) -> models.User:
+async def get(user_id: int) -> models.User | None:
     user = await models.User.filter(id=user_id).first()
     return user
 
 
-async def get_by_email(user_email: str) -> models.User:
+async def get_by_email(user_email: str) -> models.User | None:
     user = await models.User.filter(email=user_email).first()
     return user
 
 
-async def get_by_name(username: str) -> models.User:
+async def get_by_name(username: str) -> models.User | None:
     user = await models.User.filter(name=username).first()
     return user
 
@@ -36,7 +36,7 @@ async def get_all() -> list[models.User]:
 
 
 async def get_first_superuser() -> models.User:
-    return await get_by_email(config.app.super_user_email)
+    return await get_by_email(config.app.super_user_email)  # type: ignore
 
 
 async def get_superusers_with_google() -> list[models.User]:
@@ -82,13 +82,15 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
 
 
 async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool = False, exclude=True) -> models.User:
-    exclude_fields = {"password", }
+    exclude_fields = {
+        "password",
+    }
     if safe:
         exclude_fields.update({"is_superuser", "is_active", "is_verified"})
     update_data = user_in.model_dump(exclude=exclude_fields, exclude_unset=exclude, exclude_defaults=True, mode="json")
 
     if update_data.get("phone") is not None:
-        user.phone = update_data.get("phone").replace("tel:", "")
+        user.phone = update_data["phone"].replace("tel:", "")
         update_data.pop("phone")
 
     if user_in.password:
@@ -111,11 +113,12 @@ async def delete(user: models.User) -> None:
     await user.delete()
     parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
-    tasks_service.delete_booster.delay(
-        creds.google.model_dump_json(),
-        parser.model_dump_json(),
-        str(user.id),
-    )
+    if creds.google is not None and parser is not None:
+        tasks_service.delete_booster.delay(
+            creds.google.model_dump_json(),
+            parser.model_dump_json(),
+            str(user.id),
+        )
 
 
 async def request_verify(user: models.User) -> None:

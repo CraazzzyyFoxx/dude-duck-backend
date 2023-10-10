@@ -181,7 +181,7 @@ def generate_model(parser: models.OrderSheetParseRead):
 
 
 def parse_row(
-    parser: models.OrderSheetParse | models.OrderSheetParseRead,
+    parser: models.OrderSheetParseRead,
     model: typing.Type[models.SheetEntity],
     row_id: int,
     row: list[typing.Any],

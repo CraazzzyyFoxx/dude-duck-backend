@@ -16,7 +16,8 @@ class ResponseExtra(BaseModel):
     eta: timedelta | None = None
 
 
-class BaseResponse:
+class BaseResponse(TimeStampMixin):
+    id: int = fields.BigIntField(pk=True)
     user: fields.ForeignKeyRelation[auth_models.User] = fields.ForeignKeyField("main.User")
 
     refund: bool = fields.BooleanField(default=False)
@@ -33,15 +34,18 @@ class BaseResponse:
     user_id: int
     order_id: int
 
+    class Meta:
+        abstract = True
 
-class Response(BaseResponse, TimeStampMixin):
+
+class Response(BaseResponse):
     order: fields.ForeignKeyRelation[order_models.Order] = fields.ForeignKeyField("main.Order")
 
     class Meta:
         unique_together = ("order_id", "user_id")
 
 
-class PreResponse(BaseResponse, TimeStampMixin):
+class PreResponse(BaseResponse):
     order: fields.ForeignKeyRelation[preorder_models.PreOrder] = fields.ForeignKeyField("main.PreOrder")
 
     class Meta:

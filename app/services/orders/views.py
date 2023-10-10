@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends
 from app.core import enums
 from app.services.auth import flows as auth_flows
 from app.services.search import models as search_models
-from app.services.search import service as search_service
 
 from . import flows, models, schemas, service
 
@@ -16,7 +15,7 @@ async def get_order(order_id: int, _=Depends(auth_flows.current_active_verified)
     return await flows.format_order_perms(order)
 
 
-@router.get(path="", response_model=search_service.models.Paginated[schemas.OrderReadNoPerms])
+@router.get(path="", response_model=search_models.Paginated[schemas.OrderReadNoPerms])
 async def get_orders(
     paging: search_models.PaginationParams = Depends(),
     sorting: search_models.OrderSortingParams = Depends(),

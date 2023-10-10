@@ -26,10 +26,10 @@ async def create_order_booster(order_id: int, data: models.OrderBoosterCreate):
     return await flows.add_booster(order, user)
 
 
-@router.patch("/orders/{order_id}", response_model=models.UserOrderRead)
-async def patch_order_booster(order_id: int, data: models.UserOrderUpdate):
+@router.patch("/orders/{order_id}/{user_id}", response_model=models.UserOrderRead)
+async def patch_order_booster(order_id: int, user_id: int, data: models.UserOrderUpdate):
     order = await orders_flows.get(order_id, prefetch=True)
-    user = await auth_flows.get(data.user_id)
+    user = await auth_flows.get(user_id)
     if data.dollars:
         return await flows.add_booster_with_price(order, user, data.dollars)
     return await flows.add_booster(order, user)
@@ -58,5 +58,5 @@ async def generate_payment_report(data: models.AccountingReportSheetsForm):
         data.sheet_id,
         data.username,
         data.is_completed,
-        data.is_paid
+        data.is_paid,
     )

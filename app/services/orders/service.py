@@ -5,7 +5,7 @@ from loguru import logger
 
 from app.services.accounting import service as accounting_service
 from app.services.auth import service as auth_service
-from app.services.sheets import flows as sheets_flows
+from app.services.sheets import service as sheets_service
 from app.services.tasks import service as tasks_service
 
 from . import models
@@ -78,11 +78,12 @@ async def get_all_from_datetime_range_by_sheet(
 
 async def update_with_sync(order: models.Order, order_in: models.OrderUpdate) -> models.Order:
     order = await patch(order, order_in)
-    parser = await sheets_flows.service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
+    parser = await sheets_service.get_by_spreadsheet_sheet_read(order.spreadsheet, order.sheet_id)
     user = await auth_service.get_first_superuser()
-    tasks_service.update_order.delay(
-        user.google.model_dump_json(), parser.model_dump_json(), order.row_id, order_in.model_dump()
-    )
+    if user.google is not None and parser is not None:
+        tasks_service.update_order.delay(
+            user.google.model_dump_json(), parser.model_dump_json(), order.row_id, order_in.model_dump()
+        )
 
     return order
 
@@ -94,15 +95,15 @@ async def patch(order: models.Order, order_in: models.OrderUpdate) -> models.Ord
         exclude_defaults=True, exclude_unset=True, exclude={"price", "info", "credentials"}
     )
     order = await order.update_from_dict(update_data)
-    if order_in.info:
+    if order_in.info is not None:
         info_update = order_in.info.model_dump(exclude_defaults=True, exclude_unset=True)
         await order.info.update_from_dict(info_update)
         await order.info.save(update_fields=info_update.keys())
-    if order_in.credentials:
+    if order_in.credentials is not None:
         credentials_update = order_in.credentials.model_dump(exclude_defaults=True, exclude_unset=True)
         await order.credentials.update_from_dict(credentials_update)
         await order.credentials.save(update_fields=credentials_update.keys())
-    if order_in.price:
+    if order_in.price is not None:
         price_update = order_in.price.model_dump(exclude_defaults=True, exclude_unset=True)
         await order.price.update_from_dict(price_update)
         await order.price.save(update_fields=price_update.keys())
@@ -117,15 +118,18 @@ async def update(order: models.Order, order_in: models.OrderUpdate) -> models.Or
     old = copy.deepcopy(order)
     update_data = order_in.model_dump(exclude={"price", "info", "credentials"})
     order = await order.update_from_dict(update_data)
-    await order.info.update_from_dict(order_in.info.model_dump(exclude_defaults=True))
-    await order.info.save()
-    await order.credentials.update_from_dict(order_in.price.model_dump(exclude_defaults=True))
-    await order.credentials.save()
-    update_data_price = order_in.price.model_dump(exclude_defaults=True)
-    if update_data_price:
-        await order.price.update_from_dict(update_data_price)
-        await order.price.save()
-        await accounting_service.update_booster_price(old, order)
+    if order_in.info is not None:
+        await order.info.update_from_dict(order_in.info.model_dump(exclude_defaults=True))
+        await order.info.save()
+    if order_in.credentials is not None:
+        await order.credentials.update_from_dict(order_in.credentials.model_dump(exclude_defaults=True))
+        await order.credentials.save()
+    if order_in.price is not None:
+        update_data_price = order_in.price.model_dump(exclude_defaults=True)
+        if update_data_price:
+            await order.price.update_from_dict(update_data_price)
+            await order.price.save()
+            await accounting_service.update_booster_price(old, order)
     await order.save()
 
     if order.status == models.OrderStatus.Refund:
@@ -137,7 +141,9 @@ async def update(order: models.Order, order_in: models.OrderUpdate) -> models.Or
 
 async def delete(order_id: int) -> None:
     order = await get(order_id)
-    logger.info(f"Order deleted [id={order.id} order_id={order.order_id}]]")
+    if order:
+        await order.delete()
+        logger.info(f"Order deleted [id={order.id} order_id={order.order_id}]]")
 
 
 async def create(order_in: models.OrderCreate) -> models.Order:
@@ -146,4 +152,4 @@ async def create(order_in: models.OrderCreate) -> models.Order:
     await models.OrderPrice.create(**order_in.price.model_dump(), order_id=order.id)
     await models.OrderCredentials.create(**order_in.credentials.model_dump(), order_id=order.id)
     logger.info(f"Order created [id={order.id} order_id={order.order_id}]]")
-    return await get(order.id, prefetch=True)
+    return await get(order.id, prefetch=True)  # type: ignore

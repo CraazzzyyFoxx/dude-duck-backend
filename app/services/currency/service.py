@@ -25,12 +25,12 @@ async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
     settings = await settings_service.get()
     if settings.collect_currency_wow_by_sheets:
         creds = await auth_service.get_first_superuser()
-        if creds.google:
+        if creds.google is not None:
             cell = sheets_service.get_cell(
                 creds.google,
-                settings.currency_wow_spreadsheet,
-                settings.currency_wow_sheet_id,
-                settings.currency_wow_cell,
+                settings.currency_wow_spreadsheet,  # type: ignore
+                settings.currency_wow_sheet_id,  # type: ignore
+                settings.currency_wow_cell,  # type: ignore
             )
             quotes["WOW"] = float(cell)
 

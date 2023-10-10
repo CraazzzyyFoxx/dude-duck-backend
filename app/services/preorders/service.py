@@ -29,11 +29,11 @@ async def patch(order: models.PreOrder, order_in: models.PreOrderUpdate) -> mode
     await order.fetch_related("price", "info")
     update_data = order_in.model_dump(exclude_defaults=True, exclude_unset=True, exclude={"price", "info"})
     order = await order.update_from_dict(update_data)
-    if order_in.info:
+    if order_in.info is not None:
         info_update = order_in.info.model_dump(exclude_defaults=True, exclude_unset=True)
         await order.info.update_from_dict(info_update)
         await order.info.save(update_fields=info_update.keys())
-    if order_in.price:
+    if order_in.price is not None:
         price_update = order_in.price.model_dump(exclude_defaults=True, exclude_unset=True)
         await order.price.update_from_dict(price_update)
         await order.price.save(update_fields=price_update.keys())
@@ -46,10 +46,12 @@ async def update(order: models.PreOrder, order_in: models.PreOrderUpdate) -> mod
     await order.fetch_related("price", "info")
     update_data = order_in.model_dump(exclude={"price", "info"})
     order = await order.update_from_dict(update_data)
-    await order.info.update_from_dict(order_in.info.model_dump(exclude_defaults=True))
-    await order.info.save()
-    await order.price.update_from_dict(order_in.price.model_dump(exclude_defaults=True))
-    await order.price.save()
+    if order_in.info is not None:
+        await order.info.update_from_dict(order_in.info.model_dump(exclude_defaults=True))
+        await order.info.save()
+    if order_in.price is not None:
+        await order.price.update_from_dict(order_in.price.model_dump(exclude_defaults=True))
+        await order.price.save()
     await order.save()
     logger.info(f"PreOrder updated [id={order.id} order_id={order.order_id}]]")
     return order
@@ -60,7 +62,7 @@ async def create(pre_order_in: models.PreOrderCreate) -> models.PreOrder:
     await models.PreOrderInfo.create(**pre_order_in.info.model_dump(), order_id=pre_order.id)
     await models.PreOrderPrice.create(**pre_order_in.price.model_dump(), order_id=pre_order.id)
     logger.info(f"PreOrder created [id={pre_order.id} order_id={pre_order.order_id}]]")
-    return await get(pre_order.id)
+    return await get(pre_order.id)  # type: ignore
 
 
 async def delete(order_id: int):
