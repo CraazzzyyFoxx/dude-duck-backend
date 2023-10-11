@@ -4,8 +4,6 @@ services :
   redis:
     image: redis:alpine
     restart: always
-    ports:
-      - "6379:6379"
   app:
     restart: unless-stopped
     build:
@@ -24,7 +22,7 @@ services :
     build:
       context: .
       dockerfile: Dockerfile
-    command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info --concurrency=2
+    command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info
     volumes:
       - ./app:/app
     environment:
@@ -34,7 +32,7 @@ services :
       - redis
   flower:
     build: .
-    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --url_prefix=flower
+    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --url_prefix=flower --basic_auth=${POSTGRES_USER}:${POSTGRES_PASSWORD}
     ports:
       - "5555:5555"
     depends_on:
