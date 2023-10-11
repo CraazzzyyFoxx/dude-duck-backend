@@ -29,8 +29,12 @@ class AppConfig(BaseSettings):
     telegram_url: str
     telegram_integration: bool
 
-    # MongoDB
-    mongo_dsn: str
+    # Postgres
+    postgres_user: str
+    postgres_password: str
+    postgres_db: str
+    postgres_host: str
+    postgres_port: str
 
     # JWT
     secret: str
@@ -52,7 +56,39 @@ class AppConfig(BaseSettings):
     celery_sheets_sync_time: int = 300
     celery_preorders_manage: int = 300
 
-    sync_boosters: bool
+    sync_boosters: bool = False
 
 
 app = AppConfig(_env_file=".env", _env_file_encoding="utf-8")
+
+
+tortoise = {
+    "connections": {
+        "default": {
+            "engine": "tortoise.backends.asyncpg",
+            "credentials": {
+                "database": app.postgres_db,
+                "host": app.postgres_host,
+                "password": app.postgres_password,
+                "port": app.postgres_port,
+                "user": app.postgres_user,
+            },
+        }
+    },
+    "apps": {
+        "main": {
+            "models": [
+                "aerich.models",
+                "app.services.auth.models",
+                "app.services.accounting.models",
+                "app.services.auth.models",
+                "app.services.currency.models",
+                "app.services.orders.models",
+                "app.services.preorders.models",
+                "app.services.response.models",
+                "app.services.settings.models",
+                "app.services.sheets.models",
+            ],
+        }
+    },
+}

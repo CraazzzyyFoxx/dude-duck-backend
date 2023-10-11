@@ -1,27 +1,18 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from pydantic import BaseModel, field_validator
-from pymongo import IndexModel
+from tortoise import fields
 
 from app.core.db import TimeStampMixin
 
 
 class Currency(TimeStampMixin):
-    date: datetime
-    timestamp: int
+    date: datetime = fields.DatetimeField(unique=True)
+    timestamp: int = fields.IntField()
+    quotes: dict[str, float] = fields.JSONField()
 
-    quotes: dict[str, float]
-
-    class Settings:
+    class Meta:
         name = "currency"
-        use_cache = True
-        validate_on_save = True
-        cache_expiration_time = timedelta(days=1)
-        cache_capacity = 100
-
-        indexes = [
-            IndexModel(["date"], unique=True),
-        ]
 
 
 class CurrencyApiLayer(BaseModel):

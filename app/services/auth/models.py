@@ -2,13 +2,11 @@ import datetime
 import enum
 import re
 
-from beanie import Link, PydanticObjectId
+import orjson
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
-from pydantic_core import Url
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from pymongo import IndexModel
-from pymongo.collation import Collation
+from tortoise import fields
 
 from app.core import config
 from app.core.db import TimeStampMixin
@@ -37,7 +35,7 @@ class AdminGoogleToken(BaseModel):
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     email: EmailStr
     is_active: bool = True
     is_superuser: bool = False
@@ -45,9 +43,9 @@ class UserRead(BaseModel):
 
     name: str
     telegram: str
-    phone: PhoneNumber | None
+    phone: str | None
     bank: str | None
-    bankcard: PaymentCardNumber | None
+    bankcard: str | None
     binance_email: EmailStr | None
     binance_id: int | None
     discord: str | None
@@ -60,13 +58,13 @@ class UserRead(BaseModel):
 class UserReadSheets(SheetEntity):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     email: EmailStr
     name: str
     telegram: str
-    phone: PhoneNumber | None
+    phone: str | None
     bank: str | None
-    bankcard: PaymentCardNumber | None
+    bankcard: str | None
     binance_email: EmailStr | None
     binance_id: int | None
     discord: str | None
@@ -79,7 +77,7 @@ class UserCreate(BaseModel):
     is_superuser: bool | None = False
     is_verified: bool | None = False
 
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
+    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)  # noqa
     telegram: str
     discord: str
 
@@ -102,25 +100,27 @@ class UserCreate(BaseModel):
 
 
 class BaseUserUpdate(BaseModel):
-    password: str | None = None
-    email: EmailStr | None = None
-    is_active: bool | None = None
-    is_superuser: bool | None = None
-    is_verified: bool | None = None
+    password: str | None = Field(default=None)
+    email: EmailStr | None = Field(default=None)
+    is_active: bool | None = Field(default=None)
+    is_superuser: bool | None = Field(default=None)
+    is_verified: bool | None = Field(default=None)
 
 
 class UserUpdate(BaseUserUpdate):
-    language: UserLanguage | None = None
+    language: UserLanguage | None = Field(default=None)
 
 
 class UserUpdateAdmin(BaseUserUpdate):
-    phone: PhoneNumber | None = None
-    bank: str | None = None
-    bankcard: PaymentCardNumber | None = None
-    binance_email: EmailStr | None = None
-    binance_id: int | None = None
-    max_orders: int | None = None
-    google: AdminGoogleToken | None = None
+    phone: PhoneNumber | None = Field(default=None)
+    bank: str | None = Field(default=None)
+    bankcard: PaymentCardNumber | None = Field(default=None)
+    binance_email: EmailStr | None = Field(default=None)
+    binance_id: int | None = Field(default=None)
+    max_orders: int | None = Field(default=None)
+    google: AdminGoogleToken | None = Field(default=None)
+    telegram: str | None = Field(default=None)
+    discord: str | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_passwords_match(self) -> "UserUpdateAdmin":
@@ -130,61 +130,40 @@ class UserUpdateAdmin(BaseUserUpdate):
         return self
 
 
+def encoder_google(data):
+    if isinstance(data, AdminGoogleToken):
+        return data.model_dump_json()
+    return orjson.dumps(data)
+
+
 class User(TimeStampMixin):
-    email: EmailStr
-    hashed_password: str
-    is_active: bool = True
-    is_superuser: bool = False
-    is_verified: bool = False
-
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)
-    telegram: str
-    phone: PhoneNumber | None = None
-    bank: str | None = None
-    bankcard: PaymentCardNumber | None = None
-    binance_email: EmailStr | None = None
-    binance_id: int | None = None
-    discord: str | None = None
-    language: UserLanguage = UserLanguage.EN
-
-    google: AdminGoogleToken | None = None
-
-    max_orders: int = Field(default=3)
-    created_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
-
-    class Settings:
-        name = "user"
-        email_collation = Collation("en", strength=2)
-        indexes = [
-            IndexModel("email", unique=True),
-            IndexModel("name", unique=True),
-            IndexModel("email", name="case_insensitive_email_index", collation=email_collation),
-        ]
-        bson_encoders = {
-            Url: lambda x: str(x),
-            PhoneNumber: lambda x: str(x),
-            PaymentCardNumber: lambda x: str(x),
-        }
-        use_state_management = True
-        state_management_save_previous = True
-        validate_on_save = True
+    email: str = fields.CharField(unique=True, max_length=100)
+    hashed_password: str = fields.TextField()
+    is_active: bool = fields.BooleanField(default=True)
+    is_superuser: bool = fields.BooleanField(default=False)
+    is_verified: bool = fields.BooleanField(default=False)
+    name: str = fields.CharField(max_length=20, unique=True)
+    telegram: str = fields.CharField(max_length=32, unique=True)
+    phone: str | None = fields.TextField(null=True)
+    bank: str | None = fields.TextField(null=True)
+    bankcard: str | None = fields.TextField(null=True)
+    binance_email: str | None = fields.TextField(null=True)
+    binance_id: int | None = fields.IntField(null=True)
+    discord: str | None = fields.TextField(null=True)
+    language: UserLanguage = fields.CharEnumField(UserLanguage, default=UserLanguage.EN)
+    google: AdminGoogleToken | None = fields.JSONField(
+        null=True, decoder=AdminGoogleToken.model_validate_json, encoder=encoder_google
+    )
+    max_orders: int = fields.IntField(default=3)
 
 
 class AccessToken(TimeStampMixin):
-    token: str
-    user_id: Link[User]
-
-    class Settings:
-        name = "access_token"
-        indexes = [IndexModel("token", unique=True)]
-        validate_on_save = True
+    id: int = fields.BigIntField(pk=True)
+    token: str = fields.CharField(unique=True, max_length=100)
+    user: fields.ForeignKeyRelation[User] = fields.ForeignKeyField("main.User", to_field="id")
 
 
 class AccessTokenAPI(TimeStampMixin):
-    token: str
-    user_id: Link[User]
-
-    class Settings:
-        name = "access_token_api"
-        indexes = [IndexModel("user_id", unique=True)]
-        validate_on_save = True
+    id: int = fields.BigIntField(pk=True)
+    token: str = fields.CharField(unique=True, max_length=100)
+    user: fields.ForeignKeyRelation[User] = fields.OneToOneField("main.User", to_field="id")

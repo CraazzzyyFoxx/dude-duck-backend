@@ -1,7 +1,6 @@
-from beanie import PydanticObjectId
-from bson import DBRef, ObjectId
 from fastapi import APIRouter, Depends, UploadFile
 from starlette import status
+from tortoise.expressions import Q
 
 from app.core import enums, errors
 from app.services.accounting import flows as accounting_flows
@@ -61,22 +60,22 @@ async def get_active_orders(
     sorting: search_models.OrderSortingParams = Depends(),
     user=Depends(auth_flows.current_active_verified),
 ):
-    query = {"user_id": DBRef("user", user.id)}
+    query = [Q(user_id=user.id)]
     if sorting.completed != search_models.OrderSelection.ALL:
         if sorting.completed == search_models.OrderSelection.Completed:
-            query["completed"] = True
+            query.append(Q(completed=True))
         else:
-            query["completed"] = False
-    data = await search_service.paginate(accounting_models.UserOrder.find(query), paging, sorting)
-    orders = await orders_service.get_by_ids([d.order_id.ref.id for d in data["results"]])
-    orders_map: dict[PydanticObjectId, orders_models.Order] = {order.id: order for order in orders}
-    results = [await orders_flows.format_order_active(orders_map[d.order_id.ref.id], d) for d in data["results"]]
+            query.append(Q(completed=False))
+    data = await search_service.paginate(accounting_models.UserOrder.filter(Q(*query)), paging, sorting)
+    orders = await orders_service.get_by_ids([d.order_id for d in data["results"]], prefetch=True)
+    orders_map: dict[int, orders_models.Order] = {order.id: order for order in orders}
+    results = [await orders_flows.format_order_active(orders_map[d.order_id], d) for d in data["results"]]
     data["results"] = results
     return data
 
 
 @router.get("/@me/orders/{order_id}", response_model=orders_schemas.OrderReadActive)
-async def get_active_order(order_id: PydanticObjectId, user=Depends(auth_flows.current_active_verified)):
+async def get_active_order(order_id: int, user=Depends(auth_flows.current_active_verified)):
     order = await orders_flows.get(order_id)
     price = await accounting_flows.get_by_order_id_user_id(order, user)
     return await orders_flows.format_order_active(order, price)
@@ -84,7 +83,7 @@ async def get_active_order(order_id: PydanticObjectId, user=Depends(auth_flows.c
 
 @router.post("/@me/orders/{order_id}/close-request", response_model=orders_schemas.OrderReadActive)
 async def send_close_request(
-    order_id: PydanticObjectId,
+    order_id: int,
     data: accounting_models.CloseOrderForm,
     user=Depends(auth_flows.current_active_verified),
 ):

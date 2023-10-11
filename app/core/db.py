@@ -1,16 +1,12 @@
 from datetime import datetime
 
-from beanie import Document, PydanticObjectId, Replace, after_event
-from pydantic import ConfigDict, Field
+from tortoise import Model, fields
 
 
-class TimeStampMixin(Document):
-    model_config = ConfigDict(from_attributes=True)
+class TimeStampMixin(Model):
+    id: int = fields.BigIntField(pk=True)
+    created_at: datetime = fields.DatetimeField(auto_now_add=True)
+    updated_at: datetime | None = fields.DatetimeField(auto_now=True)
 
-    id: PydanticObjectId | None = Field(default=None, description="MongoDB document ObjectID")  # type: ignore
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime | None = None
-
-    @after_event(Replace)
-    def updated_at_on_save(self):
-        self.updated_at = datetime.utcnow()
+    class Meta:
+        abstract = True

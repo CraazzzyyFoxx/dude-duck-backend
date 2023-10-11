@@ -10,14 +10,14 @@ CACHE: dict[int, models.Settings] = {}
 async def get() -> models.Settings:
     if CACHE.get(0):
         return CACHE[0]
-    settings: models.Settings = await models.Settings.find_one({})
-    CACHE[0] = settings
-    return settings
+    settings = await models.Settings.first()
+    CACHE[0] = settings  # noqa
+    return settings  # noqa
 
 
 async def create() -> models.Settings:
     if await get() is None:
-        settings = models.Settings()
+        settings = models.Settings(api_layer_currency=[])
         await settings.create()
     CACHE.clear()
     return await get()
@@ -25,14 +25,14 @@ async def create() -> models.Settings:
 
 async def update(user_order_in: models.SettingsUpdate) -> models.Settings:
     settings = await get()
-    settings_data = settings.model_dump()
-    update_data = user_order_in.model_dump(exclude_none=True)
+    settings_data = dict(settings)
+    update_data = dict(user_order_in)
 
     for field in settings_data:
-        if field in update_data:
+        if field in update_data and update_data[field] is not None:
             setattr(settings, field, update_data[field])
 
-    await settings.save_changes()
+    await settings.save()
     CACHE.clear()
     return settings
 
@@ -50,7 +50,11 @@ async def add_token(token: str) -> models.Settings:
     model = models.ApiLayerCurrencyToken(token=token, uses=1)
     settings.api_layer_currency.append(model)
     CACHE.clear()
-    await settings.save_changes()
+    await settings.save(
+        update_fields={
+            "api_layer_currency",
+        }
+    )
     return settings
 
 
@@ -68,5 +72,9 @@ async def remove_token(token: str) -> models.Settings:
 
     settings.api_layer_currency.remove(x)
     CACHE.clear()
-    await settings.save_changes()
+    await settings.save(
+        update_fields={
+            "api_layer_currency",
+        }
+    )
     return settings

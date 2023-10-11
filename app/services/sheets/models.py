@@ -1,7 +1,8 @@
 import typing
 
-from beanie import Indexed, PydanticObjectId
+import orjson
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from tortoise import fields
 
 from app.core.db import TimeStampMixin
 from app.services.orders import models as order_models
@@ -49,25 +50,29 @@ class OrderSheetParseItem(BaseModel):
         return v
 
 
+def decode(data: str | bytes) -> list[OrderSheetParseItem]:
+    return [OrderSheetParseItem.model_validate(d) for d in orjson.loads(data)]
+
+
+def encode(data: list[OrderSheetParseItem]) -> str:
+    return str(orjson.dumps([d.model_dump() for d in data]))
+
+
 class OrderSheetParse(TimeStampMixin):
-    spreadsheet: Indexed(str)
-    sheet_id: int
-    start: int = Field(default=2, gt=1)
-    items: list[OrderSheetParseItem]
+    spreadsheet: str = fields.TextField()  # noqa
+    sheet_id: int = fields.BigIntField()  # noqa
+    start: int = fields.IntField(default=2)  # noqa
+    items: list[OrderSheetParseItem] = fields.JSONField(decoder=decode)  # noqa
+    is_user: bool = fields.BooleanField(default=False)  # noqa
 
-    is_user: bool
-
-    class Settings:
-        name = "order_sheet_parse"
-        use_state_management = True
-        state_management_save_previous = True
-        validate_on_save = True
+    class Meta:
+        unique_together = ("spreadsheet", "sheet_id")
 
 
 class OrderSheetParseRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     spreadsheet: str
     sheet_id: int
     start: int

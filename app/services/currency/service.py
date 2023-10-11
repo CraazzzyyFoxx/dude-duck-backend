@@ -1,7 +1,6 @@
 import datetime
 
 import httpx
-from beanie import PydanticObjectId
 
 from app.core import errors
 from app.services.auth import service as auth_service
@@ -17,8 +16,8 @@ client = httpx.AsyncClient(
 )
 
 
-async def get(currency_id: PydanticObjectId) -> models.Currency | None:
-    return await models.Currency.find_one({"_id": currency_id})
+async def get(currency_id: int) -> models.Currency | None:
+    return await models.Currency.filter(id=currency_id).first()
 
 
 async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
@@ -26,12 +25,12 @@ async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
     settings = await settings_service.get()
     if settings.collect_currency_wow_by_sheets:
         creds = await auth_service.get_first_superuser()
-        if creds.google:
+        if creds.google is not None:
             cell = sheets_service.get_cell(
                 creds.google,
-                settings.currency_wow_spreadsheet,
-                settings.currency_wow_sheet_id,
-                settings.currency_wow_cell,
+                settings.currency_wow_spreadsheet,  # type: ignore
+                settings.currency_wow_sheet_id,  # type: ignore
+                settings.currency_wow_cell,  # type: ignore
             )
             quotes["WOW"] = float(cell)
 
@@ -42,11 +41,10 @@ async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
             )
     else:
         quotes["WOW"] = (await settings_service.get()).currency_wow
-    currency = models.Currency(date=currency_in.date, timestamp=currency_in.timestamp, quotes=quotes)
-    return await currency.create()
+    return await models.Currency.create(date=currency_in.date, timestamp=currency_in.timestamp, quotes=quotes)
 
 
-async def delete(currency_id: PydanticObjectId) -> None:
+async def delete(currency_id: int) -> None:
     currency = await get(currency_id)
     if currency is not None:
         await currency.delete()
@@ -54,11 +52,11 @@ async def delete(currency_id: PydanticObjectId) -> None:
 
 async def get_by_date(date: datetime.datetime) -> models.Currency | None:
     date = datetime.datetime(year=date.year, month=date.month, day=date.day)
-    return await models.Currency.find_one({"date": date})
+    return await models.Currency.filter(date=date).first()
 
 
 async def get_all() -> list[models.Currency]:
-    return await models.Currency.find({}).to_list()
+    return await models.Currency.all()
 
 
 def normalize_date(date: datetime.datetime) -> str:
@@ -80,14 +78,19 @@ async def used_token(token: settings_models.ApiLayerCurrencyToken) -> None:
         if t.token == token.token:
             t.last_use = datetime.datetime.utcnow()
             t.uses += 1
-    await settings.save_changes()
+    await settings.save()
 
 
 async def get_currency_historical(date: datetime.datetime) -> models.CurrencyApiLayer:
     date_str = normalize_date(date)
     token = await get_token()
     headers = {"apikey": token.token}
-    response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
+    try:
+        response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
+    except Exception as e:
+        raise errors.DudeDuckHTTPException(
+            status_code=500, detail=[errors.DudeDuckException(msg="Api Layer is not responding", code="internal_error")]
+        ) from e
     if response.status_code == 429:
         raise RuntimeError("API Layer currency request limit exceeded.")
     json = response.json()

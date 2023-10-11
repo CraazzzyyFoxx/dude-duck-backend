@@ -36,7 +36,7 @@ def decode_jwt(
 
 
 def verify_and_update_password(plain_password: str, hashed_password: str) -> tuple[bool, str]:
-    return password_context.verify_and_update(plain_password, hashed_password)
+    return password_context.verify_and_update(plain_password, hashed_password)  # type: ignore
 
 
 def hash_password(password: str) -> str:

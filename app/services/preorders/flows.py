@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 
-from beanie import PydanticObjectId, init_beanie
+import pytz
 from loguru import logger
 from starlette import status
+from tortoise import Tortoise
 
-from app import db
 from app.core import config, errors
 from app.services.auth import service as auth_service
 from app.services.currency import flows as currency_flows
+from app.services.orders import service as order_service
 from app.services.settings import service as settings_service
 from app.services.sheets import service as sheets_service
 from app.services.telegram.message import service as message_service
@@ -15,7 +16,7 @@ from app.services.telegram.message import service as message_service
 from . import models, service
 
 
-async def get(order_id: PydanticObjectId) -> models.PreOrder:
+async def get(order_id: int) -> models.PreOrder:
     order = await service.get(order_id)
     if not order:
         raise errors.DudeDuckHTTPException(
@@ -40,7 +41,7 @@ async def create(order_in: models.PreOrderCreate) -> models.PreOrder:
     return order
 
 
-async def delete(order_id: PydanticObjectId) -> None:
+async def delete(order_id: int) -> None:
     order = await get(order_id)
     if order:
         await service.delete(order.id)
@@ -60,6 +61,7 @@ async def format_preorder_system(order: models.PreOrder):
     else:
         price = models.PreOrderPriceSystem(price_dollar=order.price.price_dollar)
     data["price"] = price
+    data["info"] = dict(order.info)
     return models.PreOrderReadSystem.model_validate(data)
 
 
@@ -75,11 +77,12 @@ async def format_preorder_perms(order: models.PreOrder):
     else:
         price = models.PreOrderPriceUser()
     data["price"] = price
+    data["info"] = dict(order.info)
     return models.PreOrderReadUser.model_validate(data)
 
 
 async def manage_preorders():
-    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
+    await Tortoise.init(config=config.tortoise)
     superuser = await auth_service.get_first_superuser()
     settings = await settings_service.get()
     if superuser.google is None:
@@ -88,11 +91,13 @@ async def manage_preorders():
 
     preorders = await service.get_all()
     for preorder in preorders:
-        if preorder.created_at < datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive):
+        order = await order_service.get_order_id(preorder.order_id)
+        delta = (datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive)).astimezone(pytz.UTC)
+        if preorder.created_at < delta:
             await preorder.delete()
             payload = await message_service.order_delete(await format_preorder_system(preorder), pre=True)
             if payload.deleted:
                 message_service.send_deleted_order_notify(preorder.order_id, payload)
-            if preorder.has_response is False:
+            if preorder.has_response is False and order is None:
                 parser = await sheets_service.get_by_spreadsheet_sheet_read(preorder.spreadsheet, preorder.sheet_id)
                 sheets_service.clear_row(superuser.google, parser, preorder.row_id)

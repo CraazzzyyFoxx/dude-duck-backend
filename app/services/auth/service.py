@@ -3,10 +3,10 @@ import typing
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from beanie import PydanticObjectId
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 from starlette import status
+from tortoise.expressions import Q
 
 from app.core import config, enums, errors
 from app.services.sheets import service as sheets_service
@@ -16,35 +16,35 @@ from app.services.telegram.message import service as message_service
 from . import models, utils
 
 
-async def get(user_id: PydanticObjectId) -> models.User | None:
-    user = await models.User.find_one({"_id": user_id})
+async def get(user_id: int) -> models.User | None:
+    user = await models.User.filter(id=user_id).first()
     return user
 
 
 async def get_by_email(user_email: str) -> models.User | None:
-    user = await models.User.find_one({"email": user_email})
+    user = await models.User.filter(email=user_email).first()
     return user
 
 
 async def get_by_name(username: str) -> models.User | None:
-    user = await models.User.find_one({"name": username})
+    user = await models.User.filter(name=username).first()
     return user
 
 
 async def get_all() -> list[models.User]:
-    return await models.User.find({}).to_list()
+    return await models.User.filter().all()
 
 
 async def get_first_superuser() -> models.User:
-    return await get_by_email(config.app.super_user_email)
+    return await get_by_email(config.app.super_user_email)  # type: ignore
 
 
 async def get_superusers_with_google() -> list[models.User]:
-    return await models.User.find({"is_superuser": True, "google": {"$ne": None}}).to_list()
+    return await models.User.filter(Q(is_superuser=True) and ~Q(name=None))
 
 
-async def get_by_ids(users_id: typing.Iterable[PydanticObjectId]) -> list[models.User]:
-    return await models.User.find({"_id": {"$in": users_id}}).to_list()
+async def get_by_ids(users_id: typing.Iterable[int]) -> list[models.User]:
+    return await models.User.filter(id__in=users_id)
 
 
 async def create(user_create: models.UserCreate, safe: bool = False) -> models.User:
@@ -66,10 +66,10 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
         else user_create.model_dump(exclude={"id"}, exclude_unset=True)
     )
     email: str = user_dict.pop("email")
-    password: str = user_dict.pop("password")
+    password = user_dict.pop("password")
     user_dict["hashed_password"] = utils.hash_password(password)
     user_dict["email"] = email.lower()
-    created_user = await models.User(**user_dict).create()
+    created_user = await models.User.create(**user_dict)
     parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
     if creds.google is not None:
@@ -82,31 +82,28 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
 
 
 async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool = False, exclude=True) -> models.User:
-    update_data = (
-        user_in.model_dump(
-            exclude={"is_superuser", "is_active", "is_verified", "oauth_accounts", "password"},
-            exclude_unset=True,
-            mode="json",
-        )
-        if safe
-        else user_in.model_dump(exclude={"password"}, mode="json", exclude_unset=exclude)
-    )
+    exclude_fields = {
+        "password",
+    }
+    if safe:
+        exclude_fields.update({"is_superuser", "is_active", "is_verified"})
+    update_data = user_in.model_dump(exclude=exclude_fields, exclude_unset=exclude, exclude_defaults=True, mode="json")
 
-    user_data = dict(user)
-    for field in user_data:
-        if field in update_data:
-            setattr(user, field, update_data[field])
+    if update_data.get("phone") is not None:
+        user.phone = update_data["phone"].replace("tel:", "")
+        update_data.pop("phone")
 
     if user_in.password:
         user.hashed_password = utils.hash_password(user_in.password)
-    await user.save_changes()
+    user = user.update_from_dict(update_data)
+    await user.save()
     parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
     if creds.google is not None:
         tasks_service.create_or_update_booster.delay(
             creds.google.model_dump_json(),
             parser.model_dump_json(),
-            str(user.id),
+            user.id,
             models.UserRead.model_validate(user).model_dump(),
         )
     return user
@@ -116,11 +113,12 @@ async def delete(user: models.User) -> None:
     await user.delete()
     parser = await sheets_service.get_default_booster_read()
     creds = await get_first_superuser()
-    tasks_service.delete_booster.delay(
-        creds.google.model_dump_json(),
-        parser.model_dump_json(),
-        str(user.id),
-    )
+    if creds.google is not None and parser is not None:
+        tasks_service.delete_booster.delay(
+            creds.google.model_dump_json(),
+            parser.model_dump_json(),
+            str(user.id),
+        )
 
 
 async def request_verify(user: models.User) -> None:
@@ -135,7 +133,7 @@ async def request_verify(user: models.User) -> None:
         )
 
     token_data = {
-        "sub": str(user.id),
+        "sub": user.id,
         "email": user.email,
         "aud": config.app.verification_token_audience,
     }
@@ -208,7 +206,7 @@ async def forgot_password(user: models.User) -> None:
         return None
 
     token_data = {
-        "sub": str(user.id),
+        "sub": user.id,
         "password_fingerprint": utils.hash_password(user.hashed_password),
         "aud": config.app.reset_password_token_audience,
     }
@@ -237,7 +235,7 @@ async def reset_password(token: str, password: str) -> models.User:
             ],
         ) from None
     logger.warning(f"Try reset password for user {user_id}")
-    user = await get(PydanticObjectId(user_id))
+    user = await get(user_id)
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -279,21 +277,22 @@ async def read_token(token: str | None) -> models.User | None:
         return None
 
     max_age = datetime.now(timezone.utc) - timedelta(seconds=24 * 3600)
-    access_token = await models.AccessToken.find_one({"token": token, "created_at": {"$gte": max_age}})
+    access_token = await (
+        models.AccessToken.filter(token=token, created_at__gte=max_age).prefetch_related("user").first()
+    )
     if access_token is None:
         return None
-    return await get(access_token.user_id.ref.id)
+    return access_token.user
 
 
 async def write_token(user: models.User) -> str:
-    access_token = models.AccessToken(user_id=user, token=secrets.token_urlsafe())
-    access_token = await access_token.create()
+    access_token = await models.AccessToken.create(user_id=user.id, token=secrets.token_urlsafe())
     return access_token.token
 
 
 async def destroy_token(token: str) -> None:
     max_age = datetime.now(timezone.utc) - timedelta(seconds=24 * 3600)
-    access_token = await models.AccessToken.find_one({"token": token, "created_at": max_age})
+    access_token = await models.AccessToken.filter(token=token, created_at__gte=max_age).first()
     if access_token is not None:
         await access_token.delete()
 
@@ -301,22 +300,21 @@ async def destroy_token(token: str) -> None:
 async def read_token_api(token: str | None) -> models.User | None:
     if token is None:
         return None
-    access_token = await models.AccessTokenAPI.find_one({"token": token})
+    access_token = await models.AccessTokenAPI.filter(token=token).prefetch_related("user").first()
     if access_token is None:
         return None
-    return await get(access_token.user_id.ref.id)
+    return access_token.user
 
 
 async def write_token_api(user: models.User) -> str:
-    access_token = await models.AccessTokenAPI.find_one({"user_id": user.id})
+    access_token = await models.AccessTokenAPI.filter(user_id=user.id).first()
     if access_token:
         await access_token.delete()
-    access_token = models.AccessTokenAPI(user_id=user, token=secrets.token_urlsafe())
-    access_token = await access_token.create()
+    access_token = await models.AccessTokenAPI.create(user_id=user.id, token=secrets.token_urlsafe())
     return access_token.token
 
 
 async def destroy_token_api(token: str) -> None:
-    access_token = await models.AccessToken.find_one({"token": token})
+    access_token = await models.AccessTokenAPI.filter(token=token).first()
     if access_token is not None:
         await access_token.delete()

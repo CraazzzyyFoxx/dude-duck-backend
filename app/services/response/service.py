@@ -1,52 +1,69 @@
 from datetime import datetime
 
-from beanie import PydanticObjectId
-
 from . import models
 
 
-async def get(response_id: PydanticObjectId) -> models.Response | None:
-    return await models.Response.find_one({"_id": response_id})
+async def get(response_id: int, pre: bool = False) -> models.BaseResponse | None:
+    model = models.Response if not pre else models.PreResponse
+    return await model.filter(id=response_id).first()
 
 
-async def create(response_in: models.ResponseCreate) -> models.Response:
-    response = models.Response(order_id=response_in.order_id, user_id=response_in.user_id, extra=response_in.extra)
+async def create(response_in: models.ResponseCreate, pre: bool = False) -> models.BaseResponse:
+    model = models.Response if not pre else models.PreResponse
+    response = model(**response_in.model_dump())
     response.created_at = datetime.utcnow()
-    return await response.create()
+    await response.save()
+    return response
 
 
-async def delete(response_id: PydanticObjectId) -> None:
-    user_order = await models.Response.get(response_id)
-    if user_order:
-        await user_order.delete()
+async def delete(response_id: int, pre: bool = False) -> None:
+    response = await get(response_id, pre=pre)
+    if response:
+        await response.delete()
 
 
-async def get_by_order_id(order_id: PydanticObjectId) -> list[models.Response]:
-    return await models.Response.find({"order_id": order_id}).to_list()
+async def get_by_order_id(order_id: int, prefetch: bool = False, pre: bool = False) -> list[models.BaseResponse]:
+    model = models.Response if not pre else models.PreResponse
+    query = model.filter(order_id=order_id)
+    if prefetch:
+        query = query.prefetch_related("user")
+    return await query
 
 
-async def get_by_user_id(user_id: PydanticObjectId) -> list[models.Response]:
-    return await models.Response.find({"user_id": user_id}).to_list()
+async def get_by_user_id(user_id: int, pre: bool = False) -> list[models.BaseResponse]:
+    model = models.Response if not pre else models.PreResponse
+    return await model.filter(user_id=user_id)
 
 
-async def get_by_order_id_user_id(order_id: PydanticObjectId, user_id: PydanticObjectId) -> models.Response | None:
-    return await models.Response.find_one({"order_id": order_id, "user_id": user_id})
+async def get_by_order_id_user_id(order_id: int, user_id: int, pre: bool = False) -> models.BaseResponse | None:
+    model = models.Response if not pre else models.PreResponse
+    return await model.filter(order_id=order_id, user_id=user_id).first()
 
 
-async def get_all() -> list[models.Response]:
-    return await models.Response.find({}, fetch_links=True).to_list()
+async def get_all(pre: bool = False) -> list[models.BaseResponse]:
+    model = models.Response if not pre else models.PreResponse
+    return await model.filter().all()
 
 
-async def update(response: models.Response, response_in: models.ResponseUpdate) -> models.Response:
-    report_data = response.model_dump()
-    update_data = response_in.model_dump(exclude_none=True)
+async def update(
+    response: models.BaseResponse,
+    response_in: models.ResponseUpdate,
+) -> models.BaseResponse:
+    update_data = response_in.model_dump()
+    response = response.update_from_dict(update_data)
+    if "approved" in update_data:
+        response.approved_at = datetime.utcnow()
+    await response.save()
+    return response
 
-    for field in report_data:
-        if field in update_data:
-            if field == "approved":
-                if update_data[field] is True:
-                    response.approved_at = datetime.utcnow()
-            setattr(response, field, update_data[field])
 
-    await response.save_changes()
+async def patch(
+    response: models.BaseResponse,
+    response_in: models.ResponseUpdate,
+) -> models.BaseResponse:
+    update_data = response_in.model_dump(exclude_none=True, exclude_defaults=True)
+    response = response.update_from_dict(update_data)
+    if "approved" in update_data:
+        response.approved_at = datetime.utcnow()
+    await response.save(update_fields=update_data.keys())
     return response

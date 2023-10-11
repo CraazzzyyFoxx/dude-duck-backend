@@ -7,3 +7,7 @@ COPY . .
 RUN poetry config virtualenvs.create false
 RUN poetry install --only main --no-cache
 
+CMD ["poetry", "shell"]
+CMD ["aerich", "upgrade"]
+CMD ["poetry", "exit"]
+

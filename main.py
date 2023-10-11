@@ -1,13 +1,13 @@
 import os
 from contextlib import asynccontextmanager
 
-from beanie import init_beanie
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.staticfiles import StaticFiles
+from tortoise import Tortoise, connections
 
-from app import api, db
+from app import api
 from app.core import config
 from app.core.extensions import configure_extensions
 from app.core.logging import logger
@@ -27,8 +27,9 @@ configure_extensions()
 
 
 @asynccontextmanager
-async def lifespan(application: FastAPI):  # noqa
-    await init_beanie(connection_string=config.app.mongo_dsn, document_models=db.get_beanie_models())
+async def lifespan(_: FastAPI):
+    await Tortoise.init(config=config.tortoise)
+    await Tortoise.generate_schemas()
     await settings_service.create()
 
     if not await auth_service.get_first_superuser():
@@ -47,6 +48,8 @@ async def lifespan(application: FastAPI):  # noqa
     await telegram_service.TelegramService.init()
     logger.info("Application... Online!")
     yield
+    await telegram_service.TelegramService.shutdown()
+    await connections.close_all()
 
 
 app = FastAPI(openapi_url="", lifespan=lifespan, default_response_class=ORJSONResponse, debug=config.app.debug)
@@ -62,7 +65,6 @@ api_app = FastAPI(
     default_response_class=ORJSONResponse,
 )
 api_app.add_middleware(ExceptionMiddleware)
-api_app.add_middleware(SentryAsgiMiddleware)
 api_app.include_router(api.router)
 
 if config.app.cors_origins:
@@ -72,7 +74,7 @@ if config.app.cors_origins:
         CORSMiddleware,
         allow_origins=config.app.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "DELETE", "PATCH"],
+        allow_methods=["GET", "POST", "DELETE", "PATCH", "UPDATE"],
         allow_headers=["*"],
     )
 

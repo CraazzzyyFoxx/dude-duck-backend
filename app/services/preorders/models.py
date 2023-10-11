@@ -1,9 +1,7 @@
 import datetime
 
-from beanie import PydanticObjectId
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic_core import Url
-from pymongo import IndexModel
+from tortoise import fields
 
 from app.core.db import TimeStampMixin
 from app.services.orders import models as order_models
@@ -29,56 +27,66 @@ class PreOrderCreate(sheets_models.SheetEntity):
     date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
     order_id: str
 
-    info: order_models.OrderInfo
+    info: order_models.OrderInfoRead
     price: PreOrderPriceUser
-    status: order_models.OrderStatus  # TODO: Убрать, нужен для обратной совместимости с обычным заказом
 
 
 class PreOrderUpdate(BaseModel):
-    info: order_models.OrderInfo | None = None
+    info: order_models.OrderInfoRead | None = None
     price: PreOrderPriceUser | None = None
     has_response: bool | None = None
 
 
-class PreOrder(sheets_models.SheetEntity, TimeStampMixin):
-    order_id: str
-    date: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+class PreOrder(TimeStampMixin):
+    order_id: str = fields.CharField(max_length=10, unique=True)
+    spreadsheet: str = fields.TextField()
+    sheet_id: int = fields.BigIntField()
+    row_id: int = fields.BigIntField()
+    date: datetime.datetime = fields.DatetimeField()
 
-    info: order_models.OrderInfo
-    price: order_models.OrderPriceNone
-    status: order_models.OrderStatus  # TODO: Убрать, нужен для обратной совместимости с обычным заказом
+    info: fields.ReverseRelation["PreOrderInfo"] | "PreOrderInfo"
+    price: fields.ReverseRelation["PreOrderPrice"] | "PreOrderPrice"
 
-    has_response: bool = Field(default=False)
+    has_response: bool = fields.BooleanField(default=False)
 
-    class Settings:
-        name = "preorder"
-        use_state_management = True
-        validate_on_save = True
-        bson_encoders = {
-            Url: lambda x: str(x),
-        }
-        indexes = [IndexModel("order_id", unique=True)]
 
-    def __hash__(self):
-        return hash(str(self.id))
+class PreOrderInfo(TimeStampMixin):
+    order: fields.ForeignKeyRelation[PreOrder] = fields.OneToOneField("main.PreOrder", related_name="info")
+    boost_type: str = fields.CharField(max_length=10)
+    region_fraction: str | None = fields.TextField(null=True)
+    server: str | None = fields.TextField(null=True)
+    category: str | None = fields.TextField(null=True)
+    character_class: str | None = fields.TextField(null=True)
+    platform: str | None = fields.CharField(max_length=20, null=True)
+    game: str = fields.TextField()
+    purchase: str = fields.TextField()
+    comment: str | None = fields.TextField(null=True)
+    eta: str | None = fields.TextField(null=True)
+
+
+class PreOrderPrice(TimeStampMixin):
+    order: fields.ForeignKeyRelation[PreOrder] = fields.OneToOneField("main.PreOrder", related_name="price")
+    price_dollar: float = fields.FloatField(null=True)
+    price_booster_dollar: float = fields.FloatField(null=True)
+    price_booster_gold: float | None = fields.FloatField(null=True)
 
 
 class PreOrderReadSystem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     order_id: str
     date: datetime.datetime
 
-    info: order_models.OrderInfo
+    info: order_models.OrderInfoRead
     price: PreOrderPriceSystem
 
 
 class PreOrderReadUser(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: PydanticObjectId
+    id: int
     order_id: str
 
-    info: order_models.OrderInfo
+    info: order_models.OrderInfoRead
     price: PreOrderPriceUser

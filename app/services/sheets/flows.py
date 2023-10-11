@@ -1,15 +1,13 @@
-from beanie import PydanticObjectId
 from pydantic import ValidationError
 from starlette import status
 
 from app.core import errors
 from app.services.auth import models as auth_models
-from app.services.orders import models as orders_models
 
 from . import models, service
 
 
-async def get(parser_id: PydanticObjectId):
+async def get(parser_id: int):
     parser = await service.get(parser_id)
     if not parser:
         raise errors.DudeDuckHTTPException(
@@ -71,6 +69,6 @@ async def get_order_from_sheets(data: models.SheetEntity, user: auth_models.User
         )
     except ValidationError as error:
         raise errors.GoogleSheetsParserError.http_exception(
-            orders_models.Order, data.spreadsheet, data.sheet_id, data.row_id, error
+            models.OrderReadSheets, data.spreadsheet, data.sheet_id, data.row_id, error
         ) from error
     return model

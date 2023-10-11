@@ -4,7 +4,6 @@ import typing
 from typing import Callable
 
 import gspread
-from beanie import PydanticObjectId
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
@@ -71,39 +70,39 @@ def get_type(type_name: str, null: bool):
     return type_map[type_name]
 
 
-async def get(parser_id: PydanticObjectId) -> models.OrderSheetParse | None:
-    return await models.OrderSheetParse.find_one({"_id": parser_id})
+async def get(parser_id: int) -> models.OrderSheetParse | None:
+    return await models.OrderSheetParse.filter(id=parser_id).first()
 
 
-async def create(parser_in: models.OrderSheetParseCreate) -> models.OrderSheetParse:
-    parser = models.OrderSheetParse(**parser_in.model_dump())
-    return await parser.create()
+async def create(parser_in: models.OrderSheetParseCreate):
+    return await models.OrderSheetParse.create(**parser_in.model_dump())
 
 
-async def delete(parser_id: PydanticObjectId) -> None:
-    user_order = await models.OrderSheetParse.get(parser_id)
-    await user_order.delete()
+async def delete(parser_id: int):
+    parser = await get(parser_id)
+    if parser is not None:
+        await parser.delete()
     if _CACHE.get(parser_id, None):
         _CACHE.pop(parser_id)
 
 
 async def get_by_spreadsheet(spreadsheet: str) -> list[models.OrderSheetParse]:
-    return await models.OrderSheetParse.find({"spreadsheet": spreadsheet}).to_list()
+    return await models.OrderSheetParse.filter(spreadsheet=spreadsheet)
 
 
 async def get_by_spreadsheet_sheet(spreadsheet: str, sheet: int) -> models.OrderSheetParse | None:
-    return await models.OrderSheetParse.find_one({"spreadsheet": spreadsheet, "sheet_id": sheet})
+    return await models.OrderSheetParse.filter(spreadsheet=spreadsheet, sheet_id=sheet).first()
 
 
 async def get_by_spreadsheet_sheet_read(spreadsheet: str, sheet: int) -> models.OrderSheetParseRead | None:
     parser = await get_by_spreadsheet_sheet(spreadsheet, sheet)
     if parser:
-        return models.OrderSheetParseRead.model_validate(parser)
+        return models.OrderSheetParseRead.model_validate(parser, from_attributes=True)
     return None
 
 
 async def get_default_booster() -> models.OrderSheetParse | None:
-    return await models.OrderSheetParse.find_one({"is_user": True})
+    return await models.OrderSheetParse.filter(is_user=True).first()
 
 
 async def get_default_booster_read() -> models.OrderSheetParseRead:
@@ -114,7 +113,7 @@ async def get_default_booster_read() -> models.OrderSheetParseRead:
 
 
 async def get_all_not_default_user() -> list[models.OrderSheetParse]:
-    return await models.OrderSheetParse.find({"is_user": False}).to_list()
+    return await models.OrderSheetParse.filter(is_user=False)
 
 
 async def get_all_not_default_user_read() -> list[models.OrderSheetParseRead]:
@@ -123,18 +122,18 @@ async def get_all_not_default_user_read() -> list[models.OrderSheetParseRead]:
 
 
 async def get_all() -> list[models.OrderSheetParse]:
-    return await models.OrderSheetParse.find({}).to_list()
+    return await models.OrderSheetParse.all()
 
 
 async def update(parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate) -> models.OrderSheetParse:
-    parser_data = parser.model_dump()
+    parser_data = dict(parser)
     update_data = parser_in.model_dump(exclude_none=True)
 
     for field in parser_data:
         if field in update_data:
             setattr(parser, field, update_data[field])
 
-    await parser.save_changes()
+    await parser.save()
     if _CACHE.get(parser.id, None):
         _CACHE.pop(parser.id)
     return parser
@@ -182,7 +181,7 @@ def generate_model(parser: models.OrderSheetParseRead):
 
 
 def parse_row(
-    parser: models.OrderSheetParse | models.OrderSheetParseRead,
+    parser: models.OrderSheetParseRead,
     model: typing.Type[models.SheetEntity],
     row_id: int,
     row: list[typing.Any],
@@ -198,6 +197,8 @@ def parse_row(
         value = row[getter.row]
         if getter.type == "float" and isinstance(value, str):
             value = value.replace(",", ".")
+        if getter.type == "str" and isinstance(value, int):
+            value = str(value)
         data_for_valid[getter.name] = value if value not in ["", " "] else None
     try:
         valid_model = generate_model(parser)(**data_for_valid)
@@ -228,13 +229,12 @@ def parse_row(
                     data[key][getter.name] = validated_data[getter.name]
                     break
     try:
-        return model.model_validate(data)
+        return model(**data)
     except ValidationError as error:
         if is_raise:
             logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
             logger.error(errors.APIValidationError.from_pydantic(error))
             raise error
-            # return
         else:
             return None
 
@@ -242,9 +242,6 @@ def parse_row(
 def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, typing.Any]:
     row = {}
     data = {}
-
-    if to_dict.get("_id"):
-        to_dict["id"] = to_dict.pop("_id")
 
     for key, value in to_dict.items():
         if isinstance(value, dict):
@@ -254,8 +251,9 @@ def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, 
             data[key] = value
 
     for getter in parser.items:
-        if not getter.generated and data.get(getter.name) is not None:
-            row[getter.row] = jsonable_encoder(data[getter.name])
+        if not getter.generated and getter.name in to_dict.keys():
+            to_insert = data[getter.name] if data[getter.name] is not None else ""
+            row[getter.row] = jsonable_encoder(to_insert)
     return row
 
 
@@ -265,11 +263,12 @@ def parse_all_data(
     sheet_id: int,
     rows_in: list[list[typing.Any]],
     parser_in: models.OrderSheetParseRead,
+    is_raise: bool = False,
 ) -> list[BaseModel]:
     t = time.time()
     resp: list[BaseModel] = []
     for row_id, row in enumerate(rows_in, parser_in.start):
-        data = parse_row(parser_in, model, row_id, row, is_raise=False)
+        data = parse_row(parser_in, model, row_id, row, is_raise=is_raise)
         if data:
             resp.append(data)
     logger.info(f"Parsing data from spreadsheet={spreadsheet} sheet_id={sheet_id} completed in {time.time() - t}")
@@ -280,6 +279,7 @@ def get_all_data(
     creds: auth_models.AdminGoogleToken,
     model: typing.Type[models.SheetEntity],
     parser: models.OrderSheetParseRead,
+    is_raise: bool = False,
 ) -> list[BaseModel]:
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(parser.spreadsheet)
@@ -295,7 +295,7 @@ def get_all_data(
         value_render_option=ValueRenderOption.unformatted,
         date_time_render_option=DateTimeOption.formatted_string,
     )
-    return parse_all_data(model, parser.spreadsheet, parser.sheet_id, rows, parser)
+    return parse_all_data(model, parser.spreadsheet, parser.sheet_id, rows, parser, is_raise=is_raise)
 
 
 def update_rows_data(
@@ -315,6 +315,7 @@ def update_rows_data(
 
     sheet.batch_update(
         data_range,
+        value_input_option=ValueInputOption.user_entered,
         response_value_render_option=ValueRenderOption.formatted,
         response_date_time_render_option=DateTimeOption.formatted_string,
     )
@@ -386,6 +387,9 @@ def create_row_data(
             break
         index += 1
 
+    if index < parser.start:
+        index = parser.start
+
     update_row_data(creds, parser, index, data)
     return get_row_data(model, creds, parser, index)
 
@@ -442,5 +446,5 @@ def get_cell(creds: auth_models.AdminGoogleToken, spreadsheet: str, sheet_id: in
     gc = gspread.service_account_from_dict(creds.model_dump())
     sh = gc.open(spreadsheet)
     sheet = sh.get_worksheet_by_id(sheet_id)
-    value: gspread.worksheet.ValueRange = sheet.get(cell)
-    return value[0][0]
+    value = sheet.acell(cell)
+    return value.value
