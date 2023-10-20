@@ -2,9 +2,10 @@ from typing import Annotated
 
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from app.core import errors
+from app.core import errors, config, db
 
 from . import models, service
 
@@ -12,8 +13,8 @@ oauth2_scheme = OAuth2PasswordBearer("auth/login", auto_error=False)
 bearer_scheme_api = HTTPBearer(bearerFormat="Bearer")
 
 
-async def get(user_id: int):
-    user = await service.get(user_id)
+async def get(session: AsyncSession, user_id: int):
+    user = await service.get(session, user_id)
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -22,8 +23,8 @@ async def get(user_id: int):
     return user
 
 
-async def get_booster_by_name(name: str) -> models.User:
-    user = await service.get_by_name(name)
+async def get_booster_by_name(session: AsyncSession, name: str) -> models.User:
+    user = await service.get_by_name(session, name)
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -32,8 +33,8 @@ async def get_booster_by_name(name: str) -> models.User:
     return user
 
 
-async def get_by_email(email: str):
-    user = await service.get_by_email(email)
+async def get_by_email(session: AsyncSession, email: str):
+    user = await service.get_by_email(session, email)
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -66,6 +67,7 @@ def verify_user(
 
 
 async def get_current_user(
+    session: AsyncSession,
     token: str,
     active: bool = False,
     verified: bool = False,
@@ -75,9 +77,9 @@ async def get_current_user(
     user: models.User | None = None
     if token is not None:
         if api:
-            user = await service.read_token_api(token)
+            user = await service.read_token_api(session, token)
         else:
-            user = await service.read_token(token)
+            user = await service.read_token(session, token)
     verify_user(user, active, verified, superuser)
     return user, token
 
@@ -86,9 +88,10 @@ def current_user(
     active: bool = False,
     verified: bool = False,
     superuser: bool = False,
+    session: AsyncSession = Depends(db.get_async_session)
 ):
     async def current_user_dependency(token: Annotated[str, Depends(oauth2_scheme)]):
-        user, _ = await get_current_user(token, active=active, verified=verified, superuser=superuser)
+        user, _ = await get_current_user(session, token, active=active, verified=verified, superuser=superuser)
         return user
 
     return current_user_dependency
@@ -98,10 +101,11 @@ def current_user_api(
     active: bool = False,
     verified: bool = False,
     superuser: bool = False,
+    session: AsyncSession = Depends(db.get_async_session)
 ):
     async def current_user_dependency(token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme_api)]):
         user, _ = await get_current_user(
-            token.credentials, active=active, verified=verified, superuser=superuser, api=True
+            session, token.credentials, active=active, verified=verified, superuser=superuser, api=True
         )
         return user
 
@@ -117,6 +121,7 @@ current_active_superuser_api = current_user_api(active=True, superuser=True)
 async def resolve_user(
     user_id: int | str,
     user: models.User = Depends(current_active),
+    session: AsyncSession = Depends(db.get_async_session)
 ) -> models.User:
     if user_id == "@me":
         return user
@@ -125,10 +130,27 @@ async def resolve_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[errors.DudeDuckException(msg="A user with this id does not exist.", code="not_exist")],
         )
-    user = await service.get(int(user_id))
+    user = await service.get(session, int(user_id))
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[errors.DudeDuckException(msg="A user with this id does not exist.", code="not_exist")],
         )
     return user
+
+
+async def create_first_superuser(session: AsyncSession):
+    if not await service.get_first_superuser(session):
+        await service.create(
+            session,
+            models.UserCreate(
+                email=config.app.super_user_email,
+                password=config.app.super_user_password,
+                name=config.app.super_user_username,
+                telegram="None",
+                is_superuser=True,
+                is_active=True,
+                is_verified=True,
+                discord="@system",
+            )
+        )

@@ -34,12 +34,14 @@ TelegramService = TelegramServiceMeta()
 
 async def request(
     endpoint: str, method: str, data: dict | BaseModel | None = None, is_raise: bool = False
-) -> httpx.Response:
-    if config.app.telegram_integration is False and is_raise:
-        raise errors.DudeDuckHTTPException(
-            status_code=500,
-            detail=[errors.DudeDuckException(msg="Telegram Bot integration disabled", code="disabled")],
-        ) from None
+) -> httpx.Response | None:
+    if config.app.telegram_integration is False:
+        if is_raise:
+            raise errors.DudeDuckHTTPException(
+                status_code=500,
+                detail=[errors.DudeDuckException(msg="Telegram Bot integration disabled", code="disabled")],
+            ) from None
+        return
 
     try:
         response = await TelegramService.client.request(

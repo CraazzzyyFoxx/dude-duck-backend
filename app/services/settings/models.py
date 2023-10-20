@@ -48,14 +48,14 @@ class Settings(TimeStampMixin):
     currencies: list[AvailableCurrency] = fields.JSONField(
         default=default_currencies, decoder=decode_currencies, encoder=encode_currencies
     )
-    preorder_time_alive: int = fields.IntField(default=60)  # noqa
-    accounting_fee: float = fields.FloatField(default=0.95)  # noqa
+    preorder_time_alive: int = fields.IntField(default=60)
+    accounting_fee: float = fields.FloatField(default=0.95)
 
     currency_wow: float = fields.FloatField(default=0.031)
-    collect_currency_wow_by_sheets: bool = fields.BooleanField(default=False)  # noqa
-    currency_wow_spreadsheet: str | None = fields.TextField(null=True)  # noqa
-    currency_wow_sheet_id: int | None = fields.BigIntField(null=True)  # noqa
-    currency_wow_cell: str | None = fields.TextField(null=True)  # noqa
+    collect_currency_wow_by_sheets: bool = fields.BooleanField(default=False)
+    currency_wow_spreadsheet: str | None = fields.TextField(null=True)
+    currency_wow_sheet_id: int | None = fields.BigIntField(null=True)
+    currency_wow_cell: str | None = fields.TextField(null=True)
 
     def get_precision(self, currency: str) -> int:
         for cur in self.currencies:

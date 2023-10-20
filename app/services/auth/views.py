@@ -8,14 +8,15 @@ from starlette import status
 from app.core import enums, errors
 from app.services.telegram.message import service as message_service
 
+from app.core.db import get_async_session
 from . import flows, models, service
 
 router = APIRouter(prefix="/auth", tags=[enums.RouteTag.AUTH])
 
 
 @router.post("/login")
-async def login(credentials: OAuth2PasswordRequestForm = Depends()):
-    user = await service.authenticate(credentials)
+async def login(credentials: OAuth2PasswordRequestForm = Depends(), session=Depends(get_async_session)):
+    user = await service.authenticate(session, credentials)
     if user is None:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -25,7 +26,7 @@ async def login(credentials: OAuth2PasswordRequestForm = Depends()):
                 )
             ],
         )
-    token = await service.write_token(user)
+    token = await service.write_token(session, user)
     message_service.send_logged_notify(models.UserRead.model_validate(user))
     return ORJSONResponse({"access_token": token, "token_type": "bearer"})
 
@@ -37,8 +38,8 @@ async def login(credentials: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/register", response_model=models.UserRead, status_code=status.HTTP_201_CREATED)
-async def register(user_create: models.UserCreate):
-    created_user = await service.create(user_create, safe=True)
+async def register(user_create: models.UserCreate, session=Depends(get_async_session)):
+    created_user = await service.create(session, user_create, safe=True)
     logger.info(f"User {created_user.id} has registered.")
     user = models.UserRead.model_validate(created_user)
     message_service.send_registered_notify(user)
@@ -46,11 +47,9 @@ async def register(user_create: models.UserCreate):
 
 
 @router.post("/request-verify-token", status_code=status.HTTP_202_ACCEPTED)
-async def request_verify_token(
-    email: EmailStr = Body(..., embed=True),
-):
+async def request_verify_token(email: EmailStr = Body(..., embed=True), session=Depends(get_async_session)):
     try:
-        user = await flows.get_by_email(email)
+        user = await flows.get_by_email(session, email)
         await service.request_verify(user)
     except errors.DudeDuckHTTPException:
         pass
@@ -58,17 +57,15 @@ async def request_verify_token(
 
 
 @router.post("/verify", response_model=models.UserRead)
-async def verify(
-    token: str = Body(..., embed=True),
-):
-    user = await service.verify(token)
+async def verify(token: str = Body(..., embed=True), session=Depends(get_async_session)):
+    user = await service.verify(session, token)
     return models.UserRead.model_validate(user, from_attributes=True)
 
 
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
-async def forgot_password(email: EmailStr = Body(..., embed=True)):
+async def forgot_password(email: EmailStr = Body(..., embed=True), session=Depends(get_async_session)):
     try:
-        user = await flows.get_by_email(email)
+        user = await flows.get_by_email(session, email)
         await service.forgot_password(user)
     except errors.DudeDuckHTTPException:
         pass
@@ -76,5 +73,5 @@ async def forgot_password(email: EmailStr = Body(..., embed=True)):
 
 
 @router.post("/reset-password")
-async def reset_password(token: str = Body(...), password: str = Body(...)):
-    await service.reset_password(token, password)
+async def reset_password(token: str = Body(...), password: str = Body(...), session=Depends(get_async_session)):
+    await service.reset_password(session, token, password)

@@ -5,17 +5,14 @@ from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.staticfiles import StaticFiles
-from tortoise import Tortoise, connections
 
 from app import api
-from app.core import config
+from app.core import config, db
 from app.core.extensions import configure_extensions
 from app.core.logging import logger
 from app.middlewares.exception import ExceptionMiddleware
 from app.middlewares.time import TimeMiddleware
-from app.services.auth import models as auth_models
-from app.services.auth import service as auth_service
-from app.services.settings import service as settings_service
+from app.services.auth import flows as auth_flows
 from app.services.telegram import service as telegram_service
 
 if os.name != "nt":
@@ -28,31 +25,31 @@ configure_extensions()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await Tortoise.init(config=config.tortoise)
-    await Tortoise.generate_schemas()
-    await settings_service.create()
-
-    if not await auth_service.get_first_superuser():
-        await auth_service.create(
-            auth_models.UserCreate(
-                email=config.app.super_user_email,
-                password=config.app.super_user_password,
-                name=config.app.super_user_username,
-                telegram="None",
-                is_superuser=True,
-                is_active=True,
-                is_verified=True,
-                discord="@system",
-            )
-        )
+    # await Tortoise.init(config=config.tortoise)
+    # await settings_service.create()
+    async with db.async_session_maker() as session:
+        await auth_flows.create_first_superuser(session)
     await telegram_service.TelegramService.init()
     logger.info("Application... Online!")
     yield
     await telegram_service.TelegramService.shutdown()
-    await connections.close_all()
+    # await connections.close_all()
 
 
-app = FastAPI(openapi_url="", lifespan=lifespan, default_response_class=ORJSONResponse, debug=config.app.debug)
+async def not_found(request, exc):
+    return ORJSONResponse(status_code=404, content={"detail": [{"msg": "Not Found"}]})
+
+
+exception_handlers = {404: not_found}
+
+
+app = FastAPI(
+    openapi_url="",
+    lifespan=lifespan,
+    default_response_class=ORJSONResponse,
+    debug=config.app.debug,
+    exception_handlers=exception_handlers,
+)
 app.add_middleware(ExceptionMiddleware)
 app.add_middleware(SentryAsgiMiddleware)
 app.add_middleware(TimeMiddleware)
@@ -74,7 +71,7 @@ if config.app.cors_origins:
         CORSMiddleware,
         allow_origins=config.app.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "DELETE", "PATCH", "UPDATE"],
+        allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT"],
         allow_headers=["*"],
     )
 

@@ -58,6 +58,11 @@ class AppConfig(BaseSettings):
 
     sync_boosters: bool = False
 
+    @property
+    def db_url_asyncpg(self):
+        url = f"{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        return f"postgresql+asyncpg://{url}"
+
 
 app = AppConfig(_env_file=".env", _env_file_encoding="utf-8")
 

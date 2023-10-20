@@ -5,8 +5,9 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
+import sqlalchemy as so
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
-from tortoise.expressions import Q
 
 from app.core import config, enums, errors
 from app.services.sheets import service as sheets_service
@@ -16,39 +17,48 @@ from app.services.telegram.message import service as message_service
 from . import models, utils
 
 
-async def get(user_id: int) -> models.User | None:
-    user = await models.User.filter(id=user_id).first()
-    return user
+async def get(session: AsyncSession, user_id: int) -> models.User | None:
+    query = so.select(models.User).where(models.User.id == user_id).limit(1)
+    user = await session.execute(query)
+    return user.first()
 
 
-async def get_by_email(user_email: str) -> models.User | None:
-    user = await models.User.filter(email=user_email).first()
-    return user
+async def get_by_email(session: AsyncSession, user_email: str) -> models.User | None:
+    query = so.select(models.User).where(models.User.email == user_email).limit(1)
+    user = await session.execute(query)
+    return user.first()
 
 
-async def get_by_name(username: str) -> models.User | None:
-    user = await models.User.filter(name=username).first()
-    return user
+async def get_by_name(session: AsyncSession, username: str) -> models.User | None:
+    query = so.select(models.User).where(models.User.name == username).limit(1)
+    user = await session.execute(query)
+    return user.first()
 
 
-async def get_all() -> list[models.User]:
-    return await models.User.filter().all()
+async def get_all(session: AsyncSession) -> list[models.User]:
+    query = so.select(models.User)
+    users = await session.execute(query)
+    return [user[0] for user in users]
 
 
-async def get_first_superuser() -> models.User:
-    return await get_by_email(config.app.super_user_email)  # type: ignore
+async def get_first_superuser(session: AsyncSession) -> models.User:
+    return await get_by_email(session, config.app.super_user_email)  # type: ignore
 
 
-async def get_superusers_with_google() -> list[models.User]:
-    return await models.User.filter(Q(is_superuser=True) and ~Q(name=None))
+async def get_superusers_with_google(session: AsyncSession) -> list[models.User]:
+    query = so.select(models.User).where(models.User.is_superuser is True, models.User.google is None)
+    users = await session.execute(query)
+    return [user[0] for user in users]
 
 
-async def get_by_ids(users_id: typing.Iterable[int]) -> list[models.User]:
-    return await models.User.filter(id__in=users_id)
+async def get_by_ids(session: AsyncSession, users_id: typing.Iterable[int]) -> list[models.User]:
+    query = so.select(models.User).where(models.User.id.in_(users_id))
+    users = await session.execute(query)
+    return [user[0] for user in users]
 
 
-async def create(user_create: models.UserCreate, safe: bool = False) -> models.User:
-    if await get_by_email(user_create.email) is not None or await get_by_name(user_create.name):
+async def create(session: AsyncSession, user_create: models.UserCreate, safe: bool = False) -> models.User:
+    if await get_by_email(session, user_create.email) is not None or await get_by_name(session, user_create.name):
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
@@ -57,31 +67,34 @@ async def create(user_create: models.UserCreate, safe: bool = False) -> models.U
                 )
             ],
         )
-
-    user_dict = (
-        user_create.model_dump(
-            exclude={"id", "is_superuser", "is_active", "is_verified", "oauth_accounts"}, exclude_unset=True
-        )
-        if safe
-        else user_create.model_dump(exclude={"id"}, exclude_unset=True)
-    )
+    exclude_fields = {
+        "id",
+    }
+    if safe:
+        exclude_fields.update({"is_superuser", "is_active", "is_verified"})
+    user_dict = user_create.model_dump(exclude=exclude_fields, exclude_unset=True)
     email: str = user_dict.pop("email")
     password = user_dict.pop("password")
     user_dict["hashed_password"] = utils.hash_password(password)
     user_dict["email"] = email.lower()
-    created_user = await models.User.create(**user_dict)
-    parser = await sheets_service.get_default_booster_read()
-    creds = await get_first_superuser()
-    if creds.google is not None:
-        tasks_service.create_booster.delay(
-            creds.google.model_dump_json(),
-            parser.model_dump_json(),
-            models.UserRead.model_validate(created_user).model_dump(),
-        )
+    query = so.insert(models.User).returning(models.User)
+    result = await session.scalars(query, [user_dict])
+    created_user = result.first()
+    # parser = await sheets_service.get_default_booster_read()
+    # creds = await get_first_superuser(session)
+    # if creds.google is not None:
+    #     tasks_service.create_booster.delay(
+    #         creds.google.model_dump_json(),
+    #         parser.model_dump_json(),
+    #         models.UserRead.model_validate(created_user).model_dump(),
+    #     )
+    await session.commit()
     return created_user
 
 
-async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool = False, exclude=True) -> models.User:
+async def update(
+    session: AsyncSession, user: models.User, user_in: models.BaseUserUpdate, safe: bool = False, exclude=True
+) -> models.User:
     exclude_fields = {
         "password",
     }
@@ -95,10 +108,12 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
 
     if user_in.password:
         user.hashed_password = utils.hash_password(user_in.password)
-    user = user.update_from_dict(update_data)
-    await user.save()
+    query = so.update(models.User).where(models.User.id == user.id).values(**update_data).returning()
+    result = await session.scalars(query)
+    user = result.first()
+    await session.commit()
     parser = await sheets_service.get_default_booster_read()
-    creds = await get_first_superuser()
+    creds = await get_first_superuser(session)
     if creds.google is not None:
         tasks_service.create_or_update_booster.delay(
             creds.google.model_dump_json(),
@@ -109,10 +124,12 @@ async def update(user: models.User, user_in: models.BaseUserUpdate, safe: bool =
     return user
 
 
-async def delete(user: models.User) -> None:
-    await user.delete()
+async def delete(session: AsyncSession, user: models.User) -> None:
+    query = so.delete(models.User).where(models.User.id == user.id)
+    await session.execute(query)
+    await session.commit()
     parser = await sheets_service.get_default_booster_read()
-    creds = await get_first_superuser()
+    creds = await get_first_superuser(session)
     if creds.google is not None and parser is not None:
         tasks_service.delete_booster.delay(
             creds.google.model_dump_json(),
@@ -141,7 +158,7 @@ async def request_verify(user: models.User) -> None:
     message_service.send_request_verify(models.UserRead.model_validate(user), token)
 
 
-async def verify(token: str) -> models.User:
+async def verify(session: AsyncSession, token: str) -> models.User:
     try:
         data = utils.decode_jwt(
             token,
@@ -160,7 +177,7 @@ async def verify(token: str) -> models.User:
             ],
         ) from None
 
-    user = await get_by_email(email)
+    user = await get_by_email(session, email)
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -181,13 +198,13 @@ async def verify(token: str) -> models.User:
             ],
         )
 
-    verified_user = await update(user, models.UserUpdate(is_verified=True))
+    verified_user = await update(session, user, models.UserUpdate(is_verified=True))
     message_service.send_verified_notify(models.UserRead.model_validate(user))
     return verified_user
 
 
-async def authenticate(credentials: OAuth2PasswordRequestForm) -> models.User | None:
-    user = await get_by_email(credentials.username.lower())
+async def authenticate(session: AsyncSession, credentials: OAuth2PasswordRequestForm) -> models.User | None:
+    user = await get_by_email(session, credentials.username.lower())
     if user is None:
         utils.hash_password(credentials.password)
         return None
@@ -196,8 +213,9 @@ async def authenticate(credentials: OAuth2PasswordRequestForm) -> models.User | 
     if not verified:
         return None
     if updated_password_hash is not None:
-        user.hashed_password = updated_password_hash
-        await user.save(update_fields=("hashed_password",))
+        query = so.update(models.User).where(models.User.id == user.id).values(hashed_password=updated_password_hash)
+        await session.execute(query)
+        await session.commit()
     return user
 
 
@@ -215,7 +233,7 @@ async def forgot_password(user: models.User) -> None:
     return
 
 
-async def reset_password(token: str, password: str) -> models.User:
+async def reset_password(session: AsyncSession, token: str, password: str) -> models.User:
     try:
         data = utils.decode_jwt(
             token,
@@ -235,7 +253,7 @@ async def reset_password(token: str, password: str) -> models.User:
             ],
         ) from None
     logger.warning(f"Try reset password for user {user_id}")
-    user = await get(user_id)
+    user = await get(session, user_id)
     if not user:
         raise errors.DudeDuckHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -248,73 +266,67 @@ async def reset_password(token: str, password: str) -> models.User:
     valid_password_fingerprint, _ = utils.verify_and_update_password(user.hashed_password, password_fingerprint)
     logger.warning(f"Try reset password for user, password validation = {valid_password_fingerprint}")
     if not valid_password_fingerprint:
-        raise errors.DudeDuckHTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.DudeDuckException(
-                    msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
-                    code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
-                )
-            ],
+        e = errors.DudeDuckException(
+            msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
+            code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
         )
+        raise errors.DudeDuckHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     if not user.is_active:
-        raise errors.DudeDuckHTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.DudeDuckException(
-                    msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
-                )
-            ],
+        e = errors.DudeDuckException(
+            msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
         )
+        raise errors.DudeDuckHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
-    updated_user = await update(user, models.UserUpdate(password=password))
+    updated_user = await update(session, user, models.UserUpdate(password=password))
     return updated_user
 
 
-async def read_token(token: str | None) -> models.User | None:
+async def read_token(session: AsyncSession, token: str | None) -> models.User | None:
     if token is None:
         return None
 
     max_age = datetime.now(timezone.utc) - timedelta(seconds=24 * 3600)
-    access_token = await (
-        models.AccessToken.filter(token=token, created_at__gte=max_age).prefetch_related("user").first()
+    query = (
+        so.select(models.AccessToken)
+        .where(models.AccessToken.token == token, models.AccessToken.created_at < max_age)
+        .join(models.User)
+        .limit(1)
     )
+    result = await session.scalars(query)
+    access_token = result.first()
     if access_token is None:
         return None
     return access_token.user
 
 
-async def write_token(user: models.User) -> str:
-    access_token = await models.AccessToken.create(user_id=user.id, token=secrets.token_urlsafe())
-    return access_token.token
+async def write_token(session: AsyncSession, user: models.User) -> str:
+    token = secrets.token_urlsafe()
+    query = so.insert(models.AccessToken).values(token=token, user_id=user.id)
+    await session.execute(query)
+    await session.commit()
+    return token
 
 
-async def destroy_token(token: str) -> None:
-    max_age = datetime.now(timezone.utc) - timedelta(seconds=24 * 3600)
-    access_token = await models.AccessToken.filter(token=token, created_at__gte=max_age).first()
-    if access_token is not None:
-        await access_token.delete()
-
-
-async def read_token_api(token: str | None) -> models.User | None:
+async def read_token_api(session: AsyncSession, token: str | None) -> models.User | None:
     if token is None:
         return None
-    access_token = await models.AccessTokenAPI.filter(token=token).prefetch_related("user").first()
+    query = (
+        so.select(models.AccessTokenAPI)
+        .where(models.AccessTokenAPI.token == token)
+        .join(models.User)
+        .limit(1)
+    )
+    result = await session.scalars(query)
+    access_token = result.first()
     if access_token is None:
         return None
     return access_token.user
 
 
-async def write_token_api(user: models.User) -> str:
-    access_token = await models.AccessTokenAPI.filter(user_id=user.id).first()
-    if access_token:
-        await access_token.delete()
-    access_token = await models.AccessTokenAPI.create(user_id=user.id, token=secrets.token_urlsafe())
-    return access_token.token
-
-
-async def destroy_token_api(token: str) -> None:
-    access_token = await models.AccessTokenAPI.filter(token=token).first()
-    if access_token is not None:
-        await access_token.delete()
+async def write_token_api(session: AsyncSession, user: models.User) -> str:
+    token = secrets.token_urlsafe()
+    query = so.insert(models.AccessTokenAPI).values(token=token, user_id=user.id)
+    await session.execute(query)
+    await session.commit()
+    return token

@@ -1,15 +1,15 @@
-import datetime
 import enum
 import re
 
-import orjson
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from tortoise import fields
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import BigInteger, String, Text, JSON, ForeignKey
 
-from app.core import config
-from app.core.db import TimeStampMixin
+from app.core import config, db
 from app.services.sheets.models import SheetEntity
 
 
@@ -52,7 +52,7 @@ class UserRead(BaseModel):
     language: UserLanguage = UserLanguage.EN
 
     max_orders: int
-    created_at: datetime.datetime
+    created_at: datetime
 
 
 class UserReadSheets(SheetEntity):
@@ -130,40 +130,48 @@ class UserUpdateAdmin(BaseUserUpdate):
         return self
 
 
-def encoder_google(data):
-    if isinstance(data, AdminGoogleToken):
-        return data.model_dump_json()
-    return orjson.dumps(data)
+class User(db.TimeStampMixin):
+    __tablename__ = "user"
+
+    _cache_google: AdminGoogleToken | None = None
+
+    email: Mapped[str] = mapped_column(String(100), unique=True)
+    hashed_password: Mapped[str] = mapped_column(Text())
+    is_active: Mapped[bool] = mapped_column(default=True)
+    is_superuser: Mapped[bool] = mapped_column(default=True)
+    is_verified: Mapped[bool] = mapped_column(default=True)
+    name: Mapped[str] = mapped_column(String(20), unique=True)
+    telegram: Mapped[str] = mapped_column(String(32), unique=True)
+    phone: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    bank: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    bankcard: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    binance_email: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    binance_id: Mapped[int | None] = mapped_column(BigInteger(), nullable=True)
+    discord: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    language: Mapped[UserLanguage] = mapped_column(default=UserLanguage.EN)
+    google_token: Mapped[dict] = mapped_column(JSON(), nullable=True)
+    max_orders: Mapped[int] = mapped_column(default=3)
+
+    @property
+    def google(self):
+        if self._cache_google is None:
+            token = AdminGoogleToken.model_validate(self.google_token)
+            self._cache_google = token
+            return token
+        return self._cache_google
 
 
-class User(TimeStampMixin):
-    email: str = fields.CharField(unique=True, max_length=100)
-    hashed_password: str = fields.TextField()
-    is_active: bool = fields.BooleanField(default=True)
-    is_superuser: bool = fields.BooleanField(default=False)
-    is_verified: bool = fields.BooleanField(default=False)
-    name: str = fields.CharField(max_length=20, unique=True)
-    telegram: str = fields.CharField(max_length=32, unique=True)
-    phone: str | None = fields.TextField(null=True)
-    bank: str | None = fields.TextField(null=True)
-    bankcard: str | None = fields.TextField(null=True)
-    binance_email: str | None = fields.TextField(null=True)
-    binance_id: int | None = fields.IntField(null=True)
-    discord: str | None = fields.TextField(null=True)
-    language: UserLanguage = fields.CharEnumField(UserLanguage, default=UserLanguage.EN)
-    google: AdminGoogleToken | None = fields.JSONField(
-        null=True, decoder=AdminGoogleToken.model_validate_json, encoder=encoder_google
-    )
-    max_orders: int = fields.IntField(default=3)
+class AccessToken(db.TimeStampMixin):
+    __tablename__ = "access_token"
+
+    token: Mapped[str] = mapped_column(String(100), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    user: Mapped["User"] = relationship()
 
 
-class AccessToken(TimeStampMixin):
-    id: int = fields.BigIntField(pk=True)
-    token: str = fields.CharField(unique=True, max_length=100)
-    user: fields.ForeignKeyRelation[User] = fields.ForeignKeyField("main.User", to_field="id")
+class AccessTokenAPI(db.TimeStampMixin):
+    __tablename__ = "access_token_api"
 
-
-class AccessTokenAPI(TimeStampMixin):
-    id: int = fields.BigIntField(pk=True)
-    token: str = fields.CharField(unique=True, max_length=100)
-    user: fields.ForeignKeyRelation[User] = fields.OneToOneField("main.User", to_field="id")
+    token: Mapped[str] = mapped_column(String(100), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    user: Mapped["User"] = relationship()
