@@ -22,9 +22,9 @@ from . import models, service
 async def get_by_order_id_user_id(order: order_models.Order, user: auth_models.User) -> models.UserOrder:
     order_user = await service.get_by_order_id_user_id(order.id, user.id)
     if not order_user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DudeDuckException(msg="You are not fulfilling this order", code="not_exist")],
+            detail=[errors.DDException(msg="You are not fulfilling this order", code="not_exist")],
         )
     return order_user
 
@@ -32,9 +32,9 @@ async def get_by_order_id_user_id(order: order_models.Order, user: auth_models.U
 async def get(payment_id: int) -> models.UserOrder:
     order_user = await service.get(payment_id)
     if not order_user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DudeDuckException(msg="Payment doesn't exist", code="not_exist")],
+            detail=[errors.DDException(msg="Payment doesn't exist", code="not_exist")],
         )
     return order_user
 
@@ -42,9 +42,9 @@ async def get(payment_id: int) -> models.UserOrder:
 async def check_user_total_orders(user: auth_models.User) -> bool:
     if await service.check_user_total_orders(user):
         return True
-    raise errors.DudeDuckHTTPException(
+    raise errors.DDHTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=[errors.DudeDuckException(msg="You have reached the limit of active orders.", code="limit_reached")],
+        detail=[errors.DDException(msg="You have reached the limit of active orders.", code="limit_reached")],
     )
 
 
@@ -58,23 +58,23 @@ async def can_user_pick_order(user: auth_models.User, order: order_models.Order)
     await can_user_pick(user)
     order_user = await service.get_by_order_id_user_id(order.id, user.id)
     if order_user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DudeDuckException(msg="User is already assigned to this order", code="already_exist")],
+            detail=[errors.DDException(msg="User is already assigned to this order", code="already_exist")],
         )
     return True
 
 
 async def order_available(order: order_models.Order) -> bool:
     if order.status == order_models.OrderStatus.Completed:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[errors.DudeDuckException(msg="You cannot add user to a completed order.", code="cannot_add")],
+            detail=[errors.DDException(msg="You cannot add user to a completed order.", code="cannot_add")],
         )
     if order.status == order_models.OrderStatus.Refund:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[errors.DudeDuckException(msg="You cannot add user to a refunded order.", code="cannot_add")],
+            detail=[errors.DDException(msg="You cannot add user to a refunded order.", code="cannot_add")],
         )
     return True
 
@@ -179,10 +179,10 @@ async def add_booster_with_price(
     dollars = await currency_flows.usd_to_currency(order.price.price_booster_dollar, order.date, with_fee=True)
     total = sum(b.dollars for b in boosters) + price
     if dollars < price:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=f"The price for the booster is incorrect. "
                     f"Order price {dollars}, total price for boosters {total}. \n{total}>{dollars}",
                     code="invalid_price",
@@ -196,9 +196,9 @@ async def update_booster(order: order_models.Order, user: auth_models.User, upda
     boosters = await service.get_by_order_id(order.id)
     boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
     if boosters_map.get(user.id) is None:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DudeDuckException(msg="The user is not a booster of this order", code="not_exist")],
+            detail=[errors.DDException(msg="The user is not a booster of this order", code="not_exist")],
         )
     else:
         if update_model.dollars is not None:
@@ -216,9 +216,9 @@ async def remove_booster(order: order_models.Order, user: auth_models.User) -> m
     boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
     to_delete = boosters_map.get(user.id)
     if to_delete is None:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DudeDuckException(msg="The user is not a booster of this order", code="not_exist")],
+            detail=[errors.DDException(msg="The user is not a booster of this order", code="not_exist")],
         )
     await service.delete(to_delete.id)
     if len(boosters_map.values()) > 1:
@@ -355,9 +355,9 @@ async def close_order(user: auth_models.User, order: order_models.Order, data: m
         if f := price.user_id == user.id:
             break
     if not f:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=[errors.DudeDuckException(msg="You don't have access to the order", code="forbidden")],
+            detail=[errors.DDException(msg="You don't have access to the order", code="forbidden")],
         )
     update_model = order_models.OrderUpdate(screenshot=str(data.url), end_date=datetime.utcnow())
     new_order = await order_service.update_with_sync(order, update_model)
@@ -370,10 +370,10 @@ async def close_order(user: auth_models.User, order: order_models.Order, data: m
 async def paid_order(payment_id: int) -> models.UserOrder:
     data = await get(payment_id)
     if data.paid:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=f"The order has already been paid for {data.paid_at}",
                     code="already_exist",
                 )

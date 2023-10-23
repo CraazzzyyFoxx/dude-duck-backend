@@ -16,9 +16,9 @@ bearer_scheme_api = HTTPBearer(bearerFormat="Bearer")
 async def get(session: AsyncSession, user_id: int):
     user = await service.get(session, user_id)
     if not user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A user with this id does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A user with this id does not exist.", code="not_exist")],
         )
     return user
 
@@ -26,9 +26,9 @@ async def get(session: AsyncSession, user_id: int):
 async def get_booster_by_name(session: AsyncSession, name: str) -> models.User:
     user = await service.get_by_name(session, name)
     if not user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A user with this username does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A user with this username does not exist.", code="not_exist")],
         )
     return user
 
@@ -36,9 +36,9 @@ async def get_booster_by_name(session: AsyncSession, name: str) -> models.User:
 async def get_by_email(session: AsyncSession, email: str):
     user = await service.get_by_email(session, email)
     if not user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A user with this email does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A user with this email does not exist.", code="not_exist")],
         )
     return user
 
@@ -58,9 +58,9 @@ def verify_user(
         elif verified and not user.is_verified or superuser and not user.is_superuser:
             user = None
     if not user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status_code,
-            detail=[errors.DudeDuckException(msg="Missing Permissions", code="unauthorized")],
+            detail=[errors.DDException(msg="Missing Permissions", code="unauthorized")],
         )
 
     return True
@@ -126,15 +126,15 @@ async def resolve_user(
     if user_id == "@me":
         return user
     if not user.is_superuser:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A user with this id does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A user with this id does not exist.", code="not_exist")],
         )
     user = await service.get(session, int(user_id))
     if not user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A user with this id does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A user with this id does not exist.", code="not_exist")],
         )
     return user
 

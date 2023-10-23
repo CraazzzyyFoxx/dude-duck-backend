@@ -11,9 +11,9 @@ async def has_access_to_order(order: order_models.Order, user: auth_models.User)
     access = await service.has_access_to_order(order, user)
     if access:
         return True
-    raise errors.DudeDuckHTTPException(
+    raise errors.DDHTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail=[errors.DudeDuckException(msg="You do bot have access to this order", code="forbidden")],
+        detail=[errors.DDException(msg="You do bot have access to this order", code="forbidden")],
     )
 
 
@@ -21,7 +21,7 @@ async def can_user_pick(user: auth_models.User) -> bool:
     if user.is_verified:
         return True
 
-    raise errors.DudeDuckHTTPException(
+    raise errors.DDHTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail=[errors.DudeDuckException(msg="Only verified users can fulfill orders", code="not_verified")],
+        detail=[errors.DDException(msg="Only verified users can fulfill orders", code="not_verified")],
     )

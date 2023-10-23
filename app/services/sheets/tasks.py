@@ -36,7 +36,7 @@ async def boosters_from_order_sync(
                     try:
                         dollars = await currency_flows.currency_to_usd(price, order.date, currency="RUB")
                         await accounting_flows.add_booster_with_price(order_db, user, dollars, sync=False)
-                    except errors.DudeDuckHTTPException as e:
+                    except errors.DDHTTPException as e:
                         logger.error(e.detail)
 
     if order_db.status != order.status or order_db.status_paid != order.status_paid:

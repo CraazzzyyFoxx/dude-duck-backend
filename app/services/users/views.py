@@ -41,9 +41,9 @@ async def add_google_token(file: UploadFile, user=Depends(auth_flows.current_act
 @router.get("/@me/google-token", response_model=auth_models.AdminGoogleToken)
 async def read_google_token(user=Depends(auth_flows.current_active_superuser)):
     if user.google is None:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="Google Service account doesn't setup.", code="not_exist")],
+            detail=[errors.DDException(msg="Google Service account doesn't setup.", code="not_exist")],
         )
     return user.google
 

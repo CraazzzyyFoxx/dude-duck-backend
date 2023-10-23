@@ -19,9 +19,9 @@ from . import models, service
 async def get(order_id: int) -> models.PreOrder:
     order = await service.get(order_id)
     if not order:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A preorder with this id does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A preorder with this id does not exist.", code="not_exist")],
         )
     return order
 
@@ -29,9 +29,9 @@ async def get(order_id: int) -> models.PreOrder:
 async def get_by_order_id(order_id: str) -> models.PreOrder:
     order = await service.get_order_id(order_id)
     if not order:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A preorder with this id does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A preorder with this id does not exist.", code="not_exist")],
         )
     return order
 

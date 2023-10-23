@@ -28,7 +28,7 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]},
             )
-        except errors.DudeDuckException as e:
+        except errors.DDException as e:
             response = ORJSONResponse(content={"detail": e.detail}, status_code=e.status_code)
         except HTTPException as e:
             response = ORJSONResponse(content={"detail": [e.detail]}, status_code=e.status_code)

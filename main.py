@@ -25,15 +25,12 @@ configure_extensions()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # await Tortoise.init(config=config.tortoise)
-    # await settings_service.create()
     async with db.async_session_maker() as session:
         await auth_flows.create_first_superuser(session)
     await telegram_service.TelegramService.init()
     logger.info("Application... Online!")
     yield
     await telegram_service.TelegramService.shutdown()
-    # await connections.close_all()
 
 
 async def not_found(request, exc):

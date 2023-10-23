@@ -16,10 +16,10 @@ from . import models, service
 async def get_by_order_id_user_id(order_id: int, user_id: int, pre: bool = False) -> models.BaseResponse:
     resp = await service.get_by_order_id_user_id(order_id, user_id, pre=pre)
     if not resp:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg="A response with this order_id and user_id does not exist.",
                     code="not_exist",
                 )
@@ -31,9 +31,9 @@ async def get_by_order_id_user_id(order_id: int, user_id: int, pre: bool = False
 async def get(response_id: int, pre: bool = False) -> models.BaseResponse:
     resp = await service.get(response_id, pre=pre)
     if not resp:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="A response with this id does not exist.", code="not_exist")],
+            detail=[errors.DDException(msg="A response with this id does not exist.", code="not_exist")],
         )
     return resp
 
@@ -46,17 +46,17 @@ async def delete(response_id: int, pre: bool = False) -> None:
 
 async def order_available(order: order_models.Order) -> bool:
     if order.status != order_models.OrderStatus.InProgress:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="You cannot respond to a completed order.", code="bad_request")],
+            detail=[errors.DDException(msg="You cannot respond to a completed order.", code="bad_request")],
         )
     responses = await service.get_by_order_id(order.id)
     for response in responses:
         if response.approved:
-            raise errors.DudeDuckHTTPException(
+            raise errors.DDHTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=[
-                    errors.DudeDuckException(
+                    errors.DDException(
                         msg="Someone has already taken the order or it has been deleted.",
                         code="bad_request",
                     )
@@ -68,10 +68,10 @@ async def order_available(order: order_models.Order) -> bool:
 async def is_already_respond(order_id: int, user: auth_models.User) -> bool:
     response = await service.get_by_order_id_user_id(order_id, user.id)
     if response is not None:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg="It is impossible to respond to the same order twice.",
                     code="already_exist",
                 )

@@ -42,9 +42,9 @@ async def add_token(token: str) -> models.Settings:
 
     for token_db in settings.api_layer_currency:
         if token_db.token == token:
-            raise errors.DudeDuckHTTPException(
+            raise errors.DDHTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=[errors.DudeDuckException(msg="This token already exists", code="already_exist")],
+                detail=[errors.DDException(msg="This token already exists", code="already_exist")],
             )
 
     model = models.ApiLayerCurrencyToken(token=token, uses=1)
@@ -65,9 +65,9 @@ async def remove_token(token: str) -> models.Settings:
         if token_db.token == token:
             x = token_db
     if x is None:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DudeDuckException(msg="Token not found", code="not_exist")],
+            detail=[errors.DDException(msg="Token not found", code="not_exist")],
         )
 
     settings.api_layer_currency.remove(x)

@@ -35,9 +35,9 @@ async def create(currency_in: models.CurrencyApiLayer) -> models.Currency:
             quotes["WOW"] = float(cell)
 
         else:
-            raise errors.DudeDuckHTTPException(
+            raise errors.DDHTTPException(
                 status_code=404,
-                detail=[errors.DudeDuckException(msg="Google token missing for first superuser", code="not_exist")],
+                detail=[errors.DDException(msg="Google token missing for first superuser", code="not_exist")],
             )
     else:
         quotes["WOW"] = (await settings_service.get()).currency_wow
@@ -88,8 +88,8 @@ async def get_currency_historical(date: datetime.datetime) -> models.CurrencyApi
     try:
         response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
     except Exception as e:
-        raise errors.DudeDuckHTTPException(
-            status_code=500, detail=[errors.DudeDuckException(msg="Api Layer is not responding", code="internal_error")]
+        raise errors.DDHTTPException(
+            status_code=500, detail=[errors.DDException(msg="Api Layer is not responding", code="internal_error")]
         ) from e
     if response.status_code == 429:
         raise RuntimeError("API Layer currency request limit exceeded.")
@@ -105,8 +105,8 @@ async def validate_token(token: str) -> bool:
     headers = {"apikey": token}
     response = await client.request("GET", f"/currency_data/historical?date={date}", headers=headers)
     if response.status_code != 200:
-        raise errors.DudeDuckHTTPException(
-            status_code=400, detail=[errors.DudeDuckException(msg=response.json(), code="invalid_token")]
+        raise errors.DDHTTPException(
+            status_code=400, detail=[errors.DDException(msg=response.json(), code="invalid_token")]
         )
     else:
         return True

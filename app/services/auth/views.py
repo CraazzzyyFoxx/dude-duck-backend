@@ -18,10 +18,10 @@ router = APIRouter(prefix="/auth", tags=[enums.RouteTag.AUTH])
 async def login(credentials: OAuth2PasswordRequestForm = Depends(), session=Depends(get_async_session)):
     user = await service.authenticate(session, credentials)
     if user is None:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.LOGIN_BAD_CREDENTIALS, code=enums.ErrorCode.LOGIN_BAD_CREDENTIALS
                 )
             ],
@@ -51,7 +51,7 @@ async def request_verify_token(email: EmailStr = Body(..., embed=True), session=
     try:
         user = await flows.get_by_email(session, email)
         await service.request_verify(user)
-    except errors.DudeDuckHTTPException:
+    except errors.DDHTTPException:
         pass
     return None
 
@@ -67,7 +67,7 @@ async def forgot_password(email: EmailStr = Body(..., embed=True), session=Depen
     try:
         user = await flows.get_by_email(session, email)
         await service.forgot_password(user)
-    except errors.DudeDuckHTTPException:
+    except errors.DDHTTPException:
         pass
     return None
 

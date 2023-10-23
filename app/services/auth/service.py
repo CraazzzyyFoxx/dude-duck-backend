@@ -19,26 +19,26 @@ from . import models, utils
 
 async def get(session: AsyncSession, user_id: int) -> models.User | None:
     query = so.select(models.User).where(models.User.id == user_id).limit(1)
-    user = await session.execute(query)
+    user = await session.scalars(query)
     return user.first()
 
 
 async def get_by_email(session: AsyncSession, user_email: str) -> models.User | None:
     query = so.select(models.User).where(models.User.email == user_email).limit(1)
-    user = await session.execute(query)
+    user = await session.scalars(query)
     return user.first()
 
 
 async def get_by_name(session: AsyncSession, username: str) -> models.User | None:
     query = so.select(models.User).where(models.User.name == username).limit(1)
-    user = await session.execute(query)
+    user = await session.scalars(query)
     return user.first()
 
 
 async def get_all(session: AsyncSession) -> list[models.User]:
     query = so.select(models.User)
-    users = await session.execute(query)
-    return [user[0] for user in users]
+    users = await session.scalars(query)
+    return [user for user in users]
 
 
 async def get_first_superuser(session: AsyncSession) -> models.User:
@@ -47,22 +47,22 @@ async def get_first_superuser(session: AsyncSession) -> models.User:
 
 async def get_superusers_with_google(session: AsyncSession) -> list[models.User]:
     query = so.select(models.User).where(models.User.is_superuser is True, models.User.google is None)
-    users = await session.execute(query)
-    return [user[0] for user in users]
+    users = await session.scalars(query)
+    return [user for user in users]
 
 
 async def get_by_ids(session: AsyncSession, users_id: typing.Iterable[int]) -> list[models.User]:
     query = so.select(models.User).where(models.User.id.in_(users_id))
-    users = await session.execute(query)
-    return [user[0] for user in users]
+    users = await session.scalars(query)
+    return [user for user in users]
 
 
 async def create(session: AsyncSession, user_create: models.UserCreate, safe: bool = False) -> models.User:
     if await get_by_email(session, user_create.email) is not None or await get_by_name(session, user_create.name):
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.REGISTER_USER_ALREADY_EXISTS, code=enums.ErrorCode.REGISTER_USER_ALREADY_EXISTS
                 )
             ],
@@ -140,10 +140,10 @@ async def delete(session: AsyncSession, user: models.User) -> None:
 
 async def request_verify(user: models.User) -> None:
     if user.is_verified:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED, code=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED
                 )
             ],
@@ -168,10 +168,10 @@ async def verify(session: AsyncSession, token: str) -> models.User:
         _ = data["sub"]
         email = data["email"]
     except (jwt.PyJWTError, KeyError):
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.VERIFY_USER_BAD_TOKEN, code=enums.ErrorCode.VERIFY_USER_BAD_TOKEN
                 )
             ],
@@ -179,20 +179,20 @@ async def verify(session: AsyncSession, token: str) -> models.User:
 
     user = await get_by_email(session, email)
     if not user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.VERIFY_USER_BAD_TOKEN, code=enums.ErrorCode.VERIFY_USER_BAD_TOKEN
                 )
             ],
         )
 
     if user.is_verified:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED, code=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED
                 )
             ],
@@ -243,10 +243,10 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
         user_id = data["sub"]
         password_fingerprint = data["password_fingerprint"]
     except jwt.PyJWTError:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
                     code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
                 )
@@ -255,10 +255,10 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     logger.warning(f"Try reset password for user {user_id}")
     user = await get(session, user_id)
     if not user:
-        raise errors.DudeDuckHTTPException(
+        raise errors.DDHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DudeDuckException(
+                errors.DDException(
                     msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
                 )
             ],
@@ -266,17 +266,17 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     valid_password_fingerprint, _ = utils.verify_and_update_password(user.hashed_password, password_fingerprint)
     logger.warning(f"Try reset password for user, password validation = {valid_password_fingerprint}")
     if not valid_password_fingerprint:
-        e = errors.DudeDuckException(
+        e = errors.DDException(
             msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
             code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
         )
-        raise errors.DudeDuckHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
+        raise errors.DDHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     if not user.is_active:
-        e = errors.DudeDuckException(
+        e = errors.DDException(
             msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
         )
-        raise errors.DudeDuckHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
+        raise errors.DDHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     updated_user = await update(session, user, models.UserUpdate(password=password))
     return updated_user

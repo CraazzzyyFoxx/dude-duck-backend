@@ -37,9 +37,9 @@ async def request(
 ) -> httpx.Response | None:
     if config.app.telegram_integration is False:
         if is_raise:
-            raise errors.DudeDuckHTTPException(
+            raise errors.DDHTTPException(
                 status_code=500,
-                detail=[errors.DudeDuckException(msg="Telegram Bot integration disabled", code="disabled")],
+                detail=[errors.DDException(msg="Telegram Bot integration disabled", code="disabled")],
             ) from None
         return
 
@@ -53,10 +53,10 @@ async def request(
     except TimeoutException as err:
         logger.exception(err)
         if is_raise:
-            raise errors.DudeDuckHTTPException(
+            raise errors.DDHTTPException(
                 status_code=500,
                 detail=[
-                    errors.DudeDuckException(
+                    errors.DDException(
                         msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
                         code="internal_error",
                     )
@@ -65,10 +65,10 @@ async def request(
     except HTTPError as err:
         logger.exception(err)
         if is_raise:
-            raise errors.DudeDuckHTTPException(
+            raise errors.DDHTTPException(
                 status_code=500,
                 detail=[
-                    errors.DudeDuckException(
+                    errors.DDException(
                         msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
                         code="internal_error",
                     )
@@ -77,10 +77,10 @@ async def request(
     else:
         if response.status_code not in (200, 201, 404):
             if is_raise:
-                raise errors.DudeDuckHTTPException(
+                raise errors.DDHTTPException(
                     status_code=500,
                     detail=[
-                        errors.DudeDuckException(
+                        errors.DDException(
                             msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
                             code="internal_error",
                         )
