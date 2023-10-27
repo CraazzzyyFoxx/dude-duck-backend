@@ -6,14 +6,16 @@ from fastapi.responses import ORJSONResponse
 from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.staticfiles import StaticFiles
 
-from app import api
-from app.core import config, db
-from app.core.extensions import configure_extensions
-from app.core.logging import logger
-from app.middlewares.exception import ExceptionMiddleware
-from app.middlewares.time import TimeMiddleware
-from app.services.auth import flows as auth_flows
-from app.services.telegram import service as telegram_service
+from src import api
+from src.core import config, db
+from src.core.extensions import configure_extensions
+from src.core.logging import logger
+from src.middlewares.exception import ExceptionMiddleware
+from src.middlewares.time import TimeMiddleware
+from src.services.auth import flows as auth_flows
+from src.services.settings import service as settings_service
+from src.services.telegram import service as telegram_service
+from src.services.sheets import tasks as sheets_tasks
 
 if os.name != "nt":
     import uvloop  # noqa
@@ -25,10 +27,13 @@ configure_extensions()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    db.Base.metadata.create_all(db.engine)
     async with db.async_session_maker() as session:
+        await settings_service.create(session)
         await auth_flows.create_first_superuser(session)
     await telegram_service.TelegramService.init()
     logger.info("Application... Online!")
+    await sheets_tasks.sync_orders()
     yield
     await telegram_service.TelegramService.shutdown()
 
@@ -73,7 +78,7 @@ if config.app.cors_origins:
     )
 
 if config.app.use_correlation_id:
-    from app.middlewares.correlation import CorrelationMiddleware
+    from src.middlewares.correlation import CorrelationMiddleware
 
     app.add_middleware(CorrelationMiddleware)
 
