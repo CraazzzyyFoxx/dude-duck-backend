@@ -71,7 +71,6 @@ async def sync_data_from(
             por = models.OrderReadSheets.model_validate(order_db, from_attributes=True).model_dump(exclude=exclude)
             await boosters_from_order_sync(session, order_db, order, users, users_ids)
             diff = DeepDiff(order.model_dump(exclude=exclude), por, truncate_datetime="second")
-            logger.warning(diff)
             if diff:
                 if config.app.debug:
                     logger.debug(diff)
@@ -160,7 +159,9 @@ async def sync_orders() -> None:
                     session, cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy()
                 )
                 if config.app.sync_boosters:
-                    await sync_data_to(session, superuser.google, cfg, order_dict.copy(), users, order_db_ids_dict)
+                    await sync_data_to(
+                        session, superuser.google, cfg, order_dict.copy(), users, order_db_ids_dict  # type: ignore
+                    )
             logger.info(f"Synchronization completed in {time.time() - t}")
         except Exception as e:
             logger.exception(f"Error while sync_orders Error: {e}")

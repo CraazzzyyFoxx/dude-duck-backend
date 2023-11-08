@@ -138,8 +138,8 @@ async def update_booster_price(session: AsyncSession, old: order_models.Order, n
     boosters = await get_by_order_id(session, new.id)
     if not boosters:
         return
-    old_price = await currency_flows.usd_to_currency(session, old.price.price_booster_dollar, old.date)
-    new_price = await currency_flows.usd_to_currency(session, new.price.price_booster_dollar, new.date)
+    old_price = await currency_flows.usd_to_currency(session, old.price.booster_dollar, old.date)
+    new_price = await currency_flows.usd_to_currency(session, new.price.booster_dollar, new.date)
     delta = (new_price - old_price) / len(boosters)
     await bulk_update_price(session, new.id, delta, inc=True)
 

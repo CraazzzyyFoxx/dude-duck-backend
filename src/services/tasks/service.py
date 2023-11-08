@@ -5,8 +5,8 @@ from celery import Celery
 from celery.signals import celeryd_init
 from sentry_sdk.integrations.celery import CeleryIntegration
 
-from src.core import config
-from src.core.config import app
+from src.core import config, db
+from src.services.auth import service as auth_service
 from src.services.auth import models as auth_models
 from src.services.preorders import tasks as preorders_tasks
 from src.services.sheets import models as sheets_models
@@ -17,8 +17,8 @@ from . import celery_config
 
 celery = Celery(
     __name__,
-    broker=app.celery_broker_url.unicode_string(),
-    backend=app.celery_result_backend.unicode_string(),
+    broker=config.app.celery_broker_url.unicode_string(),
+    backend=config.app.celery_result_backend.unicode_string(),
     broker_connection_retry_on_startup=True,
 )
 celery.config_from_object(celery_config)
@@ -54,27 +54,35 @@ def sync_data():
 
 
 @celery.task(name="update_order")
-def update_order(creds: dict, parser: str, row_id: int, data: dict):
-    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    sheets_service.update_row_data(creds, parser_model, row_id, data)
+def update_order(parser: dict, row_id: int, data: dict):
+    with db.session_maker() as session:
+        creds = auth_service.get_first_superuser_sync(session)
+    parser_model = sheets_models.OrderSheetParseRead.model_validate(parser)
+    sheets_service.update_row_data(creds.google, parser_model, row_id, data)
 
 
 @celery.task(name="create_booster")
-def create_booster(creds: dict, parser: str, data: dict):
+def create_booster(parser: str, data: dict):
+    with db.session_maker() as session:
+        creds = auth_service.get_first_superuser_sync(session)
     parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    sheets_service.create_row_data(auth_models.UserReadSheets, creds, parser_model, data)
+    sheets_service.create_row_data(auth_models.UserReadSheets, creds.google, parser_model, data)
 
 
 @celery.task(name="create_or_update_booster")
-def create_or_update_booster(creds: dict, parser: str, value: str, data: dict):
+def create_or_update_booster(parser: str, value: str, data: dict):
+    with db.session_maker() as session:
+        creds = auth_service.get_first_superuser_sync(session)
     parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    sheets_service.create_or_update_booster(creds, parser_model, value, data)
+    sheets_service.create_or_update_booster(creds.google, parser_model, value, data)
 
 
 @celery.task(name="delete_booster")
-def delete_booster(creds: dict, parser: str, value: str):
+def delete_booster(parser: str, value: str):
+    with db.session_maker() as session:
+        creds = auth_service.get_first_superuser_sync(session)
     parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    sheets_service.delete_booster(creds, parser_model, value)
+    sheets_service.delete_booster(creds.google, parser_model, value)
 
 
 @celery.task(name="manage_preorders")

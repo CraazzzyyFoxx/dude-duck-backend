@@ -87,10 +87,10 @@ def convert_time(
 
         time_parsed = dateparser.parse(
             time_str,
-            settings={"TIMEZONE": timezone},
-            date_formats=[
-                "%d.%m.%Y",
-            ],
+            # settings={"TIMEZONE": timezone},
+            # date_formats=[
+            #     "%d.%m.%Y",
+            # ],
         )
 
         if not time_parsed:

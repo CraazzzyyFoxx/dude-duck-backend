@@ -168,7 +168,7 @@ class User(db.TimeStampMixin):
 
 
 class AccessToken(db.TimeStampMixin):
-    __tablename__ = "accesstoken"
+    __tablename__ = "access_token"
 
     token: Mapped[str] = mapped_column(String(100), unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
@@ -176,7 +176,7 @@ class AccessToken(db.TimeStampMixin):
 
 
 class AccessTokenAPI(db.TimeStampMixin):
-    __tablename__ = "accesstokenapi"
+    __tablename__ = "access_token_api"
 
     token: Mapped[str] = mapped_column(String(100), unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))

@@ -40,17 +40,19 @@ class OrderInfoRead(OrderInfoMetaRead):
 
 
 class OrderPriceMeta(BaseModel):
-    price_booster_dollar: float | None = None
-    price_booster_gold: float | None = None
+    booster_dollar_fee: float | None = None
+    booster_dollar: float | None = None
+    booster_gold: float | None = None
 
 
 class OrderPriceNone(OrderPriceMeta):
-    price_dollar: float | None = None
+    dollar: float | None = None
 
 
 class OrderPriceRead(OrderPriceNone):
-    price_dollar: float
-    price_booster_dollar: float
+    dollar: float
+    booster_dollar: float
+    booster_dollar_fee: float
 
 
 class OrderCredentialsRead(BaseModel):
@@ -113,7 +115,7 @@ class Order(db.TimeStampMixin):
     sheet_id: Mapped[int] = mapped_column(BigInteger())
     row_id: Mapped[int] = mapped_column(BigInteger())
 
-    date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    date: Mapped[datetime] = mapped_column(DateTime())
     shop: Mapped[str | None] = mapped_column(String(), nullable=True)
     shop_order_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     contact: Mapped[str | None] = mapped_column(String(), nullable=True)
@@ -131,7 +133,7 @@ class Order(db.TimeStampMixin):
 
 
 class OrderInfo(db.TimeStampMixin):
-    __tablename__ = "orderinfo"
+    __tablename__ = "order_info"
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
     order: Mapped["Order"] = relationship(back_populates="info")
@@ -148,17 +150,18 @@ class OrderInfo(db.TimeStampMixin):
 
 
 class OrderPrice(db.TimeStampMixin):
-    __tablename__ = "orderprice"
+    __tablename__ = "order_price"
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
     order: Mapped["Order"] = relationship(back_populates="price")
-    price_dollar: Mapped[float] = mapped_column(Float())
-    price_booster_dollar: Mapped[float] = mapped_column(Float())
-    price_booster_gold: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    dollar: Mapped[float] = mapped_column(Float())
+    booster_dollar: Mapped[float] = mapped_column(Float())
+    booster_dollar_fee: Mapped[float] = mapped_column(Float())
+    booster_gold: Mapped[float | None] = mapped_column(Float(), nullable=True)
 
 
 class OrderCredentials(db.TimeStampMixin):
-    __tablename__ = "ordercredentials"
+    __tablename__ = "order_credentials"
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
     order: Mapped["Order"] = relationship(back_populates="credentials")

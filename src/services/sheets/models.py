@@ -62,7 +62,7 @@ class OrderSheetParseItemDB(typing.TypedDict):
 
 
 class OrderSheetParse(db.TimeStampMixin):
-    __tablename__ = "ordersheetparse"
+    __tablename__ = "order_sheet_parse"
 
     spreadsheet: Mapped[str] = mapped_column(String())
     sheet_id: Mapped[int] = mapped_column(BigInteger())

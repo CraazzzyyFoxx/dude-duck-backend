@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.services.accounting import service as accounting_service
-from src.services.auth import service as auth_service
 from src.services.sheets import service as sheets_service
 from src.services.tasks import service as tasks_service
 
@@ -111,10 +110,9 @@ async def get_all_from_datetime_range_by_sheet(
 async def update_with_sync(session: AsyncSession, order: models.Order, order_in: models.OrderUpdate) -> models.Order:
     order = await patch(session, order, order_in)
     parser = await sheets_service.get_by_spreadsheet_sheet_read(session, order.spreadsheet, order.sheet_id)
-    user = await auth_service.get_first_superuser(session)
-    if user.google is not None and parser is not None:
+    if parser is not None:
         tasks_service.update_order.delay(
-            user.google, parser.model_dump_json(), order.row_id, order_in.model_dump()
+            parser.model_dump(mode="json"), order.row_id, order_in.model_dump()
         )
     return order
 
@@ -180,12 +178,10 @@ async def delete(session: AsyncSession, order_id: int) -> None:
 
 async def create(session: AsyncSession, order_in: models.OrderCreate) -> models.Order:
     order = models.Order(**order_in.model_dump(exclude={"price", "info", "credentials"}))
+    order.info = models.OrderInfo(order_id=order.id, **order_in.info.model_dump())
+    order.price = models.OrderPrice(order_id=order.id, **order_in.price.model_dump())
+    order.credentials = models.OrderCredentials(order_id=order.id, **order_in.credentials.model_dump())
     session.add(order)
-    await session.commit()
-    info = models.OrderInfo(order_id=order.id, **order_in.info.model_dump())
-    price = models.OrderPrice(order_id=order.id, **order_in.price.model_dump())
-    credentials = models.OrderCredentials(order_id=order.id, **order_in.credentials.model_dump())
-    session.add_all([info, price, credentials])
     await session.commit()
     logger.info(f"Order created [id={order.id} order_id={order.order_id}]]")
     return await get(session, order.id)

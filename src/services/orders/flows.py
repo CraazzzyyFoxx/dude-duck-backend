@@ -52,13 +52,13 @@ async def create(session: AsyncSession, order_in: models.OrderCreate) -> models.
 
 async def format_order_system(session: AsyncSession, order: models.Order):
     data = order.to_dict()
-    booster_price = order.price.price_booster_dollar
+    booster_price = order.price.booster_dollar
     price = schemas.OrderPriceSystem(
-        price_dollar=order.price.price_dollar,
+        price_dollar=order.price.dollar,
         price_booster_dollar_without_fee=booster_price,
         price_booster_dollar=await currency_flows.usd_to_currency(session, booster_price, order.date, with_fee=True),
         price_booster_rub=await currency_flows.usd_to_currency(session, booster_price, order.date, "RUB", with_fee=True),
-        price_booster_gold=order.price.price_booster_gold,
+        price_booster_gold=order.price.booster_gold,
     )
     data["price"] = price
     data["info"] = order.info.to_dict()
@@ -68,11 +68,11 @@ async def format_order_system(session: AsyncSession, order: models.Order):
 
 async def format_order_perms(session: AsyncSession, order: models.Order, *, has: bool = False):
     data = order.to_dict()
-    booster_price = order.price.price_booster_dollar
+    booster_price = order.price.booster_dollar
     price = schemas.OrderPriceUser(
         price_booster_dollar=await currency_flows.usd_to_currency(session, booster_price, order.date, with_fee=True),
         price_booster_rub=await currency_flows.usd_to_currency(session, booster_price, order.date, "RUB", with_fee=True),
-        price_booster_gold=order.price.price_booster_gold,
+        price_booster_gold=order.price.booster_gold,
     )
     data["price"] = price
     data["info"] = order.info.to_dict()
@@ -89,7 +89,7 @@ async def format_order_active(session: AsyncSession, order: models.Order, order_
     price = schemas.OrderPriceUser(
         price_booster_dollar=await currency_flows.usd_to_currency(session, booster_price, order.date),
         price_booster_rub=await currency_flows.usd_to_currency(session, booster_price, order.date, "RUB"),
-        price_booster_gold=order.price.price_booster_gold,
+        price_booster_gold=order.price.booster_gold,
     )
     data["price"] = price
     data["paid_at"] = order_active.paid_at

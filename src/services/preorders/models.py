@@ -55,7 +55,7 @@ class PreOrder(db.TimeStampMixin):
 
 
 class PreOrderInfo(db.TimeStampMixin):
-    __tablename__ = "preorderinfo"
+    __tablename__ = "preorder_info"
 
     order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id"))
     order: Mapped["PreOrder"] = relationship(back_populates="info")
@@ -72,7 +72,7 @@ class PreOrderInfo(db.TimeStampMixin):
 
 
 class PreOrderPrice(db.TimeStampMixin):
-    __tablename__ = "preorderprice"
+    __tablename__ = "preorder_price"
 
     order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id"))
     order: Mapped["PreOrder"] = relationship(back_populates="price")

@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, Session
 from starlette import status
 
 from src.core import config, enums, errors
@@ -46,6 +46,11 @@ async def get_first_superuser(session: AsyncSession) -> models.User:
     return await get_by_email(session, config.app.super_user_email)  # type: ignore
 
 
+def get_first_superuser_sync(session: Session) -> models.User:
+    result = session.scalars(sa.select(models.User).where(models.User.email == config.app.super_user_email))
+    return result.one()
+
+
 async def get_superusers_with_google(session: AsyncSession) -> list[models.User]:
     query = sa.select(models.User).where(models.User.is_superuser == True, models.User.google == None)
     users = await session.scalars(query)
@@ -81,14 +86,11 @@ async def create(session: AsyncSession, user_create: models.UserCreate, safe: bo
     query = sa.insert(models.User).returning(models.User)
     result = await session.scalars(query, [user_dict])
     created_user = result.first()
-    # parser = await sheets_service.get_default_booster_read()
-    # creds = await get_first_superuser(session)
-    # if creds.google is not None:
-    #     tasks_service.create_booster.delay(
-    #         creds.google.model_dump_json(),
-    #         parser.model_dump_json(),
-    #         models.UserRead.model_validate(created_user).model_dump(),
-    #     )
+    parser = await sheets_service.get_default_booster_read(session)
+    tasks_service.create_booster.delay(
+        parser.model_dump_json(),
+        models.UserRead.model_validate(created_user).model_dump(),
+    )
     await session.commit()
     return created_user
 
@@ -114,14 +116,11 @@ async def update(
     user = result.first()
     await session.commit()
     parser = await sheets_service.get_default_booster_read(session)
-    creds = await get_first_superuser(session)
-    if creds.google is not None:
-        tasks_service.create_or_update_booster.delay(
-            creds.google,
-            parser.model_dump_json(),
-            user.id,
-            models.UserRead.model_validate(user).model_dump(),
-        )
+    tasks_service.create_or_update_booster.delay(
+        parser.model_dump_json(),
+        user.id,
+        models.UserRead.model_validate(user).model_dump(),
+    )
     return user
 
 
@@ -130,10 +129,8 @@ async def delete(session: AsyncSession, user: models.User) -> None:
     await session.execute(query)
     await session.commit()
     parser = await sheets_service.get_default_booster_read(session)
-    creds = await get_first_superuser(session)
-    if creds.google is not None and parser is not None:
+    if parser is not None:
         tasks_service.delete_booster.delay(
-            creds.google,
             parser.model_dump_json(),
             str(user.id),
         )

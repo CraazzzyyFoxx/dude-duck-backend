@@ -84,41 +84,28 @@ async def order_available(order: order_models.Order) -> bool:
 async def sync_boosters_sheet(session: AsyncSession, order: order_models.Order) -> None:
     if config.app.sync_boosters:
         parser = await sheets_service.get_by_spreadsheet_sheet_read(session, order.spreadsheet, order.sheet_id)
-        creds = await auth_service.get_first_superuser(session)
-        if creds.google is not None and parser is not None:
+        if parser is not None:
             users = await service.get_by_order_id(session, order.id)
-            tasks_service.update_order.delay(
-                creds.google,
-                parser.model_dump_json(),
-                order.row_id,
-                {"booster": await service.boosters_to_str(session, order, users)},
-            )
+            booster_str = await service.boosters_to_str(session, order, users)
+            tasks_service.update_order.delay(parser.model_dump(mode="json"), order.row_id, {"booster": booster_str})
 
 
-async def update_price(
-    session: AsyncSession, order: order_models.Order, price: float, *, user_add: bool = True
-) -> dict[int, float]:
+async def update_price(session: AsyncSession, order: order_models.Order, price: float) -> dict[int, float]:
     boosters = await service.get_by_order_id(session, order.id)
     await price_collision_fix(session, order, boosters)
     total_dollars = sum(b.dollars for b in boosters)
     price_map: dict[int, float] = {b.id: b.dollars / total_dollars for b in boosters}
-    if user_add:
-        price = -price
     for booster in boosters:
-        user_order_in = models.UserOrderUpdate(dollars=booster.dollars + price * price_map[booster.id])
+        user_order_in = models.UserOrderUpdate(dollars=booster.dollars - price * price_map[booster.id])
         await service.patch(session, booster, user_order_in)
-    if not user_add:
-        await price_collision_fix(session, order, boosters)
     await sync_boosters_sheet(session, order)
     return price_map
 
 
 async def price_collision_fix(session: AsyncSession, order: order_models.Order, boosters: list[models.UserOrder]):
-    dollars = await currency_flows.usd_to_currency(session, order.price.price_booster_dollar, order.date, with_fee=True)
+    dollars = await currency_flows.usd_to_currency(session, order.price.booster_dollar, order.date, with_fee=True)
     total_dollars = sum(b.dollars for b in boosters)
     free_dollars = dollars - total_dollars
-    if free_dollars == 0:
-        return
     if len(boosters) > 1:
         price_map: dict[int, float] = {b.id: b.dollars / total_dollars for b in boosters}
         for booster in boosters:
@@ -152,7 +139,7 @@ async def _add_booster(
         await update_price(session, order, price)
         booster = await service.create(session, order, create_data)
     except Exception as e:
-        await update_price(session, order, price, user_add=False)
+        await session.rollback()
         raise e
     if not boosters and sync:
         await order_service.update_with_sync(session, order, order_models.OrderUpdate(auth_date=datetime.utcnow()))
@@ -169,8 +156,7 @@ async def add_booster(
 ) -> models.UserOrder:
     await can_user_pick_order(session, user, order)
     boosters = await service.get_by_order_id(session, order.id)
-    dollars = await currency_flows.usd_to_currency(session, order.price.price_booster_dollar, order.date, with_fee=True)
-    calculated_dollars = dollars / (len(boosters) + 1)
+    calculated_dollars = order.price.booster_dollar_fee / (len(boosters) + 1)
     return await _add_booster(session, order, user, boosters, calculated_dollars, method_payment, sync)
 
 
@@ -184,7 +170,7 @@ async def add_booster_with_price(
 ) -> models.UserOrder:
     await can_user_pick_order(session, user, order)
     boosters = await service.get_by_order_id(session, order.id)
-    dollars = await currency_flows.usd_to_currency(session, order.price.price_booster_dollar, order.date, with_fee=True)
+    dollars = order.price.booster_dollar_fee
     total = sum(b.dollars for b in boosters) + price
     if dollars < price:
         raise errors.DDHTTPException(
@@ -325,14 +311,14 @@ async def create_report(
                 bank = user.bank
 
             rub = await currency_flows.usd_to_currency(session, payment.dollars, payment.order_date, currency="RUB")
-            total += order.price.price_dollar
+            total += order.price.dollar
             earned += payment.dollars
             item = models.AccountingReportItem(
                 order_id=order.order_id,
                 date=payment.order_date,
                 username=user.name,
-                dollars=order.price.price_booster_dollar,
-                dollars_income=order.price.price_dollar,
+                dollars=order.price.booster_dollar,
+                dollars_income=order.price.dollar,
                 rub=rub,
                 dollars_fee=payment.dollars,
                 end_date=order.end_date,

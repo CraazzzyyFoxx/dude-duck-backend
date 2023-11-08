@@ -22,7 +22,7 @@ class SecondSort(str, Enum):
 
 
 class UserOrder(db.TimeStampMixin):
-    __tablename__ = "userorder"
+    __tablename__ = "user_order"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     user: Mapped["auth_models.User"] = relationship()

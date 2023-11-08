@@ -55,7 +55,7 @@ class Response(BaseResponse):
 
 
 class PreResponse(BaseResponse):
-    __tablename__ = "preresponse"
+    __tablename__ = "pre_response"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     user: Mapped["auth_models.User"] = relationship()
