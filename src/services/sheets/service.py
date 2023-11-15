@@ -101,17 +101,18 @@ async def get_by_spreadsheet(session: AsyncSession, spreadsheet: str) -> typing.
 
 
 async def get_by_spreadsheet_sheet(
-        session: AsyncSession, spreadsheet: str, sheet: int
+    session: AsyncSession, spreadsheet: str, sheet: int
 ) -> models.OrderSheetParse | None:
     result = await session.scalars(
-        sa.select(models.OrderSheetParse)
-        .where(models.OrderSheetParse.spreadsheet == spreadsheet, models.OrderSheetParse.sheet_id == sheet)
+        sa.select(models.OrderSheetParse).where(
+            models.OrderSheetParse.spreadsheet == spreadsheet, models.OrderSheetParse.sheet_id == sheet
+        )
     )
     return result.first()
 
 
 async def get_by_spreadsheet_sheet_read(
-        session: AsyncSession, spreadsheet: str, sheet: int
+    session: AsyncSession, spreadsheet: str, sheet: int
 ) -> models.OrderSheetParseRead | None:
     parser = await get_by_spreadsheet_sheet(session, spreadsheet, sheet)
     if parser:
@@ -120,9 +121,7 @@ async def get_by_spreadsheet_sheet_read(
 
 
 async def get_default_booster(session: AsyncSession) -> models.OrderSheetParse | None:
-    result = await session.scalars(
-        sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == True)
-    )
+    result = await session.scalars(sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == True))
     return result.first()
 
 
@@ -134,9 +133,7 @@ async def get_default_booster_read(session: AsyncSession) -> models.OrderSheetPa
 
 
 async def get_all_not_default_user(session: AsyncSession) -> typing.Sequence[models.OrderSheetParse]:
-    result = await session.scalars(
-        sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == False)
-    )
+    result = await session.scalars(sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == False))
     return result.all()
 
 
@@ -151,7 +148,7 @@ async def get_all(session: AsyncSession) -> typing.Sequence[models.OrderSheetPar
 
 
 async def update(
-        session: AsyncSession, parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate
+    session: AsyncSession, parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate
 ) -> models.OrderSheetParse:
     update_data = parser_in.model_dump(exclude_none=True)
     await session.execute(
@@ -219,45 +216,37 @@ def parse_row(
     data_for_valid = {}
     for getter in parser.items:
         value = row[getter.row]
-        if getter.type == "float" and isinstance(value, str):
-            value = value.replace(",", ".")
-        if getter.type == "str" and isinstance(value, int):
-            value = str(value)
-        data_for_valid[getter.name] = value if value not in ["", " "] else None
+        value = value if value not in ["", " "] else None
+        if value is not None:
+            if getter.type == "float" and isinstance(value, str):
+                value = value.replace(",", ".")
+            if getter.type == "str" and isinstance(value, int):
+                value = str(value)
+        data_for_valid[getter.name] = value
     try:
-        valid_model = generate_model(parser)(**data_for_valid)
-    except ValidationError as error:
-        if is_raise:
-            logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
-            logger.error(errors.APIValidationError.from_pydantic(error))
-            raise error
-        else:
-            return None
-    validated_data = valid_model.model_dump()
-    model_fields = []
-    containers = {}
-    data = {"spreadsheet": parser.spreadsheet, "sheet_id": parser.sheet_id, "row_id": row_id}
-
-    for field in model.model_fields.items():
-        if isinstance(field[1].annotation, ModelMetaclass):
-            data[field[0]] = {}
-            containers[field[0]] = [field[0] for field in field[1].annotation.model_fields.items()]  # noqa
-        else:
-            model_fields.append(field[0])
-    for getter in parser.items:
-        if getter.name in model_fields:
-            data[getter.name] = validated_data[getter.name]
-        else:
-            for key, fields in containers.items():
-                if getter.name in fields:
-                    data[key][getter.name] = validated_data[getter.name]
-                    break
-    try:
+        validated_data = generate_model(parser)(**data_for_valid).model_dump()
+        model_fields = []
+        containers = {}
+        data = {"spreadsheet": parser.spreadsheet, "sheet_id": parser.sheet_id, "row_id": row_id}
+        for field in model.model_fields.items():
+            if isinstance(field[1].annotation, ModelMetaclass):
+                data[field[0]] = {}
+                containers[field[0]] = [field[0] for field in field[1].annotation.model_fields.items()]  # noqa
+            else:
+                model_fields.append(field[0])
+        for getter in parser.items:
+            if getter.name in model_fields:
+                data[getter.name] = validated_data[getter.name]
+            else:
+                for key, fields in containers.items():
+                    if getter.name in fields:
+                        data[key][getter.name] = validated_data[getter.name]
+                        break
         return model(**data)
     except ValidationError as error:
         if is_raise:
             logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
-            logger.error(errors.APIValidationError.from_pydantic(error))
+            logger.error(errors.APIValidationError.from_pydantic(error).model_dump_json(indent=4))
             raise error
         else:
             return None

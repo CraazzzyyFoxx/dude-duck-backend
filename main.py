@@ -15,7 +15,6 @@ from src.middlewares.time import TimeMiddleware
 from src.services.auth import flows as auth_flows
 from src.services.settings import service as settings_service
 from src.services.telegram import service as telegram_service
-from src.services.sheets import tasks as sheets_tasks
 
 if os.name != "nt":
     import uvloop  # noqa
@@ -33,7 +32,6 @@ async def lifespan(_: FastAPI):
         await auth_flows.create_first_superuser(session)
     await telegram_service.TelegramService.init()
     logger.info("Application... Online!")
-    await sheets_tasks.sync_orders()
     yield
     await telegram_service.TelegramService.shutdown()
 

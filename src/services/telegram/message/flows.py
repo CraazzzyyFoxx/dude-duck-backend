@@ -1,5 +1,5 @@
-from src.services.orders import schemas as order_schemas
-from src.services.preorders import models as preorder_models
+from src.services.order import schemas as order_schemas
+from src.services.preorder import models as preorder_models
 
 from . import models, service
 

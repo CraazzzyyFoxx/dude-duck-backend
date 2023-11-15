@@ -1,31 +1,30 @@
-from datetime import datetime
+from datetime import datetime, UTC
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import BigInteger, String, ForeignKey, DateTime, Float, Boolean
 
 from src.core import db
-from src.services.orders import models as order_models
+from src.services.order import models as order_models
 from src.services.sheets import models as sheets_models
 
 
 class PreOrderPriceUser(BaseModel):
-    price_booster_dollar: float | None = None
-    price_booster_rub: float | None = None
-    price_booster_gold: float | None = None
+    booster_dollar_fee: float | None = None
+    booster_rub: float | None = None
+    booster_gold: float | None = None
 
 
 class PreOrderPriceSystem(BaseModel):
-    price_dollar: float | None = None
-    price_booster_dollar_without_fee: float | None = None
-
-    price_booster_dollar: float | None = None
-    price_booster_rub: float | None = None
-    price_booster_gold: float | None = None
+    dollar: float | None = None
+    booster_dollar: float | None = None
+    booster_dollar_fee: float | None = None
+    booster_rub: float | None = None
+    booster_gold: float | None = None
 
 
 class PreOrderCreate(sheets_models.SheetEntity):
-    date: datetime = Field(default_factory=datetime.utcnow)
+    date: datetime = Field(default_factory=lambda _: datetime.now(UTC))
     order_id: str
 
     info: order_models.OrderInfoRead
@@ -76,9 +75,10 @@ class PreOrderPrice(db.TimeStampMixin):
 
     order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id"))
     order: Mapped["PreOrder"] = relationship(back_populates="price")
-    price_dollar: Mapped[float] = mapped_column(Float())
-    price_booster_dollar: Mapped[float] = mapped_column(Float())
-    price_booster_gold: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    dollar: Mapped[float] = mapped_column(Float())
+    booster_dollar: Mapped[float] = mapped_column(Float())
+    booster_dollar_fee: Mapped[float] = mapped_column(Float())
+    booster_gold: Mapped[float | None] = mapped_column(Float(), nullable=True)
 
 
 class PreOrderReadSystem(BaseModel):

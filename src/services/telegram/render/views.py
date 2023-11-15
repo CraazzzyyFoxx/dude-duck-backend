@@ -3,9 +3,9 @@ from starlette import status
 
 from src.core import enums, errors
 from src.services.auth import flows as auth_flows
-from src.services.search import models as search_models
 
 from ..service import request as service_request
+from ..models import PaginationParams, Paginated
 from . import models
 
 router = APIRouter(
@@ -15,10 +15,8 @@ router = APIRouter(
 )
 
 
-@router.get(path="", response_model=search_models.Paginated[models.RenderConfigRead])
-async def get_renders(
-    paging: search_models.PaginationParams = Depends(),
-):
+@router.get(path="/filter", response_model=Paginated[models.RenderConfigRead])
+async def filter_renders(paging: PaginationParams = Depends(),):
     response = await service_request(
         f"render?page={paging.page}&per_page={paging.per_page}",
         "GET",
@@ -26,7 +24,7 @@ async def get_renders(
     return response.json()
 
 
-@router.get("/{name}", response_model=models.RenderConfigRead)
+@router.get("", response_model=models.RenderConfigRead)
 async def read_order_render(name: str):
     response = await service_request(f"render/{name}", "GET")
     if response.status_code == 404:
@@ -48,7 +46,7 @@ async def create_order_render(render: models.RenderConfigCreate):
     return response.json()
 
 
-@router.delete("/{name}", response_model=models.RenderConfigRead)
+@router.delete("", response_model=models.RenderConfigRead)
 async def delete_order_render(name: str):
     response = await service_request(f"render/{name}", "DELETE")
     if response.status_code == 404:
@@ -59,7 +57,7 @@ async def delete_order_render(name: str):
     return response.json()
 
 
-@router.patch("/{name}", response_model=models.RenderConfigRead)
+@router.patch("", response_model=models.RenderConfigRead)
 async def update_order_render(name: str, data: models.RenderConfigUpdate):
     response = await service_request(f"render/{name}", "PATCH", data=data.model_dump())
     if response.status_code == 404:

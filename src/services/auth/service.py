@@ -52,7 +52,8 @@ def get_first_superuser_sync(session: Session) -> models.User:
 
 
 async def get_superusers_with_google(session: AsyncSession) -> list[models.User]:
-    query = sa.select(models.User).where(models.User.is_superuser == True, models.User.google == None)
+    query = sa.select(models.User).where(
+        models.User.is_superuser == True, models.User.google == None)  # noqa
     users = await session.scalars(query)
     return list(users)
 

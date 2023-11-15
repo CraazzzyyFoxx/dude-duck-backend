@@ -12,8 +12,8 @@ from src.services.accounting import service as accounting_service
 from src.services.auth import models as auth_models
 from src.services.auth import service as auth_service
 from src.services.currency import flows as currency_flows
-from src.services.orders import models as order_models
-from src.services.orders import service as order_service
+from src.services.order import models as order_models
+from src.services.order import service as order_service
 
 from . import models, service
 
@@ -69,17 +69,17 @@ async def sync_data_from(
         if order is not None:
             orders.pop(order_id)
             por = models.OrderReadSheets.model_validate(order_db, from_attributes=True).model_dump(exclude=exclude)
-            await boosters_from_order_sync(session, order_db, order, users, users_ids)
             diff = DeepDiff(order.model_dump(exclude=exclude), por, truncate_datetime="second")
             if diff:
-                if config.app.debug:
-                    logger.debug(diff)
+                # if config.app.debug:
+                logger.warning(diff)
                 try:
                     update_data = order_models.OrderUpdate.model_validate(order.model_dump())
-                    await order_service.update(session, order_db, update_data)
+                    order_db = await order_service.update(session, order_db, update_data)
                     changed += 1
                 except ValidationError as e:
                     logger.error(e.errors(include_url=False))
+            await boosters_from_order_sync(session, order_db, order, users, users_ids)
         # else:
         #     await order_service.delete(order_db.id)
         #     deleted += 1

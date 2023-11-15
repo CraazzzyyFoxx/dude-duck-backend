@@ -6,7 +6,7 @@ from pydantic import EmailStr
 from starlette import status
 
 from src.core import enums, errors
-# from app.services.telegram.message import service as message_service
+from src.services.telegram.message import service as message_service
 
 from src.core.db import get_async_session
 from . import flows, models, service
@@ -27,7 +27,7 @@ async def login(credentials: OAuth2PasswordRequestForm = Depends(), session=Depe
             ],
         )
     token = await service.write_token(session, user)
-    # message_service.send_logged_notify(models.UserRead.model_validate(user))
+    message_service.send_logged_notify(models.UserRead.model_validate(user))
     return ORJSONResponse({"access_token": token, "token_type": "bearer"})
 
 
@@ -49,7 +49,7 @@ async def register(user_create: models.UserCreate, session=Depends(get_async_ses
 @router.post("/request-verify-token", status_code=status.HTTP_202_ACCEPTED)
 async def request_verify_token(email: EmailStr = Body(..., embed=True), session=Depends(get_async_session)):
     try:
-        user = await flows.get_by_email(session, email)
+        user = await flows.get_by_email(session, email.lower())
         await service.request_verify(user)
     except errors.DDHTTPException:
         pass
@@ -65,7 +65,7 @@ async def verify(token: str = Body(..., embed=True), session=Depends(get_async_s
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
 async def forgot_password(email: EmailStr = Body(..., embed=True), session=Depends(get_async_session)):
     try:
-        user = await flows.get_by_email(session, email)
+        user = await flows.get_by_email(session, email.lower())
         await service.forgot_password(user)
     except errors.DDHTTPException:
         pass

@@ -4,11 +4,11 @@ from starlette import status
 from src.core import errors
 from src.services.accounting import flows as accounting_flows
 from src.services.auth import models as auth_models
-from src.services.orders import flows as order_flows
-from src.services.orders import models as order_models
-from src.services.preorders import flows as preorder_flows
-from src.services.preorders import models as preorder_models
-from src.services.preorders import service as preorder_service
+from src.services.order import flows as order_flows
+from src.services.order import models as order_models
+from src.services.preorder import flows as preorder_flows
+from src.services.preorder import models as preorder_models
+from src.services.preorder import service as preorder_service
 from src.services.telegram.message import service as messages_service
 
 from . import models, service

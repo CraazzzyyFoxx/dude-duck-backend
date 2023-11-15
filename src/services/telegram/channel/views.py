@@ -3,9 +3,9 @@ from starlette import status
 
 from src.core import enums, errors
 from src.services.auth import flows as auth_flows
-from src.services.search import models as search_models
 
 from ..service import request as service_request
+from ..models import PaginationParams, Paginated
 from . import models
 
 router = APIRouter(
@@ -15,9 +15,9 @@ router = APIRouter(
 )
 
 
-@router.get(path="", response_model=search_models.Paginated[models.ChannelRead])
+@router.get(path="", response_model=Paginated[models.ChannelRead])
 async def get_channels(
-    paging: search_models.PaginationParams = Depends(),
+    paging: PaginationParams = Depends(),
 ):
     response = await service_request(
         f"channel?page={paging.page}&per_page={paging.per_page}",
@@ -26,7 +26,7 @@ async def get_channels(
     return response.json()
 
 
-@router.get("/{channel_id}", response_model=models.ChannelRead)
+@router.get("", response_model=models.ChannelRead)
 async def read_order_channel(channel_id: int):
     response = await service_request(f"channel/{channel_id}", "GET")
     if response.status_code == 404:
@@ -48,7 +48,7 @@ async def create_order_channel(channel: models.ChannelCreate):
     return response.json()
 
 
-@router.delete("/{channel_id}", response_model=models.ChannelRead)
+@router.delete("", response_model=models.ChannelRead)
 async def delete_order_channel(channel_id: int):
     response = await service_request(f"channel/{channel_id}", "DELETE")
     if response.status_code == 404:
@@ -59,7 +59,7 @@ async def delete_order_channel(channel_id: int):
     return response.json()
 
 
-@router.patch("/{channel_id}", response_model=models.ChannelRead)
+@router.patch("", response_model=models.ChannelRead)
 async def update_order_channel(channel_id: int, data: models.ChannelUpdate):
     response = await service_request(f"channel/{channel_id}", "PATCH", data=data.model_dump())
     if response.status_code == 404:

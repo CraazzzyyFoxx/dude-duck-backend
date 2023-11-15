@@ -1,17 +1,22 @@
 import re
 import typing
-from datetime import datetime
+from datetime import datetime, UTC
 
 import sqlalchemy as sa
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
-from src.core import config
+from starlette import status
+
+from src.core import config, errors
 from src.services.auth import models as auth_models
 from src.services.auth import service as auth_service
 from src.services.currency import flows as currency_flows
-from src.services.orders import models as order_models
+from src.services.order import models as order_models
+from src.services.order import service as order_service
+from src.services.sheets import service as sheets_service
+from src.services.tasks import service as tasks_service
 
 from . import models
 
@@ -28,49 +33,10 @@ async def get(session: AsyncSession, user_order_id: int) -> models.UserOrder | N
     return result.first()
 
 
-async def create(
-    session: AsyncSession, order: order_models.Order, user_order_in: models.UserOrderCreate
-) -> models.UserOrder:
-    user_order = models.UserOrder(**user_order_in.model_dump())
-    if user_order_in.completed:
-        user_order.completed_at = order.end_date if order.end_date is not None else datetime.utcnow()
-    if user_order_in.paid:
-        user_order.paid_at = datetime.utcnow()
-    session.add(user_order)
-    await session.commit()
-    logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
-    return user_order
-
-
-async def delete(session: AsyncSession, user_order_id: int) -> None:
-    user_order = await get(session, user_order_id)
-    if user_order:
-        await session.delete(user_order)
-        await session.commit()
-        logger.info(f"Deleted UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
-
-
-async def delete_by_order_id(session: AsyncSession, order_id: int) -> None:
-    user_orders = await get_by_order_id(session, order_id)
-    for user_order in user_orders:
-        logger.info(f"Deleted UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
-        await session.delete(user_order)
-    await session.commit()
-
-
 async def get_by_order_id(session: AsyncSession, order_id: int) -> list[models.UserOrder]:
     result = await session.scalars(
         sa.select(models.UserOrder)
         .where(models.UserOrder.order_id == order_id)
-        .options(joinedload(models.UserOrder.user), joinedload(models.UserOrder.order))
-    )
-    return result.all()  # type: ignore
-
-
-async def get_by_user_id(session: AsyncSession, user_id: int) -> list[models.UserOrder]:
-    result = await session.scalars(
-        sa.select(models.UserOrder)
-        .where(models.UserOrder.user_id == user_id)
         .options(joinedload(models.UserOrder.user), joinedload(models.UserOrder.order))
     )
     return result.all()  # type: ignore
@@ -95,14 +61,104 @@ async def get_by_orders(session: AsyncSession, orders_id: typing.Iterable[int]) 
     return result.all()
 
 
-async def update(
-    session: AsyncSession, user_order: models.UserOrder, user_order_in: models.UserOrderUpdate
+async def sync_boosters_sheet(session: AsyncSession, order: order_models.Order) -> None:
+    if config.app.sync_boosters:
+        parser = await sheets_service.get_by_spreadsheet_sheet_read(session, order.spreadsheet, order.sheet_id)
+        if parser is not None:
+            user_orders = await get_by_order_id(session, order.id)
+            users = await auth_service.get_by_ids(session, [d.user_id for d in user_orders])
+            booster_str = await _boosters_to_str(session, order, user_orders, users)
+            tasks_service.update_order.delay(parser.model_dump(mode="json"), order.row_id, {"booster": booster_str})
+
+
+async def create(
+    session: AsyncSession,
+    order: order_models.Order,
+    user: auth_models.User,
+    boosters: list[models.UserOrder],
+    price: float,
+    method_payment: str | None = None,
+    sync: bool = True,
 ) -> models.UserOrder:
-    update_data = user_order_in.model_dump(exclude_defaults=True)
-    await session.execute(sa.update(models.UserOrder).where(models.UserOrder.id == user_order.id).values(**update_data))
+    user_order = models.UserOrder(
+        order_id=order.id,
+        user_id=user.id,
+        dollars=price,
+        order_date=order.date,
+        completed=True if order.status == order_models.OrderStatus.Completed else False,
+        paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
+        method_payment=method_payment if method_payment else "$",
+    )
+    if user_order.paid:
+        user_order.paid_at = datetime.now()
+    if user_order.completed:
+        user_order.completed_at = order.end_date if order.end_date else datetime.now(UTC)
+    try:
+        session.add(user_order)
+        total_dollars = sum([d.dollars for d in boosters])
+        if total_dollars + price > order.price.booster_dollar_fee:
+            price_map: dict[int, float] = {b.id: b.dollars / total_dollars for b in boosters}
+            for booster in boosters:
+                booster.dollars = booster.dollars - price * price_map[booster.id]
+            session.add_all(boosters)
+        await session.commit()
+        logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
+        if not boosters:
+            order_update = order_models.OrderUpdate(auth_date=datetime.now(tz=UTC))
+            await order_service.update_with_sync(session, order, order_update)
+        if sync:
+            await sync_boosters_sheet(session, order)
+    except Exception as e:
+        await session.rollback()
+        raise e
+    return user_order
+
+
+async def delete_by_order_id(session: AsyncSession, order_id: int) -> None:
+    user_orders = await get_by_order_id(session, order_id)
+    for user_order in user_orders:
+        logger.info(f"Deleted UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
+        await session.delete(user_order)
     await session.commit()
-    logger.info(f"Updated UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
-    return await get(session, user_order.id)
+
+
+async def update(
+    session: AsyncSession, order: order_models.Order, user: auth_models.User, update_model: models.UserOrderUpdate
+) -> models.UserOrder:
+    boosters = await get_by_order_id(session, order.id)
+    boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
+    if boosters_map.get(user.id) is None:
+        raise errors.DDHTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[errors.DDException(msg="The user is not a booster of this order", code="not_exist")],
+        )
+    else:
+        try:
+            if update_model.dollars is not None:
+                total_price = sum([b.dollars for b in boosters])
+                if update_model.dollars + total_price > order.price.booster_dollar_fee:
+                    raise errors.DDHTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=[
+                            errors.DDException(
+                                msg=f"The price for the booster is incorrect. "
+                                f"Order price {order.price.booster_dollar_fee}, total price for boosters {total_price}."
+                                f" \n{total_price} > {order.price.booster_dollar_fee}",
+                                code="invalid_price",
+                            )
+                        ],
+                    )
+            updated_user_order = await session.scalars(
+                sa.update(models.UserOrder)
+                .where(models.UserOrder.id == boosters_map.get(user.id).id)
+                .values(**update_model.model_dump(exclude_unset=True))
+                .returning(models.UserOrder)
+            )
+            await sync_boosters_sheet(session, order)
+            return updated_user_order.one()
+        except Exception as e:
+            await session.rollback()
+            raise e
 
 
 async def patch(
@@ -115,20 +171,26 @@ async def patch(
     return await get(session, user_order.id)
 
 
-async def bulk_update_price(session: AsyncSession, order_id: int, price: float, inc=False) -> None:
-    await session.execute(
-        sa.update(models.UserOrder)
-        .where(models.UserOrder.order_id == order_id)
-        .values(dollars=models.UserOrder.dollars + price if inc else price)
-    )
-    await session.commit()
+async def delete(session: AsyncSession, order: order_models.Order, user: auth_models.User) -> models.UserOrder:
+    boosters = await get_by_order_id(session, order.id)
+    boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
+    to_delete = boosters_map.get(user.id)
+    if to_delete is None:
+        raise errors.DDHTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=[errors.DDException(msg="The user is not a booster of this order", code="not_exist")],
+        )
+    await session.execute(sa.delete(models.UserOrder).where(models.UserOrder.id == to_delete.id))
+    await sync_boosters_sheet(session, order)
+    logger.info(f"Deleted UserOrder [order_id={to_delete.order_id} user_id={to_delete.user_id}]")
+    return to_delete
 
 
 async def check_user_total_orders(session: AsyncSession, user: auth_models.User) -> bool:
     result = await session.execute(
-        sa.select(
-            func.count(models.UserOrder.id))
-        .where(models.UserOrder.user_id == user.id, models.UserOrder.completed == False)
+        sa.select(func.count(models.UserOrder.id)).where(
+            models.UserOrder.user_id == user.id, models.UserOrder.completed == False  # noqa: E712
+        )
     )
     count = result.first()
     return bool(count[0] < user.max_orders)
@@ -141,7 +203,10 @@ async def update_booster_price(session: AsyncSession, old: order_models.Order, n
     old_price = await currency_flows.usd_to_currency(session, old.price.booster_dollar, old.date)
     new_price = await currency_flows.usd_to_currency(session, new.price.booster_dollar, new.date)
     delta = (new_price - old_price) / len(boosters)
-    await bulk_update_price(session, new.id, delta, inc=True)
+    for booster in boosters:
+        booster.dollars += delta
+    session.add_all(boosters)
+    await session.commit()
 
 
 def boosters_from_str(string: str) -> dict[str, int | None]:
@@ -182,16 +247,11 @@ async def _boosters_to_str(
     return None
 
 
-async def boosters_to_str(session: AsyncSession, order, data: list[models.UserOrder]) -> str:
-    users = await auth_service.get_by_ids(session, [d.user_id for d in data])
-    return await _boosters_to_str(session, order, data, users)
-
-
 async def boosters_to_str_sync(
     session: AsyncSession,
     order: order_models.Order,
     data: typing.Iterable[models.UserOrder],
-    users_in: typing.Iterable[auth_models.User]
+    users_in: typing.Iterable[auth_models.User],
 ) -> str | None:
     search = [d.user_id for d in data]
     users = [user_in for user_in in users_in if user_in.id in search]

@@ -6,7 +6,7 @@ from loguru import logger
 
 from src.core import db
 from src.services.auth import service as auth_service
-from src.services.orders import service as order_service
+from src.services.order import service as order_service
 from src.services.settings import service as settings_service
 from src.services.sheets import service as sheets_service
 from src.services.telegram.message import service as message_service

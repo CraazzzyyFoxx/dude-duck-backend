@@ -30,7 +30,7 @@ async def create(session: AsyncSession, currency_in: models.CurrencyApiLayer) ->
         creds = await auth_service.get_first_superuser(session)
         if creds.google is not None:
             cell = sheets_service.get_cell(
-                creds.google,
+                creds.google,  # type: ignore
                 settings.currency_wow_spreadsheet,
                 settings.currency_wow_sheet_id,
                 settings.currency_wow_cell,
@@ -84,7 +84,7 @@ async def used_token(session: AsyncSession, token: settings_models.ApiLayerCurre
     settings = await settings_service.get(session)
     for t in settings.api_layer_currency:
         if t["token"] == token["token"]:
-            t["last_uses"] = datetime.datetime.utcnow()
+            t["last_uses"] = datetime.datetime.now(datetime.UTC)
             t["uses"] += 1
     session.add(settings)
     await session.commit()
@@ -110,7 +110,7 @@ async def get_currency_historical(session: AsyncSession, date: datetime.datetime
 
 
 async def validate_token(token: str) -> bool:
-    date = normalize_date(datetime.datetime.utcnow())
+    date = normalize_date(datetime.datetime.now(datetime.UTC))
     headers = {"apikey": token}
     response = await client.request("GET", f"/currency_data/historical?date={date}", headers=headers)
     if response.status_code != 200:

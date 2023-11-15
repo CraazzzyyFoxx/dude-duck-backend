@@ -12,12 +12,12 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=models.SettingsRead)
+@router.get("", response_model=models.SettingsRead)
 async def read_settings(session=Depends(get_async_session)):
     return await service.get(session)
 
 
-@router.patch("/", response_model=models.SettingsRead)
+@router.patch("", response_model=models.SettingsRead)
 async def update_settings(data: models.SettingsUpdate, session=Depends(get_async_session)):
     return await service.update(session, data)
 

@@ -1,19 +1,14 @@
 from fastapi import APIRouter, Depends, UploadFile
 from starlette import status
-from tortoise.expressions import Q
 
-from src.core import enums, errors, db
+from src.core import enums, errors, db, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.accounting import models as accounting_models
 from src.services.auth import flows as auth_flows
 from src.services.auth import models as auth_models
 from src.services.auth import service as auth_service
-from src.services.orders import flows as orders_flows
-from src.services.orders import models as orders_models
-from src.services.orders import schemas as orders_schemas
-from src.services.orders import service as orders_service
-from src.services.search import models as search_models
-from src.services.search import service as search_service
+from src.services.order import flows as orders_flows
+from src.services.order import schemas as orders_schemas
 
 from . import flows
 
@@ -26,8 +21,12 @@ async def get_me(user=Depends(auth_flows.current_active)):
 
 
 @router.patch("/@me", response_model=auth_models.UserRead)
-async def update_me(user_update: auth_models.UserUpdate, user=Depends(auth_flows.current_active)):
-    return await flows.update_user(user_update, user)
+async def update_me(
+        user_update: auth_models.UserUpdate,
+        user=Depends(auth_flows.current_active),
+        session=Depends(db.get_async_session)
+):
+    return await flows.update_user(session, user_update, user)
 
 
 @router.post("/@me/google-token", status_code=201, response_model=auth_models.AdminGoogleToken)
@@ -55,24 +54,20 @@ async def generate_api_token(user=Depends(auth_flows.current_active_superuser), 
     return response
 
 
-@router.get("/@me/orders", response_model=search_models.Paginated[orders_schemas.OrderReadActive])
+@router.get("/@me/orders", response_model=pagination.Paginated[orders_schemas.OrderReadActive])
 async def get_active_orders(
-    paging: search_models.PaginationParams = Depends(),
-    sorting: search_models.OrderSortingParams = Depends(),
+    params: accounting_models.UserOrderFilterParams = Depends(),
     user=Depends(auth_flows.current_active_verified),
+    session=Depends(db.get_async_session)
 ):
-    query = [Q(user_id=user.id)]
-    if sorting.completed != search_models.OrderSelection.ALL:
-        if sorting.completed == search_models.OrderSelection.Completed:
-            query.append(Q(completed=True))
-        else:
-            query.append(Q(completed=False))
-    data = await search_service.paginate(accounting_models.UserOrder.filter(Q(*query)), paging, sorting)
-    orders = await orders_service.get_by_ids([d.order_id for d in data["results"]])
-    orders_map: dict[int, orders_models.Order] = {order.id: order for order in orders}
-    results = [await orders_flows.format_order_active(session, orders_map[d.order_id], d) for d in data["results"]]
-    data["results"] = results
-    return data
+    if params.user_id and params.user_id != user.id and not user.is_superuser:
+        raise errors.DDHTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=[errors.DDException(msg="You don't have permission to access.", code="forbidden")],
+        )
+    if params.user_id is None:
+        params.user_id = user.id
+    return await accounting_flows.get_by_filter(session, params)
 
 
 @router.get("/@me/orders/{order_id}", response_model=orders_schemas.OrderReadActive)
@@ -93,7 +88,6 @@ async def send_close_request(
 ):
     order = await orders_flows.get(session, order_id)
     new_order = await accounting_flows.close_order(session, user, order, data)
-
     price = await accounting_flows.get_by_order_id_user_id(session, new_order, user)
     return await orders_flows.format_order_active(session, new_order, price)
 

@@ -8,7 +8,7 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from src.core import config, db
 from src.services.auth import service as auth_service
 from src.services.auth import models as auth_models
-from src.services.preorders import tasks as preorders_tasks
+from src.services.preorder import tasks as preorders_tasks
 from src.services.sheets import models as sheets_models
 from src.services.sheets import service as sheets_service
 from src.services.sheets import tasks as sheets_tasks

@@ -2,26 +2,24 @@ from fastapi import APIRouter, Depends
 
 from src.core import db, enums
 from src.services.auth import flows as auth_flows
-from src.services.orders import flows as order_flows
-from src.services.preorders import flows as preorder_flows
-from src.services.search import models as search_models
-from src.services.search import service as search_service
+from src.services.order import flows as order_flows
+from src.services.preorder import flows as preorder_flows
 
 from . import flows, models, service
 
 router = APIRouter(prefix="/response", tags=[enums.RouteTag.RESPONSES])
 
 
-@router.get("/{order_id}", response_model=search_models.Paginated[models.ResponseRead])
-async def get_responses(
-    order_id: int,
-    paging: search_models.PaginationParams = Depends(),
-    sorting: search_models.SortingParams = Depends(),
-    _=Depends(auth_flows.current_active_superuser),
-    session=Depends(db.get_async_session),
-):
-    order = await order_flows.get(session, order_id)
-    return await search_service.paginate(models.Response.filter(order_id=order.id), paging, sorting)
+# @router.get("/{order_id}", response_model=search_models.Paginated[models.ResponseRead])
+# async def get_responses(
+#     order_id: int,
+#     paging: search_models.PaginationParams = Depends(),
+#     sorting: search_models.SortingParams = Depends(),
+#     _=Depends(auth_flows.current_active_superuser),
+#     session=Depends(db.get_async_session),
+# ):
+#     order = await order_flows.get(session, order_id)
+#     return await search_service.paginate(models.Response.filter(order_id=order.id), paging, sorting)
 
 
 @router.post("/{order_id}", status_code=201, response_model=models.ResponseRead)

@@ -1,21 +1,22 @@
 import datetime
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
+from src.core import pagination
 from .models import OrderCredentialsRead, OrderInfoRead, OrderPaidStatus, OrderPriceMeta, OrderPriceNone, OrderStatus
 
 
 class OrderPriceUser(OrderPriceMeta):
-    price_booster_dollar: float
-    price_booster_rub: float
-    price_booster_gold: float | None = None
+    booster_dollar_fee: float
+    booster_rub: float
+    booster_gold: float | None = None
 
 
 class OrderPriceSystem(OrderPriceNone):
-    price_dollar: float
-    price_booster_dollar_without_fee: float
-
-    price_booster_rub: float
+    dollar: float
+    booster_dollar_fee: float
+    booster_rub: float
 
 
 class OrderReadHasPerms(BaseModel):
@@ -79,3 +80,16 @@ class OrderReadActive(BaseModel):
     paid_at: datetime.datetime | None
     auth_date: datetime.datetime | None = None
     end_date: datetime.datetime | None = None
+
+
+class OrderStatusFilter(Enum):
+    Refund = "Refund"
+    InProgress = "In Progress"
+    Completed = "Completed"
+    All = "all"
+
+
+class OrderFilterParams(pagination.PaginationParams):
+    status: OrderStatusFilter = OrderStatusFilter.All
+    order_id: list[str] | None = None
+    ids: list[int] | None = None

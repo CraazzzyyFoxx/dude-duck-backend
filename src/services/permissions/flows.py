@@ -2,7 +2,7 @@ from starlette import status
 
 from src.core import errors
 from src.services.auth import models as auth_models
-from src.services.orders import models as order_models
+from src.services.order import models as order_models
 
 from . import service
 

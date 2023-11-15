@@ -1,6 +1,6 @@
 import enum
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -71,7 +71,7 @@ class OrderCreate(BaseModel):
     sheet_id: int
     row_id: int
 
-    date: datetime = Field(default_factory=datetime.utcnow)
+    date: datetime = Field(default_factory=lambda x: datetime.now(UTC))
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None
@@ -115,7 +115,7 @@ class Order(db.TimeStampMixin):
     sheet_id: Mapped[int] = mapped_column(BigInteger())
     row_id: Mapped[int] = mapped_column(BigInteger())
 
-    date: Mapped[datetime] = mapped_column(DateTime())
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     shop: Mapped[str | None] = mapped_column(String(), nullable=True)
     shop_order_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     contact: Mapped[str | None] = mapped_column(String(), nullable=True)
@@ -124,8 +124,8 @@ class Order(db.TimeStampMixin):
 
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus))
     status_paid: Mapped[OrderPaidStatus] = mapped_column(Enum(OrderPaidStatus))
-    auth_date: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
-    end_date: Mapped[datetime | None] = mapped_column(DateTime(), nullable=True)
+    auth_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     info: Mapped["OrderInfo"] = relationship(uselist=False)
     price: Mapped["OrderPrice"] = relationship(uselist=False)

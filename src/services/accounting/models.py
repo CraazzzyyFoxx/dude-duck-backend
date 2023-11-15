@@ -1,14 +1,13 @@
-
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, constr, model_validator
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, Float, Boolean, DateTime, UniqueConstraint
+from sqlalchemy import String, ForeignKey, Float, Boolean, DateTime, UniqueConstraint, event
 
-from src.core import db
+from src.core import db, pagination
 from src.services.auth import models as auth_models
-from src.services.orders import models as order_models
+from src.services.order import models as order_models
 
 
 class FirstSort(str, Enum):
@@ -43,21 +42,16 @@ class UserOrder(db.TimeStampMixin):
     )
 
 
-# @pre_save(UserOrder)
-# async def signal_pre_save(sender: "typing.Type[UserOrder]", instance: UserOrder, using_db, update_fields) -> None:
-#     instance.updated_at = datetime.utcnow()
-#     instance.completed_at = datetime.utcnow() if instance.completed is True else None
-#     instance.paid_at = datetime.utcnow() if instance.paid is True else None
+@event.listens_for(UserOrder, "before_update")
+def receive_before_update(mapper, connection, target):
+    target.completed_at = datetime.now(UTC) if target.completed is True else None
+    target.paid_at = datetime.now(UTC) if target.paid is True else None
 
 
 class UserOrderCreate(BaseModel):
-    order_id: int
     user_id: int
-    dollars: float
-    completed: bool = Field(default=False)
-    paid: bool = Field(default=False)
+    dollars: float | None = None
     method_payment: str = Field(default="$")
-    order_date: datetime
 
 
 class UserOrderUpdate(BaseModel):
@@ -138,7 +132,6 @@ class UserOrderRead(BaseModel):
     method_payment: str
 
 
-class OrderBoosterCreate(BaseModel):
-    user_id: int
-    dollars: float | None = None
-    method_payment: str | None = None
+class UserOrderFilterParams(pagination.PaginationParams):
+    status: order_models.OrderStatus
+    user_id: int | None = None

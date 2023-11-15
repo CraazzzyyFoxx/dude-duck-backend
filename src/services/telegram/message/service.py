@@ -1,8 +1,8 @@
 import asyncio
 
 from src.services.auth import models as auth_models
-from src.services.orders import schemas as order_schemas
-from src.services.preorders import models as preorder_models
+from src.services.order import schemas as order_schemas
+from src.services.preorder import models as preorder_models
 from src.services.response import models as response_models
 from src.services.telegram.service import request as service_request
 

@@ -99,6 +99,6 @@ def convert_time(
         if future_time and time_parsed < datetime.datetime.now(datetime.timezone.utc):
             raise ValueError("Time is not in the future!")
 
-        return time_parsed
+        return time_parsed.astimezone(datetime.timezone.utc)
 
     raise ValueError("Time conversion failed.")

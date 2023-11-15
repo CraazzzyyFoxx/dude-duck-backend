@@ -1,6 +1,5 @@
 import copy
 import typing
-from datetime import datetime
 
 import sqlalchemy as sa
 from loguru import logger
@@ -52,56 +51,10 @@ async def get_order_id(session: AsyncSession, order_id: str) -> models.Order | N
     return result.first()
 
 
-async def get_all_from_datetime_range(
-        session: AsyncSession, start: datetime, end: datetime
-) -> typing.Sequence[models.Order]:
-    result = await session.scalars(
-        sa.select(models.Order)
-        .where(models.Order.date >= start, models.Order.date <= end)
-        .options(joinedload(models.Order.info), joinedload(models.Order.price), joinedload(models.Order.credentials))
-    )
-    return result.all()
-
-
 async def get_by_ids(session: AsyncSession, ids: list[int]) -> typing.Sequence[models.Order]:
     result = await session.scalars(
         sa.select(models.Order)
         .where(models.Order.id.in_(ids))
-        .options(joinedload(models.Order.info), joinedload(models.Order.price), joinedload(models.Order.credentials))
-    )
-    return result.all()
-
-
-async def get_by_ids_datetime_range(
-    session: AsyncSession, ids: list[int], start: datetime, end: datetime
-) -> typing.Sequence[models.Order]:
-    result = await session.scalars(
-        sa.select(models.Order)
-        .where(models.Order.id.in_(ids), models.Order.date >= start, models.Order.date <= end)
-        .options(joinedload(models.Order.info), joinedload(models.Order.price), joinedload(models.Order.credentials))
-    )
-    return result.all()
-
-
-async def get_by_ids_datetime_range_by_sheet(
-    session: AsyncSession, ids: list[int], spreadsheet: str, sheet: int, start: datetime, end: datetime
-) -> typing.Sequence[models.Order]:
-    result = await session.scalars(
-        sa.select(models.Order)
-        .where(models.Order.id.in_(ids), models.Order.spreadsheet == spreadsheet, models.Order.sheet_id == sheet)
-        .where(models.Order.date >= start, models.Order.date <= end)
-        .options(joinedload(models.Order.info), joinedload(models.Order.price), joinedload(models.Order.credentials))
-    )
-    return result.all()
-
-
-async def get_all_from_datetime_range_by_sheet(
-    session: AsyncSession, spreadsheet: str, sheet: int, start: datetime, end: datetime
-) -> typing.Sequence[models.Order]:
-    result = await session.scalars(
-        sa.select(models.Order)
-        .where(models.Order.spreadsheet == spreadsheet, models.Order.sheet_id == sheet)
-        .where(models.Order.date >= start, models.Order.date <= end)
         .options(joinedload(models.Order.info), joinedload(models.Order.price), joinedload(models.Order.credentials))
     )
     return result.all()
@@ -136,6 +89,13 @@ async def patch(session: AsyncSession, order: models.Order, order_in: models.Ord
         price_update = order_in.price.model_dump(exclude_defaults=True, exclude_unset=True)
         await session.execute(sa.update(models.OrderPrice).filter_by(order_id=order.id).values(price_update))
         await accounting_service.update_booster_price(session, old, order)
+    if order.status == models.OrderStatus.Refund:
+        user_orders = await accounting_service.get_by_order_id(session, order.id)
+        for user_order in user_orders:
+            user_order.completed = False
+            user_order.paid = False
+            user_order.refunded = True
+        session.add_all(user_orders)
     await session.commit()
     logger.info(f"Order patched [id={order.id} order_id={order.order_id}]]")
     return await get(session, order.id)
@@ -162,7 +122,12 @@ async def update(session: AsyncSession, order: models.Order, order_in: models.Or
             await accounting_service.update_booster_price(session, old, order)
 
     if order.status == models.OrderStatus.Refund:
-        await accounting_service.delete_by_order_id(session, order.id)
+        user_orders = await accounting_service.get_by_order_id(session, order.id)
+        for user_order in user_orders:
+            user_order.completed = False
+            user_order.paid = False
+            user_order.refunded = True
+        session.add_all(user_orders)
     await session.commit()
     logger.info(f"Order updated [id={order.id} order_id={order.order_id}]]")
     return await get(session, order.id)

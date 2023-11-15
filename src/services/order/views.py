@@ -1,15 +1,23 @@
 from fastapi import APIRouter, Depends
 
-from src.core import enums, db
+from src.core import enums, db, pagination
 from src.services.auth import flows as auth_flows
-from src.services.search import models as search_models
 
 from . import flows, models, schemas, service
 
 router = APIRouter(prefix="/orders", tags=[enums.RouteTag.ORDERS])
 
 
-@router.get(path="/{order_id}", response_model=schemas.OrderReadNoPerms)
+@router.post(path="/filter", response_model=pagination.Paginated[schemas.OrderReadNoPerms])
+async def get_orders(
+    params: schemas.OrderFilterParams,
+    _=Depends(auth_flows.current_active_verified),
+    session=Depends(db.get_async_session),
+):
+    return await flows.get_by_filter(session, params)
+
+
+@router.get(path="", response_model=schemas.OrderReadNoPerms)
 async def get_order(
     order_id: int, _=Depends(auth_flows.current_active_verified), session=Depends(db.get_async_session)
 ):
@@ -17,19 +25,7 @@ async def get_order(
     return await flows.format_order_perms(session, order)
 
 
-@router.get(path="", response_model=search_models.Paginated[schemas.OrderReadNoPerms])
-async def get_orders(
-    paging: search_models.PaginationParams = Depends(),
-    sorting: search_models.OrderSortingParams = Depends(),
-    _=Depends(auth_flows.current_active_verified),
-    session=Depends(db.get_async_session),
-):
-    data = await flows.get_filter(paging, sorting)
-    data["results"] = [await flows.format_order_perms(session, order) for order in data["results"]]
-    return data
-
-
-@router.put("/{order_id}", response_model=schemas.OrderReadSystem)
+@router.put("", response_model=schemas.OrderReadSystem)
 async def update_order(
     order_id: int,
     data: models.OrderUpdate,
@@ -41,7 +37,7 @@ async def update_order(
     return await flows.format_order_system(session, updated_order)
 
 
-@router.patch("/{order_id}", response_model=schemas.OrderReadSystem)
+@router.patch("", response_model=schemas.OrderReadSystem)
 async def patch_order(
     order_id: int,
     data: models.OrderUpdate,
@@ -53,7 +49,7 @@ async def patch_order(
     return await flows.format_order_system(session, patched_order)
 
 
-@router.delete("/{order_id}", response_model=schemas.OrderReadSystem)
+@router.delete("", response_model=schemas.OrderReadSystem)
 async def delete_order(
     order_id: int, _=Depends(auth_flows.current_active_superuser), session=Depends(db.get_async_session)
 ):

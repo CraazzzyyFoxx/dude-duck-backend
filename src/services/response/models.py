@@ -1,13 +1,11 @@
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy.orm import Mapped, mapped_column, relationship, declared_attr
-from sqlalchemy import String, ForeignKey, DateTime, Float, Boolean, Interval, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, ForeignKey, DateTime, Float, Boolean, Interval, BigInteger
 
 from src.core.db import TimeStampMixin
 from src.services.auth import models as auth_models
-from src.services.orders import models as order_models
-from src.services.preorders import models as preorder_models
 
 
 class ResponseExtra(BaseModel):
@@ -17,8 +15,8 @@ class ResponseExtra(BaseModel):
     eta: timedelta | None = None
 
 
-class BaseResponse(TimeStampMixin):
-    __abstract__ = True
+class Response(TimeStampMixin):
+    __tablename__ = "response"
 
     refund: Mapped[bool] = mapped_column(Boolean(), default=False)
     approved: Mapped[bool] = mapped_column(Boolean(), default=False)
@@ -31,41 +29,10 @@ class BaseResponse(TimeStampMixin):
 
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    @declared_attr
-    def user_id(cls):  # noqa
-        return mapped_column(ForeignKey("user.id"))
-
-    @declared_attr
-    def user(cls):  # noqa
-        return relationship()
-
-
-class Response(BaseResponse):
-    __tablename__ = "response"
-
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     user: Mapped["auth_models.User"] = relationship()
-    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
-    order: Mapped["order_models.Order"] = relationship()
-
-    __table_args__ = (
-        # Index("idx_user_order", user_id, order_id, unique=True),
-        UniqueConstraint(user_id, order_id),
-    )
-
-
-class PreResponse(BaseResponse):
-    __tablename__ = "pre_response"
-
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    user: Mapped["auth_models.User"] = relationship()
-    order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id"))
-    order: Mapped["preorder_models.PreOrder"] = relationship()
-
-    __table_args__ = (
-        # Index("idx_user_preorder", user_id, order_id, unique=True),
-        UniqueConstraint(user_id, order_id),
-    )
+    order_id: Mapped[int] = mapped_column(BigInteger())
+    is_preorder: Mapped[bool] = mapped_column(Boolean(), default=False)
 
 
 class ResponseCreate(BaseModel):

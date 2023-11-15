@@ -1,6 +1,6 @@
 from src.services.accounting import service as accounting_service
 from src.services.auth import models as auth_models
-from src.services.orders import models as order_models
+from src.services.order import models as order_models
 
 
 async def has_access_to_order(order: order_models.Order, user: auth_models.User):

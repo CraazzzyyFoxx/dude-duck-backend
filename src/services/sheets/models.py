@@ -6,8 +6,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import BigInteger, String, Boolean, UniqueConstraint
 
 from src.core import db
-from src.services.orders import models as order_models
-from src.services.orders import schemas as order_schemas
+from src.services.order import models as order_models
+from src.services.order import schemas as order_schemas
 
 allowed_types = [
     "int",
