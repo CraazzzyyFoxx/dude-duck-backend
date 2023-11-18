@@ -4,6 +4,8 @@ services :
   redis:
     image: redis:alpine
     restart: always
+    ports:
+      - "6379:6379"
   app:
     restart: unless-stopped
     build:
@@ -22,12 +24,15 @@ services :
     build:
       context: .
       dockerfile: Dockerfile
-    command: celery -A app.services.tasks.service.celery worker --beat --loglevel=info
+    command: celery -A src.services.tasks.service.celery worker --beat --loglevel=info
     volumes:
-      - ./app:/app
+      - ./src:/src
     environment:
       - CELERY_SHEETS_SYNC_TIME=${CELERY_SHEETS_SYNC_TIME}
       - SYNC_BOOSTERS=${SYNC_BOOSTERS}
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - POSTGRES_HOST=192.168.1.88
     depends_on:
       - redis
   flower:
