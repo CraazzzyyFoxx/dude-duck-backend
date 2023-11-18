@@ -1,14 +1,11 @@
 import sqlalchemy as sa
-from sqlalchemy.sql.functions import count
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.functions import count
 from starlette import status
 
 from src.core import errors, pagination
-
 from src.services.currency import flows as currency_flows
-
 
 from . import models, service
 
@@ -16,9 +13,9 @@ from . import models, service
 async def get(session: AsyncSession, order_id: int) -> models.PreOrder:
     order = await service.get(session, order_id)
     if not order:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DDException(msg="A preorder with this id does not exist.", code="not_exist")],
+            detail=[errors.ApiException(msg="A preorder with this id does not exist.", code="not_exist")],
         )
     return order
 
@@ -26,9 +23,9 @@ async def get(session: AsyncSession, order_id: int) -> models.PreOrder:
 async def get_by_order_id(session: AsyncSession, order_id: str) -> models.PreOrder:
     order = await service.get_order_id(session, order_id)
     if not order:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=[errors.DDException(msg="A preorder with this id does not exist.", code="not_exist")],
+            detail=[errors.ApiException(msg="A preorder with this id does not exist.", code="not_exist")],
         )
     return order
 
@@ -44,16 +41,14 @@ async def delete(session: AsyncSession, order_id: int) -> None:
 
 async def format_preorder_system(session: AsyncSession, order: models.PreOrder):
     data = order.to_dict()
-    booster_price = order.price.booster_dollar_fee
-    if booster_price:
+    booster_dollar = order.price.booster_dollar_fee
+    if booster_dollar:
         price = models.PreOrderPriceSystem(
             dollar=order.price.dollar,
-            booster_dollar_fee=booster_price,
-            booster_dollar=order.price.booster_price,
-            booster_rub=await currency_flows.usd_to_currency(
-                session, booster_price, order.date, "RUB", with_fee=True
-            ),
-            booster_gold=order.price.price_booster_gold,
+            booster_dollar_fee=booster_dollar,
+            booster_dollar=order.price.booster_dollar,
+            booster_rub=await currency_flows.usd_to_currency(session, booster_dollar, order.date, "RUB", with_fee=True),
+            booster_gold=order.price.booster_gold,
         )
     else:
         price = models.PreOrderPriceSystem(dollar=order.price.dollar)
@@ -69,7 +64,7 @@ async def format_preorder_perms(session: AsyncSession, order: models.PreOrder):
         price = models.PreOrderPriceUser(
             booster_dollar_fee=booster_price,
             booster_rub=await currency_flows.usd_to_currency(session, booster_price, order.date, "RUB"),
-            booster_gold=order.price.price_booster_gold,
+            booster_gold=order.price.booster_gold,
         )
     else:
         price = models.PreOrderPriceUser()
@@ -79,7 +74,8 @@ async def format_preorder_perms(session: AsyncSession, order: models.PreOrder):
 
 
 async def get_by_filter(
-    session: AsyncSession, params: pagination.PaginationParams,
+    session: AsyncSession,
+    params: pagination.PaginationParams,
 ) -> pagination.Paginated[models.PreOrderReadUser]:
     query = (
         sa.select(models.PreOrder)
@@ -91,4 +87,4 @@ async def get_by_filter(
     result = await session.execute(query)
     results = [await format_preorder_perms(session, order) for order in result.scalars()]
     total = await session.execute(sa.select(count(models.PreOrder.id)))
-    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.first()[0], results=results)
+    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.one()[0], results=results)

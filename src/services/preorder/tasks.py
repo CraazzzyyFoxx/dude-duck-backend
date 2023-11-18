@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 import pytz
-
 from loguru import logger
 
 from src.core import db
@@ -11,7 +10,7 @@ from src.services.settings import service as settings_service
 from src.services.sheets import service as sheets_service
 from src.services.telegram.message import service as message_service
 
-from . import service, flows
+from . import flows, service
 
 
 async def manage_preorders():

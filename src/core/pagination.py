@@ -2,11 +2,14 @@ from enum import Enum
 from typing import Generic, List, TypedDict, TypeVar
 
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import Select, text
 
 from . import db
 
-__all__ = ("Paginated", "PaginationParams",)
+__all__ = (
+    "Paginated",
+    "PaginationParams",
+)
 
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
@@ -50,3 +53,6 @@ class PaginationParams(BaseModel):
     def order_by(self):
         order_by = " DESC" if self.order == SortOrder.DESC else ""
         return text(f"{self.sort}{order_by}")
+
+    def apply_pagination(self, query: Select) -> Select:
+        return query.offset(self.offset).limit(self.limit).order_by(self.order_by)

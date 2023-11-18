@@ -6,6 +6,8 @@ import dateparser
 
 __all__ = ("ConversionMode", "convert_time")
 
+import pytz
+
 
 class ConversionMode(int, enum.Enum):
     """All possible time conversion modes."""
@@ -87,18 +89,16 @@ def convert_time(
 
         time_parsed = dateparser.parse(
             time_str,
-            # settings={"TIMEZONE": timezone},
-            # date_formats=[
-            #     "%d.%m.%Y",
-            # ],
+            settings={"TO_TIMEZONE": timezone, "RETURN_AS_TIMEZONE_AWARE": True},
+            date_formats=["%d.%m.%Y", "%d.%m.%Y %H:%M:%S"],
         )
 
         if not time_parsed:
             raise ValueError("Time could not be parsed. (absolute)")
 
-        if future_time and time_parsed < datetime.datetime.now(datetime.timezone.utc):
+        if future_time and time_parsed < datetime.datetime.now(pytz.UTC):
             raise ValueError("Time is not in the future!")
 
-        return time_parsed.astimezone(datetime.timezone.utc)
+        return time_parsed.astimezone(pytz.UTC)
 
     raise ValueError("Time conversion failed.")

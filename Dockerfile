@@ -15,7 +15,7 @@ RUN pip install poetry
 COPY . .
 
 RUN poetry config virtualenvs.create false
-RUN poetry install --only main --no-cache
+RUN poetry install --only main
 
 FROM builder
 

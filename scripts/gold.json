@@ -219,7 +219,7 @@
       "type": "datetime"
     },
     {
-      "name": "price_booster_rub",
+      "name": "booster_rub",
       "row": 26,
       "null": true,
       "generated": true,
@@ -227,7 +227,7 @@
       "type": "float"
     },
     {
-      "name": "price_dollar",
+      "name": "dollar",
       "row": 27,
       "null": true,
       "generated": false,
@@ -243,7 +243,7 @@
       "type": "str"
     },
     {
-      "name": "price_booster_rub",
+      "name": "booster_rub",
       "row": 29,
       "null": true,
       "generated": true,
@@ -251,7 +251,7 @@
       "type": "float"
     },
     {
-      "name": "price_booster_dollar",
+      "name": "booster_dollar",
       "row": 30,
       "null": true,
       "generated": true,
@@ -259,7 +259,7 @@
       "type": "float"
     },
     {
-      "name": "price_booster_dollar_fee",
+      "name": "booster_dollar_fee",
       "row": 31,
       "null": true,
       "generated": true,
@@ -267,7 +267,7 @@
       "type": "float"
     },
     {
-      "name": "price_booster_gold",
+      "name": "booster_gold",
       "row": 32,
       "null": true,
       "generated": true,

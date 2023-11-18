@@ -1,19 +1,13 @@
-import datetime
-
 import sqlalchemy as sa
-
 from fastapi import APIRouter, Depends
-from lxml.builder import ElementMaker, E
-from lxml.etree import tostring
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.functions import count
-from starlette.responses import Response
 
-from src.core import enums, db, pagination
+from src.core import db, enums, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.accounting import models as accounting_models
 from src.services.auth import flows as auth_flows
 from src.services.auth import models as auth_models
-from src.services.currency import flows as currency_flows
 from src.services.order import flows as orders_flows
 from src.services.order import models as order_models
 from src.services.order import schemas as orders_schemas
@@ -26,16 +20,6 @@ from src.services.preorder import service as preorder_service
 from . import flows, models
 
 router = APIRouter(prefix="/sheets", tags=[enums.RouteTag.SHEETS])
-
-
-@router.get("/currency")
-async def get_currency_wow_for_sheet(date: datetime.date, session=Depends(db.get_async_session)):
-    e_maker = ElementMaker()
-    wallet = await currency_flows.get(session, datetime.datetime(year=date.year, month=date.month, day=date.day))
-    the_doc = e_maker.root()
-    for key, value in wallet.quotes.items():
-        the_doc.append(E(key, str(value).replace(".", ",")))  # noqa
-    return Response(content=tostring(the_doc, pretty_print=True), media_type="text/xml")
 
 
 @router.post("/orders", response_model=orders_schemas.OrderReadSystem | preorders_schemes.PreOrderReadSystem)
@@ -100,17 +84,23 @@ async def delete_order_from_sheets(
         return await preorder_service.delete(session, preorder.id)
 
 
-@router.get("/parser", response_model=pagination.Paginated[models.OrderSheetParseRead])
-async def reads_google_sheets_parser(
+@router.get("/parser/filter", response_model=pagination.Paginated[models.OrderSheetParseRead])
+async def filter_google_sheets_parser(
     params: pagination.PaginationParams = Depends(),
+    spreadsheet: str | None = None,
     _: auth_models.User = Depends(auth_flows.current_active_superuser),
-    session: db.AsyncSession = Depends(db.get_async_session),
+    session: AsyncSession = Depends(db.get_async_session),
 ):
-    query = sa.select(models.OrderSheetParse).offset(params.offset).limit(params.limit).order_by(params.order_by)
+    query = params.apply_pagination(sa.select(models.OrderSheetParse))
+    if spreadsheet:
+        query = query.where(models.OrderSheetParse.spreadsheet == spreadsheet)
     result = await session.execute(query)
-    results = [models.OrderSheetParseRead.model_validate(parse) for parse in result.scalars()]
-    total = await session.execute(sa.select(count(models.OrderSheetParse.id)))
-    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.first()[0], results=results)
+    return pagination.Paginated(
+        page=params.page,
+        per_page=params.per_page,
+        total=(await session.execute(sa.select(count(models.OrderSheetParse.id)))).one()[0],
+        results=[models.OrderSheetParseRead.model_validate(parse) for parse in result.scalars()],
+    )
 
 
 @router.get("/parser", response_model=models.OrderSheetParseRead)

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from src.core import db, enums
+from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 from src.services.order import flows as order_flows
 from src.services.preorder import flows as preorder_flows
@@ -10,38 +10,29 @@ from . import flows, models, service
 router = APIRouter(prefix="/response", tags=[enums.RouteTag.RESPONSES])
 
 
-# @router.get("/{order_id}", response_model=search_models.Paginated[models.ResponseRead])
-# async def get_responses(
-#     order_id: int,
-#     paging: search_models.PaginationParams = Depends(),
-#     sorting: search_models.SortingParams = Depends(),
-#     _=Depends(auth_flows.current_active_superuser),
-#     session=Depends(db.get_async_session),
-# ):
-#     order = await order_flows.get(session, order_id)
-#     return await search_service.paginate(models.Response.filter(order_id=order.id), paging, sorting)
+@router.get("/filter", response_model=pagination.Paginated[models.ResponseRead])
+async def get_responses(
+    params: models.ResponsePagination = Depends(),
+    _=Depends(auth_flows.current_active_superuser),
+    session=Depends(db.get_async_session),
+):
+    return await flows.get_by_filter(session, params)
 
 
-@router.post("/{order_id}", status_code=201, response_model=models.ResponseRead)
+@router.post("", status_code=201, response_model=models.ResponseRead)
 async def create_response(
     order_id: int,
     data: models.ResponseExtra,
+    is_preorder: bool = False,
     user=Depends(auth_flows.current_active_verified),
     session=Depends(db.get_async_session),
 ):
-    order = await order_flows.get(session, order_id)
-    return await flows.create_order_response(session, user, order, data)
-
-
-@router.post("/preorder/{order_id}", status_code=201, response_model=models.ResponseRead)
-async def create_preorder_response(
-    order_id: int,
-    data: models.ResponseExtra,
-    user=Depends(auth_flows.current_active_verified),
-    session=Depends(db.get_async_session),
-):
-    order = await preorder_flows.get(session, order_id)
-    return await flows.create_preorder_response(session, user, order, data)
+    if is_preorder:
+        preorder = await preorder_flows.get(session, order_id)
+        return await flows.create_preorder_response(session, user, preorder, data)
+    else:
+        order = await order_flows.get(session, order_id)
+        return await flows.create_order_response(session, user, order, data)
 
 
 @router.get("/{order_id}/{user_id}", response_model=models.ResponseRead)
@@ -50,46 +41,38 @@ async def get_response(order_id: int, user=Depends(auth_flows.resolve_user), ses
     return await flows.get_by_order_id_user_id(session, order_id, user.id)
 
 
-@router.delete("/{order_id}/{user_id}", response_model=models.ResponseRead)
+@router.delete("", response_model=models.ResponseRead)
 async def delete_response(
-    order_id: int,
-    user_id: int,
+    response_id: int,
     _=Depends(auth_flows.current_active_superuser),
     session=Depends(db.get_async_session),
 ):
-    user = await auth_flows.get(session, user_id)
-    resp = await flows.get_by_order_id_user_id(session, order_id, user.id)
+    resp = await flows.get(session, response_id)
     await service.delete(session, resp.id)
     return resp
 
 
-@router.patch("/order/{order_id}/{user_id}", response_model=models.ResponseRead)
+@router.patch("/{order_id}/{user_id}", response_model=models.ResponseRead)
 async def approve_response(
     order_id: int,
     user_id: int,
     approve: bool,
+    is_preorder: bool = False,
     _=Depends(auth_flows.current_active_superuser),
     session=Depends(db.get_async_session),
 ):
-    order = await order_flows.get(session, order_id)
     user = await auth_flows.get(session, user_id)
     if approve:
-        return await flows.approve_response(session, user, order)
+        if is_preorder:
+            preorder = await preorder_flows.get(session, order_id)
+            return await flows.approve_preorder_response(session, user, preorder)
+        else:
+            order = await order_flows.get(session, order_id)
+            return await flows.approve_response(session, user, order)
     else:
-        return await flows.decline_response(session, user, order)
-
-
-@router.patch("/preorder/{order_id}/{user_id}", response_model=models.ResponseRead)
-async def approve_preorder_response(
-    order_id: int,
-    user_id: int,
-    approve: bool,
-    _=Depends(auth_flows.current_active_superuser),
-    session=Depends(db.get_async_session),
-):
-    order = await preorder_flows.get(session, order_id)
-    user = await auth_flows.get(session, user_id)
-    if approve:
-        return await flows.approve_preorder_response(session, user, order)
-    else:
-        return await flows.decline_preorder_response(session, user, order)
+        if is_preorder:
+            preorder = await preorder_flows.get(session, order_id)
+            return await flows.decline_preorder_response(session, user, preorder)
+        else:
+            order = await order_flows.get(session, order_id)
+            return await flows.decline_response(session, user, order)

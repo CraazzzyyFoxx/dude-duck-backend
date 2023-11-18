@@ -1,11 +1,12 @@
-from datetime import datetime, UTC
+import typing
+from datetime import UTC, date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, constr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator, StringConstraints
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, UniqueConstraint, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, Float, Boolean, DateTime, UniqueConstraint, event
 
-from src.core import db, pagination
+from src.core import db
 from src.services.auth import models as auth_models
 from src.services.order import models as order_models
 
@@ -22,6 +23,10 @@ class SecondSort(str, Enum):
 
 class UserOrder(db.TimeStampMixin):
     __tablename__ = "user_order"
+    __table_args__ = (
+        # Index("idx_user_order", user_id, order_id, unique=True),
+        UniqueConstraint("user_id", "order_id", name="u_user_order"),
+    )
 
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     user: Mapped["auth_models.User"] = relationship()
@@ -29,17 +34,12 @@ class UserOrder(db.TimeStampMixin):
     order: Mapped["order_models.Order"] = relationship()
     dollars: Mapped[float] = mapped_column(Float())
     completed: Mapped[bool] = mapped_column(Boolean(), default=False)
+    refunded: Mapped[bool] = mapped_column(Boolean(), default=False)
     paid: Mapped[bool] = mapped_column(Boolean(), default=False)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    method_payment: Mapped[str] = mapped_column(String(20), default="$")
 
     order_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    __table_args__ = (
-        # Index("idx_user_order", user_id, order_id, unique=True),
-        UniqueConstraint(user_id, order_id, name="u_user_order"),
-    )
 
 
 @event.listens_for(UserOrder, "before_update")
@@ -51,14 +51,12 @@ def receive_before_update(mapper, connection, target):
 class UserOrderCreate(BaseModel):
     user_id: int
     dollars: float | None = None
-    method_payment: str = Field(default="$")
 
 
 class UserOrderUpdate(BaseModel):
     dollars: float | None = None
     completed: bool | None = None
     paid: bool | None = None
-    method_payment: str | None = None
 
 
 class UserAccountReport(BaseModel):
@@ -75,12 +73,12 @@ class UserAccountReport(BaseModel):
 
 class CloseOrderForm(BaseModel):
     url: HttpUrl
-    message: constr(max_length=256, min_length=5)
+    message: typing.Annotated[str, StringConstraints(max_length=256, min_length=5)]
 
 
 class AccountingReportSheetsForm(BaseModel):
-    start_date: datetime
-    end_date: datetime
+    start_date: datetime | date
+    end_date: datetime | date
     spreadsheet: str | None = Field(default=None)
     sheet_id: int | None = Field(default=None)
     username: str | None = Field(default=None)
@@ -129,9 +127,3 @@ class UserOrderRead(BaseModel):
     paid_at: datetime | None
     order_date: datetime
     completed_at: datetime | None
-    method_payment: str
-
-
-class UserOrderFilterParams(pagination.PaginationParams):
-    status: order_models.OrderStatus
-    user_id: int | None = None

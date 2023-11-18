@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
-from pydantic import BaseModel, field_validator
-from sqlalchemy import DateTime, Integer
+from pydantic import BaseModel, ConfigDict, field_validator
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,6 +14,22 @@ class Currency(db.TimeStampMixin):
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), unique=True)
     timestamp: Mapped[int] = mapped_column(Integer())
     quotes: Mapped[dict[str, float]] = mapped_column(JSONB())
+
+
+class CurrencyToken(db.TimeStampMixin):
+    __tablename__ = "currency_token"
+
+    token: Mapped[str] = mapped_column(String(), unique=True)
+    uses: Mapped[int] = mapped_column(Integer(), default=1)
+    last_use: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda x: datetime.now(UTC))
+
+
+class CurrencyTokenRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    token: str
+    uses: int
+    last_use: datetime
 
 
 class CurrencyApiLayer(BaseModel):

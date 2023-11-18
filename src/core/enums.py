@@ -19,6 +19,7 @@ class RouteTag(StrEnum):
     RENDER = "✉️ Telegram Message Render"
     ACCOUNTING = "📊 Accounting"
     ADMIN = "🤷🏿‍♀️‍ Admin"
+    CURRENCY = "💰 Currency"
 
 
 class ErrorCode(StrEnum):

@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from src.core import enums, pagination
+from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 
-from src.core import db
 from . import flows, models, service
 
 router = APIRouter(prefix="/preorders", tags=[enums.RouteTag.PREORDERS])

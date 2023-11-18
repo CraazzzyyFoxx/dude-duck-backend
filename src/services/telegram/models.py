@@ -3,7 +3,10 @@ from typing import Generic, List, TypeVar
 
 from pydantic import BaseModel, Field
 
-__all__ = ("Paginated", "PaginationParams", )
+__all__ = (
+    "Paginated",
+    "PaginationParams",
+)
 
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)

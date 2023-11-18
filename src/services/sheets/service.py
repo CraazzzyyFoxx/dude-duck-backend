@@ -8,13 +8,14 @@ import sqlalchemy as sa
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
+from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
+                      create_model, field_validator)
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core import errors
+from src.core import config, errors
 from src.services.auth import models as auth_models
 from src.services.time import service as time_servie
 
@@ -57,7 +58,7 @@ def parse_datetime(v: str) -> typing.Any:
 def parse_timedelta(v: str) -> typing.Any:
     if v is None:
         return None
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.UTC)
     converted_time = time_servie.convert_time(v, now=now, conversion_mode=time_servie.ConversionMode.RELATIVE)
     return converted_time - now
 
@@ -121,7 +122,9 @@ async def get_by_spreadsheet_sheet_read(
 
 
 async def get_default_booster(session: AsyncSession) -> models.OrderSheetParse | None:
-    result = await session.scalars(sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == True))
+    result = await session.scalars(
+        sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == True)  # noqa: E712
+    )
     return result.first()
 
 
@@ -133,7 +136,9 @@ async def get_default_booster_read(session: AsyncSession) -> models.OrderSheetPa
 
 
 async def get_all_not_default_user(session: AsyncSession) -> typing.Sequence[models.OrderSheetParse]:
-    result = await session.scalars(sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == False))
+    result = await session.scalars(
+        sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == False)  # noqa: E712
+    )
     return result.all()
 
 
@@ -151,13 +156,16 @@ async def update(
     session: AsyncSession, parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate
 ) -> models.OrderSheetParse:
     update_data = parser_in.model_dump(exclude_none=True)
-    await session.execute(
-        sa.update(models.OrderSheetParse).where(models.OrderSheetParse.id == parser.id).values(**update_data)
+    updated_parser = await session.execute(
+        sa.update(models.OrderSheetParse)
+        .where(models.OrderSheetParse.id == parser.id)
+        .values(**update_data)
+        .returning(models.OrderSheetParse)
     )
     await session.commit()
     if _CACHE.get(parser.id, None):
         _CACHE.pop(parser.id)
-    return await get(session, parser.id)
+    return updated_parser.scalar_one()
 
 
 def n2a(n: int) -> str:
@@ -208,7 +216,7 @@ def parse_row(
     row: list[typing.Any],
     *,
     is_raise: bool = True,
-) -> BaseModel | None:
+) -> models.SheetEntity | None:
     maximum = max([i.row for i in parser.items])
     for _ in range(maximum - len(row) + 1):
         row.append(None)
@@ -227,7 +235,7 @@ def parse_row(
         validated_data = generate_model(parser)(**data_for_valid).model_dump()
         model_fields = []
         containers = {}
-        data = {"spreadsheet": parser.spreadsheet, "sheet_id": parser.sheet_id, "row_id": row_id}
+        data: dict[str, dict[str, typing.Any] | typing.Any] = {}
         for field in model.model_fields.items():
             if isinstance(field[1].annotation, ModelMetaclass):
                 data[field[0]] = {}
@@ -242,7 +250,7 @@ def parse_row(
                     if getter.name in fields:
                         data[key][getter.name] = validated_data[getter.name]
                         break
-        return model(**data)
+        return model(spreadsheet=parser.spreadsheet, sheet_id=parser.sheet_id, row_id=row_id, **data)
     except ValidationError as error:
         if is_raise:
             logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
@@ -256,12 +264,18 @@ def data_to_row(parser: models.OrderSheetParseRead, to_dict: dict) -> dict[int, 
     row = {}
     data = {}
 
+    def set_value(set_key, to_set):
+        if isinstance(to_set, datetime.datetime):
+            data[set_key] = to_set.strftime(config.app.datetime_format_sheets)
+        else:
+            data[set_key] = to_set
+
     for key, value in to_dict.items():
         if isinstance(value, dict):
             for key_2, value_2 in value.items():
-                data[key_2] = value_2
+                set_value(key_2, value_2)
         else:
-            data[key] = value
+            set_value(key, value)
 
     for getter in parser.items:
         if not getter.generated and getter.name in to_dict.keys():
@@ -356,7 +370,7 @@ def get_row_data(
     row_id: int,
     *,
     is_raise=True,
-) -> BaseModel:
+) -> models.SheetEntity:
     gc = gspread.service_account_from_dict(creds)
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -365,7 +379,7 @@ def get_row_data(
         value_render_option=ValueRenderOption.unformatted,
         date_time_render_option=DateTimeOption.formatted_string,
     )
-    return parse_row(parser, model, row_id, row[0], is_raise=is_raise)
+    return parse_row(parser, model, row_id, row[0], is_raise=is_raise)  # type: ignore
 
 
 def update_row_data(
@@ -412,7 +426,7 @@ def find_by(
     creds: auth_models.AdminGoogleTokenDB,
     parser: models.OrderSheetParseRead,
     value,
-) -> BaseModel | None:
+) -> models.SheetEntity | None:
     gc = gspread.service_account_from_dict(creds)
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)

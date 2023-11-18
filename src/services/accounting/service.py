@@ -1,6 +1,6 @@
 import re
 import typing
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from loguru import logger
@@ -11,7 +11,6 @@ from starlette import status
 
 from src.core import config, errors
 from src.services.auth import models as auth_models
-from src.services.auth import service as auth_service
 from src.services.currency import flows as currency_flows
 from src.services.order import models as order_models
 from src.services.order import service as order_service
@@ -66,8 +65,9 @@ async def sync_boosters_sheet(session: AsyncSession, order: order_models.Order) 
         parser = await sheets_service.get_by_spreadsheet_sheet_read(session, order.spreadsheet, order.sheet_id)
         if parser is not None:
             user_orders = await get_by_order_id(session, order.id)
-            users = await auth_service.get_by_ids(session, [d.user_id for d in user_orders])
-            booster_str = await _boosters_to_str(session, order, user_orders, users)
+            query = sa.select(auth_models.User).where(auth_models.User.id.in_([d.user_id for d in user_orders]))
+            users = await session.scalars(query)
+            booster_str = await _boosters_to_str(session, order, user_orders, users.all())  # type: ignore
             tasks_service.update_order.delay(parser.model_dump(mode="json"), order.row_id, {"booster": booster_str})
 
 
@@ -77,7 +77,6 @@ async def create(
     user: auth_models.User,
     boosters: list[models.UserOrder],
     price: float,
-    method_payment: str | None = None,
     sync: bool = True,
 ) -> models.UserOrder:
     user_order = models.UserOrder(
@@ -87,7 +86,6 @@ async def create(
         order_date=order.date,
         completed=True if order.status == order_models.OrderStatus.Completed else False,
         paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
-        method_payment=method_payment if method_payment else "$",
     )
     if user_order.paid:
         user_order.paid_at = datetime.now()
@@ -123,24 +121,28 @@ async def delete_by_order_id(session: AsyncSession, order_id: int) -> None:
 
 
 async def update(
-    session: AsyncSession, order: order_models.Order, user: auth_models.User, update_model: models.UserOrderUpdate
+    session: AsyncSession,
+    order: order_models.Order,
+    user: auth_models.User,
+    update_model: models.UserOrderUpdate,
+    sync: bool = True,
 ) -> models.UserOrder:
     boosters = await get_by_order_id(session, order.id)
     boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
     if boosters_map.get(user.id) is None:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DDException(msg="The user is not a booster of this order", code="not_exist")],
+            detail=[errors.ApiException(msg="The user is not a booster of this order", code="not_exist")],
         )
     else:
         try:
             if update_model.dollars is not None:
                 total_price = sum([b.dollars for b in boosters])
                 if update_model.dollars + total_price > order.price.booster_dollar_fee:
-                    raise errors.DDHTTPException(
+                    raise errors.ApiHTTPException(
                         status_code=status.HTTP_409_CONFLICT,
                         detail=[
-                            errors.DDException(
+                            errors.ApiException(
                                 msg=f"The price for the booster is incorrect. "
                                 f"Order price {order.price.booster_dollar_fee}, total price for boosters {total_price}."
                                 f" \n{total_price} > {order.price.booster_dollar_fee}",
@@ -150,11 +152,12 @@ async def update(
                     )
             updated_user_order = await session.scalars(
                 sa.update(models.UserOrder)
-                .where(models.UserOrder.id == boosters_map.get(user.id).id)
+                .where(models.UserOrder.id == boosters_map[user.id].id)
                 .values(**update_model.model_dump(exclude_unset=True))
                 .returning(models.UserOrder)
             )
-            await sync_boosters_sheet(session, order)
+            if sync:
+                await sync_boosters_sheet(session, order)
             return updated_user_order.one()
         except Exception as e:
             await session.rollback()
@@ -165,10 +168,15 @@ async def patch(
     session: AsyncSession, user_order: models.UserOrder, user_order_in: models.UserOrderUpdate
 ) -> models.UserOrder:
     update_data = user_order_in.model_dump(exclude_defaults=True, exclude_unset=True)
-    await session.execute(sa.update(models.UserOrder).where(models.UserOrder.id == user_order.id).values(**update_data))
+    user_order_updated = await session.execute(
+        sa.update(models.UserOrder)
+        .where(models.UserOrder.id == user_order.id)
+        .values(**update_data)
+        .returning(models.UserOrder)
+    )
     await session.commit()
     logger.info(f"Patched UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
-    return await get(session, user_order.id)
+    return user_order_updated.scalar_one()
 
 
 async def delete(session: AsyncSession, order: order_models.Order, user: auth_models.User) -> models.UserOrder:
@@ -176,11 +184,12 @@ async def delete(session: AsyncSession, order: order_models.Order, user: auth_mo
     boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
     to_delete = boosters_map.get(user.id)
     if to_delete is None:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DDException(msg="The user is not a booster of this order", code="not_exist")],
+            detail=[errors.ApiException(msg="The user is not a booster of this order", code="not_exist")],
         )
     await session.execute(sa.delete(models.UserOrder).where(models.UserOrder.id == to_delete.id))
+    await session.commit()
     await sync_boosters_sheet(session, order)
     logger.info(f"Deleted UserOrder [order_id={to_delete.order_id} user_id={to_delete.user_id}]")
     return to_delete
@@ -192,7 +201,7 @@ async def check_user_total_orders(session: AsyncSession, user: auth_models.User)
             models.UserOrder.user_id == user.id, models.UserOrder.completed == False  # noqa: E712
         )
     )
-    count = result.first()
+    count = result.one()
     return bool(count[0] < user.max_orders)
 
 

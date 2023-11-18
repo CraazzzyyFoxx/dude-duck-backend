@@ -1,8 +1,8 @@
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import BigInteger, String, ForeignKey, DateTime, Float, Boolean
 
 from src.core import db
 from src.services.order import models as order_models
@@ -24,11 +24,11 @@ class PreOrderPriceSystem(BaseModel):
 
 
 class PreOrderCreate(sheets_models.SheetEntity):
-    date: datetime = Field(default_factory=lambda _: datetime.now(UTC))
+    date: datetime = Field(default_factory=lambda: datetime.now(UTC))
     order_id: str
 
     info: order_models.OrderInfoRead
-    price: PreOrderPriceUser
+    price: order_models.OrderPriceNone
 
 
 class PreOrderUpdate(BaseModel):
@@ -75,9 +75,9 @@ class PreOrderPrice(db.TimeStampMixin):
 
     order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id"))
     order: Mapped["PreOrder"] = relationship(back_populates="price")
-    dollar: Mapped[float] = mapped_column(Float())
-    booster_dollar: Mapped[float] = mapped_column(Float())
-    booster_dollar_fee: Mapped[float] = mapped_column(Float())
+    dollar: Mapped[float] = mapped_column(Float(), nullable=True)
+    booster_dollar: Mapped[float] = mapped_column(Float(), nullable=True)
+    booster_dollar_fee: Mapped[float] = mapped_column(Float(), nullable=True)
     booster_gold: Mapped[float | None] = mapped_column(Float(), nullable=True)
 
 

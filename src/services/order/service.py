@@ -64,9 +64,7 @@ async def update_with_sync(session: AsyncSession, order: models.Order, order_in:
     order = await patch(session, order, order_in)
     parser = await sheets_service.get_by_spreadsheet_sheet_read(session, order.spreadsheet, order.sheet_id)
     if parser is not None:
-        tasks_service.update_order.delay(
-            parser.model_dump(mode="json"), order.row_id, order_in.model_dump()
-        )
+        tasks_service.update_order.delay(parser.model_dump(mode="json"), order.row_id, order_in.model_dump())
     return order
 
 
@@ -98,7 +96,7 @@ async def patch(session: AsyncSession, order: models.Order, order_in: models.Ord
         session.add_all(user_orders)
     await session.commit()
     logger.info(f"Order patched [id={order.id} order_id={order.order_id}]]")
-    return await get(session, order.id)
+    return await get(session, order.id)  # type: ignore
 
 
 async def update(session: AsyncSession, order: models.Order, order_in: models.OrderUpdate) -> models.Order:
@@ -130,7 +128,7 @@ async def update(session: AsyncSession, order: models.Order, order_in: models.Or
         session.add_all(user_orders)
     await session.commit()
     logger.info(f"Order updated [id={order.id} order_id={order.order_id}]]")
-    return await get(session, order.id)
+    return await get(session, order.id)  # type: ignore
 
 
 async def delete(session: AsyncSession, order_id: int) -> None:
@@ -149,4 +147,4 @@ async def create(session: AsyncSession, order_in: models.OrderCreate) -> models.
     session.add(order)
     await session.commit()
     logger.info(f"Order created [id={order.id} order_id={order.order_id}]]")
-    return await get(session, order.id)
+    return await get(session, order.id)  # type: ignore

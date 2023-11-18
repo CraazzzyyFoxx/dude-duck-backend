@@ -6,9 +6,9 @@ from pydantic import EmailStr
 from starlette import status
 
 from src.core import enums, errors
+from src.core.db import get_async_session
 from src.services.telegram.message import service as message_service
 
-from src.core.db import get_async_session
 from . import flows, models, service
 
 router = APIRouter(prefix="/auth", tags=[enums.RouteTag.AUTH])
@@ -18,10 +18,10 @@ router = APIRouter(prefix="/auth", tags=[enums.RouteTag.AUTH])
 async def login(credentials: OAuth2PasswordRequestForm = Depends(), session=Depends(get_async_session)):
     user = await service.authenticate(session, credentials)
     if user is None:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.LOGIN_BAD_CREDENTIALS, code=enums.ErrorCode.LOGIN_BAD_CREDENTIALS
                 )
             ],
@@ -51,7 +51,7 @@ async def request_verify_token(email: EmailStr = Body(..., embed=True), session=
     try:
         user = await flows.get_by_email(session, email.lower())
         await service.request_verify(user)
-    except errors.DDHTTPException:
+    except errors.ApiHTTPException:
         pass
     return None
 
@@ -67,7 +67,7 @@ async def forgot_password(email: EmailStr = Body(..., embed=True), session=Depen
     try:
         user = await flows.get_by_email(session, email.lower())
         await service.forgot_password(user)
-    except errors.DDHTTPException:
+    except errors.ApiHTTPException:
         pass
     return None
 

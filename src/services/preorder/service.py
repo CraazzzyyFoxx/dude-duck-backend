@@ -1,7 +1,6 @@
 import typing
 
 import sqlalchemy as sa
-
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -79,8 +78,12 @@ async def patch(session: AsyncSession, order: models.PreOrder, order_in: models.
 
 
 async def update(session: AsyncSession, order: models.PreOrder, order_in: models.PreOrderUpdate) -> models.PreOrder:
-    update_data = order_in.model_dump(exclude={"price", "info"})
-    await session.execute(sa.update(models.PreOrder).where(models.PreOrder.id == order.id).values(**update_data))
+    update_data = order_in.model_dump(exclude={"price", "info"}, exclude_defaults=True)
+    await session.execute(
+        sa.update(models.PreOrder)
+        .where(models.PreOrder.id == order.id)
+        .values(**update_data)
+    )
     if order_in.info is not None:
         info_update = order_in.info.model_dump(exclude_defaults=True)
         await session.execute(
@@ -98,9 +101,9 @@ async def update(session: AsyncSession, order: models.PreOrder, order_in: models
 
 async def create(session: AsyncSession, pre_order_in: models.PreOrderCreate) -> models.PreOrder:
     pre_order = models.PreOrder(**pre_order_in.model_dump(exclude={"price", "info"}))
-    info = models.PreOrderInfo(**pre_order_in.info.model_dump(), order_id=pre_order.id)
-    price = models.PreOrderPrice(**pre_order_in.price.model_dump(), order_id=pre_order.id)
-    session.add_all([pre_order, info, price])
+    pre_order.info = models.PreOrderInfo(order_id=pre_order.id, **pre_order_in.info.model_dump())
+    pre_order.price = models.PreOrderPrice(order_id=pre_order.id, **pre_order_in.price.model_dump())
+    session.add(pre_order)
     await session.commit()
     logger.info(f"PreOrder created [id={pre_order.id} order_id={pre_order.order_id}]]")
     return await get(session, pre_order.id)  # type: ignore

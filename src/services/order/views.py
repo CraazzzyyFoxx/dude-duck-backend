@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from src.core import enums, db, pagination
+from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 
 from . import flows, models, schemas, service

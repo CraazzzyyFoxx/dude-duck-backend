@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import (BigInteger, Boolean, DateTime, Float, ForeignKey,
+                        Interval, Select, String)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, DateTime, Float, Boolean, Interval, BigInteger
 
-from src.core.db import TimeStampMixin
+from src.core import db, pagination
 from src.services.auth import models as auth_models
 
 
@@ -15,7 +16,7 @@ class ResponseExtra(BaseModel):
     eta: timedelta | None = None
 
 
-class Response(TimeStampMixin):
+class Response(db.TimeStampMixin):
     __tablename__ = "response"
 
     refund: Mapped[bool] = mapped_column(Boolean(), default=False)
@@ -47,7 +48,7 @@ class ResponseCreate(BaseModel):
 
 class ResponseRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
+    id: int
     order_id: int
     user_id: int
 
@@ -67,3 +68,18 @@ class ResponseUpdate(BaseModel):
     refund: bool | None = None
     approved: bool
     closed: bool
+
+
+class ResponsePagination(pagination.PaginationParams):
+    order_id: int | None = None
+    user_id: int | None = None
+    is_preorder: bool | None = None
+
+    def apply_filter(self, query: Select) -> Select:
+        if self.order_id is not None:
+            query = query.where(Response.order_id == self.order_id)
+        if self.user_id is not None:
+            query = query.where(Response.user_id == self.user_id)
+        if self.is_preorder is not None:
+            query = query.where(Response.is_preorder == self.is_preorder)
+        return query

@@ -1,10 +1,9 @@
 import enum
-
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import BigInteger, DateTime, Enum, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import BigInteger, String, ForeignKey, DateTime, Enum, Float
 
 from src.core import db
 
@@ -71,7 +70,7 @@ class OrderCreate(BaseModel):
     sheet_id: int
     row_id: int
 
-    date: datetime = Field(default_factory=lambda x: datetime.now(UTC))
+    date: datetime = Field(default_factory=lambda: datetime.now(UTC))
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None

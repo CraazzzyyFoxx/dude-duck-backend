@@ -1,11 +1,12 @@
 import time
 
+import sqlalchemy as sa
 from deepdiff import DeepDiff
 from loguru import logger
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core import config, errors, db
+from src.core import config, db, errors
 from src.services.accounting import flows as accounting_flows
 from src.services.accounting import models as accounting_models
 from src.services.accounting import service as accounting_service
@@ -28,7 +29,7 @@ async def boosters_from_order_sync(
     boosters = await accounting_service.get_by_order_id(session, order_db.id)
     boosters_db_map: dict[int, accounting_models.UserOrder] = {d.user_id: d for d in boosters}
     str_boosters = await accounting_service.boosters_to_str_sync(session, order_db, boosters, users_in_ids.values())
-    if str_boosters != order.booster:
+    if order.booster is not None and str_boosters != order.booster:
         for booster, price in accounting_service.boosters_from_str(order.booster).items():
             user = users_in.get(booster)
             if user and boosters_db_map.get(user.id) is None:
@@ -38,7 +39,7 @@ async def boosters_from_order_sync(
                     try:
                         dollars = await currency_flows.currency_to_usd(session, price, order.date, currency="RUB")
                         await accounting_flows.add_booster_with_price(session, order_db, user, dollars, sync=False)
-                    except errors.DDHTTPException as e:
+                    except errors.ApiHTTPException as e:
                         logger.error(e.detail)
 
     if order_db.status != order.status or order_db.status_paid != order.status_paid:
@@ -47,7 +48,7 @@ async def boosters_from_order_sync(
             paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
         )
         for b in boosters:
-            await accounting_flows.update_booster(session, order_db, users_in_ids[b.user_id], update_model)
+            await accounting_service.update(session, order_db, users_in_ids[b.user_id], update_model, sync=False)
 
 
 async def sync_data_from(
@@ -71,8 +72,8 @@ async def sync_data_from(
             por = models.OrderReadSheets.model_validate(order_db, from_attributes=True).model_dump(exclude=exclude)
             diff = DeepDiff(order.model_dump(exclude=exclude), por, truncate_datetime="second")
             if diff:
-                # if config.app.debug:
-                logger.warning(diff)
+                if config.app.debug:
+                    logger.debug(diff)
                 try:
                     update_data = order_models.OrderUpdate.model_validate(order.model_dump())
                     order_db = await order_service.update(session, order_db, update_data)
@@ -144,12 +145,13 @@ async def sync_orders() -> None:
             if superuser.google is None:
                 logger.warning("Synchronization skipped, google token for first superuser missing")
                 return
-            users = await auth_service.get_all(session)
+            query = sa.select(auth_models.User)
+            users = await session.scalars(query)
             users_names_dict = {user.name: user for user in users}
             users_ids_dict = {user.id: user for user in users}
             for cfg in await service.get_all_not_default_user_read(session):
                 orders: list[models.OrderReadSheets] = service.get_all_data(  # type: ignore
-                    superuser.google, models.OrderReadSheets, cfg  # type: ignore
+                    superuser.google, models.OrderReadSheets, cfg
                 )
                 orders_db = await order_service.get_all_by_sheet(session, cfg.spreadsheet, cfg.sheet_id)
                 order_dict = {order.order_id: order for order in orders}

@@ -1,7 +1,6 @@
-from datetime import datetime, UTC
+from datetime import UTC, date, datetime
 
 import sqlalchemy as sa
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import count
@@ -12,8 +11,9 @@ from src.services.auth import models as auth_models
 from src.services.currency import flows as currency_flows
 from src.services.order import flows as order_flows
 from src.services.order import models as order_models
-from src.services.order import service as order_service
 from src.services.order import schemas as order_schemas
+from src.services.order import service as order_service
+from src.services.payroll import service as payroll_service
 from src.services.permissions import flows as permissions_flows
 from src.services.telegram.message import service as messages_service
 
@@ -25,9 +25,9 @@ async def get_by_order_id_user_id(
 ) -> models.UserOrder:
     order_user = await service.get_by_order_id_user_id(session, order.id, user.id)
     if not order_user:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DDException(msg="You are not fulfilling this order", code="not_exist")],
+            detail=[errors.ApiException(msg="You are not fulfilling this order", code="not_exist")],
         )
     return order_user
 
@@ -35,9 +35,9 @@ async def get_by_order_id_user_id(
 async def get(session: AsyncSession, payment_id: int) -> models.UserOrder:
     order_user = await service.get(session, payment_id)
     if not order_user:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DDException(msg="Payment doesn't exist", code="not_exist")],
+            detail=[errors.ApiException(msg="Payment doesn't exist", code="not_exist")],
         )
     return order_user
 
@@ -45,9 +45,9 @@ async def get(session: AsyncSession, payment_id: int) -> models.UserOrder:
 async def check_user_total_orders(session: AsyncSession, user: auth_models.User) -> bool:
     if await service.check_user_total_orders(session, user):
         return True
-    raise errors.DDHTTPException(
+    raise errors.ApiHTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=[errors.DDException(msg="You have reached the limit of active orders.", code="limit_reached")],
+        detail=[errors.ApiException(msg="You have reached the limit of active orders.", code="limit_reached")],
     )
 
 
@@ -61,9 +61,9 @@ async def can_user_pick_order(session: AsyncSession, user: auth_models.User, ord
     await can_user_pick(session, user)
     order_user = await service.get_by_order_id_user_id(session, order.id, user.id)
     if order_user:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=[errors.DDException(msg="User is already assigned to this order", code="already_exist")],
+            detail=[errors.ApiException(msg="User is already assigned to this order", code="already_exist")],
         )
     return True
 
@@ -72,13 +72,12 @@ async def add_booster(
     session: AsyncSession,
     order: order_models.Order,
     user: auth_models.User,
-    method_payment: str | None = None,
     sync: bool = True,
 ) -> models.UserOrder:
     await can_user_pick_order(session, user, order)
     boosters = await service.get_by_order_id(session, order.id)
     calculated_dollars = order.price.booster_dollar_fee / (len(boosters) + 1)
-    return await service.create(session, order, user, boosters, calculated_dollars, method_payment, sync)
+    return await service.create(session, order, user, boosters, calculated_dollars, sync)
 
 
 async def add_booster_with_price(
@@ -86,7 +85,6 @@ async def add_booster_with_price(
     order: order_models.Order,
     user: auth_models.User,
     price: float,
-    method_payment: str | None = None,
     sync: bool = True,
 ) -> models.UserOrder:
     await can_user_pick_order(session, user, order)
@@ -94,17 +92,17 @@ async def add_booster_with_price(
     dollars = order.price.booster_dollar_fee
     total = sum(b.dollars for b in boosters) + price
     if dollars < price:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=f"The price for the booster is incorrect. "
                     f"Order price {dollars}, total price for boosters {total}. \n{total}>{dollars}",
                     code="invalid_price",
                 )
             ],
         )
-    return await service.create(session, order, user, boosters, price, method_payment, sync)
+    return await service.create(session, order, user, boosters, price, sync)
 
 
 async def create_user_report(session: AsyncSession, user: auth_models.User) -> models.UserAccountReport:
@@ -145,8 +143,8 @@ async def create_user_report(session: AsyncSession, user: auth_models.User) -> m
 
 async def create_report(
     session: AsyncSession,
-    start: datetime,
-    end: datetime,
+    start: datetime | date,
+    end: datetime | date,
     first_sort: models.FirstSort,
     second_sort: models.SecondSort,
     spreadsheet: str | None = None,
@@ -170,30 +168,16 @@ async def create_report(
     )
     if username is not None:
         query = query.where(auth_models.User.name == username)
-    count: int = 0
+    count_orders: int = 0
     total = 0.0
     earned = 0.0
     for row in await session.execute(query):
-        count += 1
+        count_orders += 1
         order: order_models.Order = row[0]
         payment: models.UserOrder = row[1]
         user: auth_models.User = row[2]
         if order and user:
-            payment_str: str = "Хуй знает"
-            bank: str = "Хуй знает"
-            if user.binance_id:
-                payment_str = str(user.binance_id)
-                bank = "Binance ID"
-            elif user.binance_email:
-                payment_str = str(user.binance_email)
-                bank = "Binance Email"
-            elif user.phone and user.bank:
-                payment_str = user.phone
-                bank = user.bank
-            elif user.bankcard and user.bank:
-                payment_str = user.bankcard
-                bank = user.bank
-
+            payroll = await payroll_service.get_by_priority(session, user)
             total += order.price.dollar
             earned += payment.dollars
             item = models.AccountingReportItem(
@@ -205,8 +189,8 @@ async def create_report(
                 rub=await currency_flows.usd_to_currency(session, payment.dollars, payment.order_date, "RUB"),
                 dollars_fee=payment.dollars,
                 end_date=order.end_date,
-                payment=payment_str,
-                bank=bank,
+                payment=payroll.value,
+                bank=f"{payroll.type} - {payroll.bank}",
                 status=order.status,
                 payment_id=payment.id,
             )
@@ -221,7 +205,7 @@ async def create_report(
             items = sorted(items, key=lambda x: (x.order_id[0], int(x.order_id[1:])))
     else:
         items = sorted(items, key=lambda x: x.username)
-    return models.AccountingReport(total=total, orders=count, earned=total - earned, items=items)
+    return models.AccountingReport(total=total, orders=count_orders, earned=total - earned, items=items)
 
 
 async def close_order(
@@ -232,9 +216,9 @@ async def close_order(
         if f := price.user_id == user.id:
             break
     if not f:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=[errors.DDException(msg="You don't have access to the order", code="forbidden")],
+            detail=[errors.ApiException(msg="You don't have access to the order", code="forbidden")],
         )
     update_model = order_models.OrderUpdate(screenshot=str(data.url), end_date=datetime.now(tz=UTC))
     new_order = await order_service.update_with_sync(session, order, update_model)
@@ -247,10 +231,10 @@ async def close_order(
 async def paid_order(session: AsyncSession, payment_id: int) -> models.UserOrder:
     data = await get(session, payment_id)
     if data.paid:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=f"The order has already been paid for {data.paid_at}",
                     code="already_exist",
                 )
@@ -267,25 +251,31 @@ async def paid_order(session: AsyncSession, payment_id: int) -> models.UserOrder
 
 
 async def get_by_filter(
-    session: AsyncSession, params: models.UserOrderFilterParams
+    session: AsyncSession, user: auth_models.User, params: order_schemas.OrderFilterParams
 ) -> pagination.Paginated[order_schemas.OrderReadActive]:
     query = (
-        sa.select(order_models.Order, models.UserOrder)
-        .where(models.UserOrder.user_id == params.user_id, order_models.Order.status == params.status)
+        sa.select(models.UserOrder, order_models.Order)
+        .where(models.UserOrder.user_id == user.id)
+        .join(order_models.Order, models.UserOrder.order_id == order_models.Order.id, isouter=True)
         .options(
             joinedload(order_models.Order.info),
             joinedload(order_models.Order.price),
-            joinedload(order_models.Order.credentials)
+            joinedload(order_models.Order.credentials),
         )
-        .offset(params.offset)
-        .limit(params.limit)
-        .order_by(params.order_by)
     )
+    query = params.apply_filters(query)
+    query = params.apply_pagination(query)
     result = await session.execute(query)
     results = []
+    count_query = (
+        sa.select(count(models.UserOrder.id))
+        .join(order_models.Order, order_models.Order.id == models.UserOrder.order_id)
+        .where(models.UserOrder.user_id == user.id)
+    )
+    count_query = params.apply_filters(count_query)
+    total = await session.execute(count_query)
     for row in result:
-        order: order_models.Order = row[0]
-        user_order: models.UserOrder = row[1]
+        user_order: models.UserOrder = row[0]
+        order: order_models.Order = row[1]
         results.append(await order_flows.format_order_active(session, order, user_order))
-    total = await session.execute(sa.select(count(models.UserOrder.id)).filter_by(user_id=params.user_id))
-    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.first()[0], results=results)
+    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.one()[0], results=results)

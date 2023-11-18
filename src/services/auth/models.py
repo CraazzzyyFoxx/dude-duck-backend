@@ -1,15 +1,20 @@
 import enum
 import re
 import typing
-
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, constr, field_validator, model_validator
-from pydantic_extra_types.payment import PaymentCardNumber
-from pydantic_extra_types.phone_numbers import PhoneNumber
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    HttpUrl,
+    field_validator,
+    StringConstraints,
+)
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import BigInteger, String, Text, ForeignKey
 
 from src.core import config, db
 from src.services.sheets.models import SheetEntity
@@ -53,17 +58,12 @@ class UserRead(BaseModel):
 
     id: int
     email: EmailStr
-    is_active: bool = True
-    is_superuser: bool = False
-    is_verified: bool = False
+    is_active: bool
+    is_superuser: bool
+    is_verified: bool
 
     name: str
     telegram: str
-    phone: str | None
-    bank: str | None
-    bankcard: str | None
-    binance_email: EmailStr | None
-    binance_id: int | None
     discord: str | None
     language: UserLanguage = UserLanguage.EN
 
@@ -93,7 +93,7 @@ class UserCreate(BaseModel):
     is_superuser: bool | None = False
     is_verified: bool | None = False
 
-    name: constr(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)  # noqa
+    name: typing.Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=3, max_length=20)]
     telegram: str
     discord: str
 
@@ -118,9 +118,6 @@ class UserCreate(BaseModel):
 class BaseUserUpdate(BaseModel):
     password: str | None = Field(default=None)
     email: EmailStr | None = Field(default=None)
-    is_active: bool | None = Field(default=None)
-    is_superuser: bool | None = Field(default=None)
-    is_verified: bool | None = Field(default=None)
 
 
 class UserUpdate(BaseUserUpdate):
@@ -128,22 +125,14 @@ class UserUpdate(BaseUserUpdate):
 
 
 class UserUpdateAdmin(BaseUserUpdate):
-    phone: PhoneNumber | None = Field(default=None)
-    bank: str | None = Field(default=None)
-    bankcard: PaymentCardNumber | None = Field(default=None)
-    binance_email: EmailStr | None = Field(default=None)
-    binance_id: int | None = Field(default=None)
+    is_active: bool | None = Field(default=None)
+    is_superuser: bool | None = Field(default=None)
+    is_verified: bool | None = Field(default=None)
+
     max_orders: int | None = Field(default=None)
     google: AdminGoogleToken | None = Field(default=None)
     telegram: str | None = Field(default=None)
     discord: str | None = Field(default=None)
-
-    @model_validator(mode="after")
-    def check_passwords_match(self) -> "UserUpdateAdmin":
-        if self.phone and not self.bank:
-            raise ValueError("When filling in the phone number, you must also fill in the name of the bank")
-
-        return self
 
 
 class User(db.TimeStampMixin):
@@ -156,11 +145,6 @@ class User(db.TimeStampMixin):
     is_verified: Mapped[bool] = mapped_column(default=True)
     name: Mapped[str] = mapped_column(String(20), unique=True)
     telegram: Mapped[str] = mapped_column(String(32), unique=True)
-    phone: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    bank: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    bankcard: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    binance_email: Mapped[str | None] = mapped_column(Text(), nullable=True)
-    binance_id: Mapped[int | None] = mapped_column(BigInteger(), nullable=True)
     discord: Mapped[str | None] = mapped_column(Text(), nullable=True)
     language: Mapped[UserLanguage] = mapped_column(default=UserLanguage.EN)
     google: Mapped[AdminGoogleTokenDB | None] = mapped_column(JSONB(), nullable=True)

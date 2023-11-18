@@ -1,9 +1,9 @@
 import typing
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy import BigInteger, Boolean, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BigInteger, String, Boolean, UniqueConstraint
 
 from src.core import db
 from src.services.order import models as order_models
@@ -104,4 +104,3 @@ class OrderSheetParseCreate(BaseModel):
 
 class OrderReadSheets(order_schemas.OrderReadSystemBase, SheetEntity):
     booster: str | None = None
-    price: order_models.OrderPriceNone

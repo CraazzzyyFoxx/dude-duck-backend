@@ -32,17 +32,7 @@ class TelegramServiceMeta:
 TelegramService = TelegramServiceMeta()
 
 
-async def request(
-    endpoint: str, method: str, data: dict | BaseModel | None = None, is_raise: bool = False
-) -> httpx.Response | None:
-    if config.app.telegram_integration is False:
-        if is_raise:
-            raise errors.DDHTTPException(
-                status_code=500,
-                detail=[errors.DDException(msg="Telegram Bot integration disabled", code="disabled")],
-            ) from None
-        return
-
+async def request(endpoint: str, method: str, data: dict | BaseModel | None = None) -> httpx.Response:
     try:
         response = await TelegramService.client.request(
             method=method,
@@ -51,39 +41,36 @@ async def request(
             headers={"Authorization": "Bearer " + config.app.telegram_token},
         )
         if response.status_code not in (200, 201, 404):
-            if is_raise:
-                raise errors.DDHTTPException(
-                    status_code=500,
-                    detail=[
-                        errors.DDException(
-                            msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
-                            code="internal_error",
-                        )
-                    ],
-                ) from None
+            raise errors.ApiHTTPException(
+                status_code=500,
+                detail=[
+                    errors.ApiException(
+                        msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
+                        code="internal_error",
+                    )
+                ],
+            ) from None
         logger.info(response.json())
         return response
     except TimeoutException as err:
         logger.exception(err)
-        if is_raise:
-            raise errors.DDHTTPException(
-                status_code=500,
-                detail=[
-                    errors.DDException(
-                        msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
-                        code="internal_error",
-                    )
-                ],
-            ) from None
+        raise errors.ApiHTTPException(
+            status_code=500,
+            detail=[
+                errors.ApiException(
+                    msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
+                    code="internal_error",
+                )
+            ],
+        ) from None
     except HTTPError as err:
         logger.exception(err)
-        if is_raise:
-            raise errors.DDHTTPException(
-                status_code=500,
-                detail=[
-                    errors.DDException(
-                        msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
-                        code="internal_error",
-                    )
-                ],
-            ) from None
+        raise errors.ApiHTTPException(
+            status_code=500,
+            detail=[
+                errors.ApiException(
+                    msg="Couldn't communicate with Telegram Bot (HTTP 503 error) : Service Unavailable",
+                    code="internal_error",
+                )
+            ],
+        ) from None

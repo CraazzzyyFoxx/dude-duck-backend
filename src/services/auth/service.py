@@ -1,13 +1,12 @@
 import secrets
-import typing
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import jwt
+import sqlalchemy as sa
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
-import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, Session
+from sqlalchemy.orm import Session, joinedload
 from starlette import status
 
 from src.core import config, enums, errors
@@ -36,12 +35,6 @@ async def get_by_name(session: AsyncSession, username: str) -> models.User | Non
     return user.first()
 
 
-async def get_all(session: AsyncSession) -> list[models.User]:
-    query = sa.select(models.User)
-    users = await session.scalars(query)
-    return list(users)
-
-
 async def get_first_superuser(session: AsyncSession) -> models.User:
     return await get_by_email(session, config.app.super_user_email)  # type: ignore
 
@@ -51,25 +44,12 @@ def get_first_superuser_sync(session: Session) -> models.User:
     return result.one()
 
 
-async def get_superusers_with_google(session: AsyncSession) -> list[models.User]:
-    query = sa.select(models.User).where(
-        models.User.is_superuser == True, models.User.google == None)  # noqa
-    users = await session.scalars(query)
-    return list(users)
-
-
-async def get_by_ids(session: AsyncSession, users_id: typing.Iterable[int]) -> list[models.User]:
-    query = sa.select(models.User).where(models.User.id.in_(users_id))
-    users = await session.scalars(query)
-    return list(users)
-
-
 async def create(session: AsyncSession, user_create: models.UserCreate, safe: bool = False) -> models.User:
     if await get_by_email(session, user_create.email) is not None or await get_by_name(session, user_create.name):
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.REGISTER_USER_ALREADY_EXISTS, code=enums.ErrorCode.REGISTER_USER_ALREADY_EXISTS
                 )
             ],
@@ -86,18 +66,25 @@ async def create(session: AsyncSession, user_create: models.UserCreate, safe: bo
     user_dict["email"] = email.lower()
     query = sa.insert(models.User).returning(models.User)
     result = await session.scalars(query, [user_dict])
-    created_user = result.first()
+    await session.commit()
+    created_user = result.one()
+    created_user_read = models.UserRead.model_validate(created_user)
+    message_service.send_registered_notify(created_user_read)
     parser = await sheets_service.get_default_booster_read(session)
     tasks_service.create_booster.delay(
         parser.model_dump_json(),
-        models.UserRead.model_validate(created_user).model_dump(),
+        created_user_read.model_dump(),
     )
-    await session.commit()
     return created_user
 
 
 async def update(
-    session: AsyncSession, user: models.User, user_in: models.BaseUserUpdate, safe: bool = False, exclude=True
+    session: AsyncSession,
+    user: models.User,
+    user_in: models.BaseUserUpdate,
+    safe: bool = False,
+    exclude=True,
+    with_sync: bool = True,
 ) -> models.User:
     exclude_fields = {
         "password",
@@ -106,22 +93,19 @@ async def update(
         exclude_fields.update({"is_superuser", "is_active", "is_verified"})
     update_data = user_in.model_dump(exclude=exclude_fields, exclude_unset=exclude, exclude_defaults=True, mode="json")
 
-    if update_data.get("phone") is not None:
-        user.phone = update_data["phone"].replace("tel:", "")
-        update_data.pop("phone")
-
     if user_in.password:
         user.hashed_password = utils.hash_password(user_in.password)
     query = sa.update(models.User).where(models.User.id == user.id).values(**update_data).returning(models.User)
     result = await session.scalars(query)
-    user = result.first()
+    user = result.one()
     await session.commit()
-    parser = await sheets_service.get_default_booster_read(session)
-    tasks_service.create_or_update_booster.delay(
-        parser.model_dump_json(),
-        user.id,
-        models.UserRead.model_validate(user).model_dump(),
-    )
+    if with_sync:
+        parser = await sheets_service.get_default_booster_read(session)
+        tasks_service.create_or_update_booster.delay(
+            parser.model_dump_json(),
+            user.id,
+            models.UserRead.model_validate(user).model_dump(),
+        )
     return user
 
 
@@ -139,10 +123,10 @@ async def delete(session: AsyncSession, user: models.User) -> None:
 
 async def request_verify(user: models.User) -> None:
     if user.is_verified:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED, code=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED
                 )
             ],
@@ -167,10 +151,10 @@ async def verify(session: AsyncSession, token: str) -> models.User:
         _ = data["sub"]
         email = data["email"]
     except (jwt.PyJWTError, KeyError):
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.VERIFY_USER_BAD_TOKEN, code=enums.ErrorCode.VERIFY_USER_BAD_TOKEN
                 )
             ],
@@ -178,26 +162,26 @@ async def verify(session: AsyncSession, token: str) -> models.User:
 
     user = await get_by_email(session, email)
     if not user:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.VERIFY_USER_BAD_TOKEN, code=enums.ErrorCode.VERIFY_USER_BAD_TOKEN
                 )
             ],
         )
 
     if user.is_verified:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED, code=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED
                 )
             ],
         )
 
-    verified_user = await update(session, user, models.UserUpdate(is_verified=True))
+    verified_user = await update(session, user, models.UserUpdateAdmin(is_verified=True))
     message_service.send_verified_notify(models.UserRead.model_validate(user))
     return verified_user
 
@@ -242,10 +226,10 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
         user_id = data["sub"]
         password_fingerprint = data["password_fingerprint"]
     except jwt.PyJWTError:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
                     code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
                 )
@@ -254,10 +238,10 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     logger.warning(f"Try reset password for user {user_id}")
     user = await get(session, user_id)
     if not user:
-        raise errors.DDHTTPException(
+        raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
-                errors.DDException(
+                errors.ApiException(
                     msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
                 )
             ],
@@ -265,17 +249,17 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     valid_password_fingerprint, _ = utils.verify_and_update_password(user.hashed_password, password_fingerprint)
     logger.warning(f"Try reset password for user, password validation = {valid_password_fingerprint}")
     if not valid_password_fingerprint:
-        e = errors.DDException(
+        e = errors.ApiException(
             msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
             code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
         )
-        raise errors.DDHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
+        raise errors.ApiHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     if not user.is_active:
-        e = errors.DDException(
+        e = errors.ApiException(
             msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
         )
-        raise errors.DDHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
+        raise errors.ApiHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     updated_user = await update(session, user, models.UserUpdate(password=password))
     return updated_user
@@ -285,7 +269,7 @@ async def read_token(session: AsyncSession, token: str | None) -> models.User | 
     if token is None:
         return None
 
-    max_age = datetime.utcnow() - timedelta(seconds=24 * 3600)
+    max_age = datetime.now(UTC) - timedelta(seconds=24 * 3600)
     query = (
         sa.select(models.AccessToken)
         .where(models.AccessToken.token == token, models.AccessToken.created_at > max_age)

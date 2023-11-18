@@ -57,6 +57,7 @@ class AppConfig(BaseSettings):
     celery_preorders_manage: int = 300
 
     sync_boosters: bool = False
+    datetime_format_sheets: str = "%d.%m.%Y %H:%M:%S"
 
     @property
     def db_url_asyncpg(self):

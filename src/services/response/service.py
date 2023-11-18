@@ -1,5 +1,5 @@
 import typing
-from datetime import datetime
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,15 +8,18 @@ from sqlalchemy.orm import joinedload
 from . import models
 
 
-async def get(session: AsyncSession, response_id: int, pre: bool = False) -> models.BaseResponse | None:
-    model = models.Response if not pre else models.PreResponse
-    result = await session.scalars(sa.select(model).where(model.id == response_id).options(joinedload(model.user)))
+async def get(session: AsyncSession, response_id: int, pre: bool = False) -> models.Response | None:
+    result = await session.scalars(
+        sa.select(models.Response)
+        .where(models.Response.id == response_id, models.Response.is_preorder == pre)
+        .options(joinedload(models.Response.user))
+    )
     return result.first()
 
 
-async def create(session: AsyncSession, response_in: models.ResponseCreate, pre: bool = False) -> models.BaseResponse:
-    model = models.Response if not pre else models.PreResponse
-    response = model(**response_in.model_dump())
+async def create(session: AsyncSession, response_in: models.ResponseCreate, pre: bool = False) -> models.Response:
+    response = models.Response(**response_in.model_dump())
+    response.is_preorder = pre
     session.add(response)
     await session.commit()
     return response
@@ -29,48 +32,44 @@ async def delete(session: AsyncSession, response_id: int, pre: bool = False) -> 
         await session.commit()
 
 
-async def get_by_order_id(
-    session: AsyncSession, order_id: int, pre: bool = False
-) -> typing.Sequence[models.BaseResponse]:
-    model = models.Response if not pre else models.PreResponse
-    result = await session.scalars(sa.select(model).where(model.order_id == order_id).options(joinedload(model.user)))
+async def get_by_order_id(session: AsyncSession, order_id: int, pre: bool = False) -> typing.Sequence[models.Response]:
+    result = await session.scalars(
+        sa.select(models.Response)
+        .where(models.Response.order_id == order_id, models.Response.is_preorder == pre)
+        .options(joinedload(models.Response.user))
+    )
     return result.all()
 
 
-async def get_by_user_id(
-    session: AsyncSession, user_id: int, pre: bool = False
-) -> typing.Sequence[models.BaseResponse]:
-    model = models.Response if not pre else models.PreResponse
-    result = await session.scalars(sa.select(model).where(model.user_id == user_id).options(joinedload(model.user)))
+async def get_by_user_id(session: AsyncSession, user_id: int, pre: bool = False) -> typing.Sequence[models.Response]:
+    result = await session.scalars(
+        sa.select(models.Response)
+        .where(models.Response.user_id == user_id, models.Response.is_preorder == pre)
+        .options(joinedload(models.Response.user))
+    )
     return result.all()
 
 
 async def get_by_order_id_user_id(
     session: AsyncSession, order_id: int, user_id: int, pre: bool = False
-) -> models.BaseResponse | None:
-    model = models.Response if not pre else models.PreResponse
+) -> models.Response | None:
     result = await session.scalars(
-        sa.select(model)
-        .where(model.order_id == order_id, model.user_id == user_id)
-        .options(joinedload(model.user))
+        sa.select(models.Response)
+        .where(models.Response.order_id == order_id, models.Response.user_id == user_id)
+        .where(models.Response.is_preorder == pre)
+        .options(joinedload(models.Response.user))
     )
     return result.first()
 
 
-async def get_all(session: AsyncSession, pre: bool = False) -> typing.Sequence[models.BaseResponse]:
-    model = models.Response if not pre else models.PreResponse
-    result = await session.scalars(sa.select(model))
-    return result.all()
-
-
 async def update(
     session: AsyncSession,
-    response: models.BaseResponse,
+    response: models.Response,
     response_in: models.ResponseUpdate,
-) -> models.BaseResponse:
+) -> models.Response:
     update_data = response_in.model_dump()
     if response_in.approved is True and not response.approved:
-        update_data["approved_at"] = datetime.utcnow()
+        update_data["approved_at"] = datetime.now(UTC)
     if response_in.approved is False:
         update_data["approved_at"] = None
     await session.execute(sa.update(models.Response).where(models.Response.id == response.id).values(**update_data))
@@ -80,12 +79,12 @@ async def update(
 
 async def patch(
     session: AsyncSession,
-    response: models.BaseResponse,
+    response: models.Response,
     response_in: models.ResponseUpdate,
-) -> models.BaseResponse:
+) -> models.Response:
     update_data = response_in.model_dump(exclude_none=True, exclude_defaults=True)
     if response_in.approved is True and not response.approved:
-        update_data["approved_at"] = datetime.utcnow()
+        update_data["approved_at"] = datetime.now(UTC)
     if response_in.approved is False:
         update_data["approved_at"] = None
     await session.execute(sa.update(models.Response).where(models.Response.id == response.id).values(**update_data))

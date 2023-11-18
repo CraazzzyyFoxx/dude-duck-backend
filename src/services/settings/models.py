@@ -1,29 +1,16 @@
 import typing
-from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, constr
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from sqlalchemy import BigInteger, Boolean, Float, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BigInteger, String, Integer, Float, Boolean
 
 from src.core import db
 
 
-class ApiLayerCurrencyToken(BaseModel):
-    token: str
-    uses: int = 0
-    last_use: datetime = Field(default_factory=datetime.utcnow)
-
-
 class AvailableCurrency(BaseModel):
-    name: constr(to_upper=True)
+    name: typing.Annotated[str, StringConstraints(to_upper=True)]
     precision: int
-
-
-class ApiLayerCurrencyTokenDB(typing.TypedDict):
-    token: str
-    uses: int
-    last_use: datetime | None
 
 
 class AvailableCurrencyDB(typing.TypedDict):
@@ -42,7 +29,6 @@ default_currencies_dict = [c.model_dump() for c in default_currencies]
 class Settings(db.TimeStampMixin):
     __tablename__ = "settings"
 
-    api_layer_currency: Mapped[list[ApiLayerCurrencyTokenDB]] = mapped_column(JSONB())
     currencies: Mapped[list[AvailableCurrencyDB]] = mapped_column(JSONB(), default=default_currencies_dict)
     preorder_time_alive: Mapped[int] = mapped_column(Integer(), default=60)
     accounting_fee: Mapped[float] = mapped_column(Float(), default=0.95)
@@ -56,14 +42,13 @@ class Settings(db.TimeStampMixin):
     def get_precision(self, currency: str) -> int:
         for cur in self.currencies:
             if cur["name"] == currency:
-                return cur["precision"]  # type: ignore
+                return cur["precision"]
         return 2
 
 
 class SettingsRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    api_layer_currency: list[ApiLayerCurrencyToken]
     currencies: list[AvailableCurrency]
     preorder_time_alive: int
     accounting_fee: float

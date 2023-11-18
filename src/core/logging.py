@@ -72,6 +72,9 @@ class APILogger:
         for _log in ("uvicorn", "uvicorn.access", "fastapi", "celery", "sqlalchemy.engine.Engine"):
             _logger = logging.getLogger(_log)
             _logger.handlers = [InterceptHandler()]
+        for _log in ("uvicorn.access",):
+            _logger = logging.getLogger(_log)
+            _logger.handlers = []
         return loguru_logger
 
 

@@ -1,5 +1,5 @@
 import typing
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from passlib import pwd

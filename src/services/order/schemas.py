@@ -2,9 +2,13 @@ import datetime
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import Select
 
 from src.core import pagination
-from .models import OrderCredentialsRead, OrderInfoRead, OrderPaidStatus, OrderPriceMeta, OrderPriceNone, OrderStatus
+
+from .models import (Order, OrderCredentialsRead, OrderInfoRead,
+                     OrderPaidStatus, OrderPriceMeta, OrderPriceNone,
+                     OrderStatus)
 
 
 class OrderPriceUser(OrderPriceMeta):
@@ -54,7 +58,7 @@ class OrderReadSystemBase(BaseModel):
     status_paid: OrderPaidStatus
 
     info: OrderInfoRead
-    price: OrderPriceSystem
+    price: OrderPriceNone
     credentials: OrderCredentialsRead
 
     auth_date: datetime.datetime | None = None
@@ -63,6 +67,7 @@ class OrderReadSystemBase(BaseModel):
 
 class OrderReadSystem(OrderReadSystemBase):
     id: int
+    price: OrderPriceSystem
 
 
 class OrderReadActive(BaseModel):
@@ -93,3 +98,15 @@ class OrderFilterParams(pagination.PaginationParams):
     status: OrderStatusFilter = OrderStatusFilter.All
     order_id: list[str] | None = None
     ids: list[int] | None = None
+
+    def apply_filters(self, query: Select) -> Select:
+        if self.order_id and not self.ids:
+            query = query.where(Order.order_id.in_(self.order_id))
+        elif self.ids and not self.order_id:
+            query = query.where(Order.id.in_(self.ids))
+        elif self.ids and self.order_id:
+            query = query.where(Order.order_id.in_(self.order_id) | Order.id.in_(self.ids))
+
+        if self.status != OrderStatusFilter.All:
+            query = query.where(Order.status == OrderStatus(self.status.value))
+        return query
