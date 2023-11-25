@@ -5,10 +5,10 @@ from loguru import logger
 
 from src.core import db
 from src.services.auth import service as auth_service
+from src.services.integrations.message import flows as message_flows
+from src.services.integrations.sheets import service as sheets_service
 from src.services.order import service as order_service
 from src.services.settings import service as settings_service
-from src.services.sheets import service as sheets_service
-from src.services.telegram.message import service as message_service
 
 from . import flows, service
 
@@ -27,9 +27,9 @@ async def manage_preorders():
             delta = (datetime.utcnow() - timedelta(seconds=settings.preorder_time_alive)).astimezone(pytz.UTC)
             if preorder.created_at < delta:
                 session.delete(preorder)
-                payload = await message_service.order_delete(await flows.format_preorder_system(preorder), pre=True)
+                payload = await message_flows.pull_delete(await flows.format_preorder_system(preorder), pre=True)
                 if payload.deleted:
-                    message_service.send_deleted_order_notify(preorder.order_id, payload)
+                    message_flows.send_deleted_order_notify(preorder.order_id, payload)
                 if preorder.has_response is False and order is None:
                     parser = await sheets_service.get_by_spreadsheet_sheet_read(preorder.spreadsheet, preorder.sheet_id)
                     sheets_service.clear_row(superuser.google, parser, preorder.row_id)

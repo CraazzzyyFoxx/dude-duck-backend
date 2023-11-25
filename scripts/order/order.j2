@@ -1,0 +1,8 @@
+{% if order.order_id %}
+**Order:** {{ order.order_id}}<br>
+{% endif %}
+{% if order.info.boost_type %}**Description:**{% endif %}
+{% if order.info.boost_type %}{{order.info.boost_type}}{% endif %} {% if order.info.game %}{{order.info.game}}{% endif %} {% if order.info.category %}{{order.info.category}}{% endif %} {% if order.info.purchase %}{{order.info.purchase}}{% endif %}<br>
+{% if order.info.comment %}
+**Additional Info:** {{ order.info.comment }}<br>
+{% endif %}

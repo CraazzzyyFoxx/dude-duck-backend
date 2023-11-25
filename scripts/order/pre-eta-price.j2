@@ -1,0 +1,19 @@
+**ETA:**
+{% if order.info.eta %} 
+{{ order.info.eta }} 
+{% else %}
+?
+{% endif %}
+<br>
+**Price:**
+{% if order.price.booster_dollar %}
+{% if order.price.booster_dollar and order.price.booster_gold %}
+{{ order.price.booster_gold|round(0) }}k gold ({{ order.price.booster_dollar|round(2) }}$)
+{% endif %}
+{% if order.price.booster_dollar and not order.price.booster_gold %}
+{{ order.price.booster_rub|round(0) }}rub. ({{ order.price.booster_dollar|round(2) }}$)
+{% endif %}
+{% else %} 
+?
+{% endif %}
+<br>

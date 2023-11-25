@@ -1,5 +1,4 @@
 import enum
-import typing
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint

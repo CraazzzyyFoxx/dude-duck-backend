@@ -69,7 +69,7 @@ async def get_current_user(
         if api:
             user = await service.read_token_api(session, token)
         else:
-            user = await service.read_token(session, token)
+            user = await service.verify_access_token(session, token)
     verify_user(user, active, verified, superuser)
     return user, token
 

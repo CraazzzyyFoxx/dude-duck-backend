@@ -6,9 +6,15 @@ from sqlalchemy import Select
 
 from src.core import pagination
 
-from .models import (Order, OrderCredentialsRead, OrderInfoRead,
-                     OrderPaidStatus, OrderPriceMeta, OrderPriceNone,
-                     OrderStatus)
+from .models import (
+    Order,
+    OrderCredentialsRead,
+    OrderInfoRead,
+    OrderPaidStatus,
+    OrderPriceMeta,
+    OrderPriceNone,
+    OrderStatus,
+)
 
 
 class OrderPriceUser(OrderPriceMeta):

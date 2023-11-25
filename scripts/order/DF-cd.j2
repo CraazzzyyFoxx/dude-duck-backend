@@ -1,0 +1,22 @@
+{% if order.info.region_fraction %}
+**<b>Region:** {{ order.info.region_fraction }}<br>
+{% endif %}
+{% if order.info.server %}
+**Server:** {{ order.info.server }}<br>
+{% endif %}
+{% if order.info.character_class %}
+**Class:** {{ order.info.character_class }}<br>
+{% endif %}
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬<br>
+{% if order.credentials.nickname %}
+**Nickname:** {{ order.credentials.nickname }}<br>
+{% endif %}
+{% if order.credentials.login %}
+**Login:** {{ order.credentials.login }}<br>
+{% endif %}
+{% if order.credentials.password %}
+**Password:** {{ order.credentials.password }}<br>
+{% endif %}
+{% if order.credentials.vpn %}
+**Vpn:** {{ order.credentials.vpn }}<br>
+{% endif %}

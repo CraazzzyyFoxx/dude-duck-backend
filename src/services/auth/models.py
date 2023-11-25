@@ -3,21 +3,13 @@ import re
 import typing
 from datetime import datetime
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    EmailStr,
-    Field,
-    HttpUrl,
-    field_validator,
-    StringConstraints,
-)
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, StringConstraints, field_validator
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import config, db
-from src.services.sheets.models import SheetEntity
+from src.services.integrations.sheets.models import SheetEntity
 
 
 class UserLanguage(str, enum.Enum):
@@ -151,16 +143,16 @@ class User(db.TimeStampMixin):
     max_orders: Mapped[int] = mapped_column(default=3)
 
 
-class AccessToken(db.TimeStampMixin):
-    __tablename__ = "access_token"
+class RefreshToken(db.TimeStampMixin):
+    __tablename__ = "refresh_token"
 
-    token: Mapped[str] = mapped_column(String(100), unique=True)
+    token: Mapped[str] = mapped_column(String(), unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     user: Mapped["User"] = relationship()
 
 
 class AccessTokenAPI(db.TimeStampMixin):
-    __tablename__ = "access_token_api"
+    __tablename__ = "access_token"
 
     token: Mapped[str] = mapped_column(String(100), unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))

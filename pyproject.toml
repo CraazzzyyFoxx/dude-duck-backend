@@ -6,27 +6,27 @@ authors = ["CraazzzyyFoxx <craazzzyyfoxx@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-uvicorn = {extras = ["standart"], version = "^0.23.2"}
-pydantic = {extras = ["email"], version = "^2.0.3"}
+python = ">=3.11,<3.12"
+uvicorn = {extras = ["standart"], version = "^0.24.0"}
+pydantic = {extras = ["email"], version = "^2.5.0"}
 python-dotenv = "^1.0.0"
-dateparser = "^1.1.7"
+dateparser = "^1.2.0"
 loguru = "^0.7.0"
-sentry-sdk = {extras = ["fastapi"], version = "^1.28.1"}
+sentry-sdk = {extras = ["fastapi"], version = "^1.35.0"}
 fastapi = "^0.104"
 uvloop = {version = "^0.17.0", platform="linux"}
 pydantic-extra-types = "^2.0.0"
-phonenumbers = "^8.13.21"
-pydantic-settings = "^2.0.2"
-httpx = "^0.25.0"
+phonenumbers = "^8.13.25"
+pydantic-settings = "^2.1.0"
+httpx = ">=0.18,<0.25"
 orjson = "==3.9.4"
-deepdiff = "^6.6.1"
+deepdiff = "^6.7.1"
 flower = "^2.0.1"
 redis = "^5.0.0"
 asgiref = "^3.7.2"
 gunicorn = "^21.2.0"
 gspread = "^5.12"
-setuptools = "^65.1.2"
+setuptools = "^68.2.2"
 celery = "^5.3.5"
 lxml = "^4.9.3"
 pyjwt = "^2.8.0"
@@ -39,6 +39,12 @@ asyncpg = "^0.29.0"
 sqlalchemy = {extras = ["mypy"], version = "^2.0.23"}
 alembic = "^1.12.0"
 psycopg2-binary = "^2.9.9"
+psycopg2 = "^2.9.9"
+jinja2 = "^3.1.2"
+hikari = "^2.0.0.dev122"
+cashews = "^6.3.0"
+httpx-oauth = "^0.13.0"
+h2 = "^4.1.0"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -126,10 +132,6 @@ warn_required_dynamic_aliases = true
 [tool.isort]
 skip_glob = "**/__init__.pyi"
 
-[tool.aerich]
-tortoise_orm = "app.core.config.tortoise"
-location = "./migrations"
-src_folder = "./."
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

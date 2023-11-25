@@ -17,25 +17,29 @@ async def get(session: AsyncSession, response_id: int, pre: bool = False) -> mod
     return result.first()
 
 
-async def create(session: AsyncSession, response_in: models.ResponseCreate, pre: bool = False) -> models.Response:
+async def create(
+        session: AsyncSession, response_in: models.ResponseCreate, is_preorder: bool = False
+) -> models.Response:
     response = models.Response(**response_in.model_dump())
-    response.is_preorder = pre
+    response.is_preorder = is_preorder
     session.add(response)
     await session.commit()
     return response
 
 
-async def delete(session: AsyncSession, response_id: int, pre: bool = False) -> None:
-    response = await get(session, response_id, pre=pre)
+async def delete(session: AsyncSession, response_id: int, is_preorder: bool = False) -> None:
+    response = await get(session, response_id, pre=is_preorder)
     if response:
         await session.delete(response)
         await session.commit()
 
 
-async def get_by_order_id(session: AsyncSession, order_id: int, pre: bool = False) -> typing.Sequence[models.Response]:
+async def get_by_order_id(
+        session: AsyncSession, order_id: int, is_preorder: bool = False
+) -> typing.Sequence[models.Response]:
     result = await session.scalars(
         sa.select(models.Response)
-        .where(models.Response.order_id == order_id, models.Response.is_preorder == pre)
+        .where(models.Response.order_id == order_id, models.Response.is_preorder == is_preorder)
         .options(joinedload(models.Response.user))
     )
     return result.all()

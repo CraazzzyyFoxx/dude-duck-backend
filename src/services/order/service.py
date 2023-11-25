@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from src.services.accounting import service as accounting_service
-from src.services.sheets import service as sheets_service
+from src.services.integrations.sheets import service as sheets_service
 from src.services.tasks import service as tasks_service
 
 from . import models

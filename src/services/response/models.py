@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import (BigInteger, Boolean, DateTime, Float, ForeignKey,
-                        Interval, Select, String)
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Interval, Select, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db, pagination

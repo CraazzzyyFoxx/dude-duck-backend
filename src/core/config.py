@@ -28,6 +28,13 @@ class AppConfig(BaseSettings):
     telegram_token: str
     telegram_url: str
     telegram_integration: bool
+    telegram_token_bot: str
+
+    # Discord Bot
+    discord_token: str
+    discord_url: str
+    discord_integration: bool
+    discord_token_bot: str
 
     # Postgres
     postgres_user: str
@@ -37,9 +44,13 @@ class AppConfig(BaseSettings):
     postgres_port: str
 
     # JWT
-    secret: str
+    access_token_secret: str
+    refresh_token_secret: str
+    reset_password_secret: str
+    verify_email_secret: str
     algorithm: str = "HS256"
     expires_s: int = 3600
+    access_token_audience: str = "dude_duck:access"
     verification_token_audience: str = "dude_duck:verify"
     reset_password_token_audience: str = "dude_duck:reset"
 
@@ -61,12 +72,18 @@ class AppConfig(BaseSettings):
 
     @property
     def db_url_asyncpg(self):
-        url = f"{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        url = (
+            f"{self.postgres_user}:{self.postgres_password}@"
+            f"{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
         return f"postgresql+asyncpg://{url}"
 
     @property
     def db_url(self):
-        url = f"{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        url = (
+            f"{self.postgres_user}:{self.postgres_password}@"
+            f"{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
         return f"postgresql://{url}"
 
 

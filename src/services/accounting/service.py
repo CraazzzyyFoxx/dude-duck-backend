@@ -12,9 +12,9 @@ from starlette import status
 from src.core import config, errors
 from src.services.auth import models as auth_models
 from src.services.currency import flows as currency_flows
+from src.services.integrations.sheets import service as sheets_service
 from src.services.order import models as order_models
 from src.services.order import service as order_service
-from src.services.sheets import service as sheets_service
 from src.services.tasks import service as tasks_service
 
 from . import models

@@ -7,8 +7,8 @@ from starlette import status
 
 from src.core import errors
 from src.services.auth import service as auth_service
+from src.services.integrations.sheets import service as sheets_service
 from src.services.settings import service as settings_service
-from src.services.sheets import service as sheets_service
 
 from . import models
 

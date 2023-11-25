@@ -19,7 +19,7 @@ from src.services.preorder import service as preorder_service
 
 from . import flows, models
 
-router = APIRouter(prefix="/sheets", tags=[enums.RouteTag.SHEETS])
+router = APIRouter(prefix="/integrations/sheets", tags=[enums.RouteTag.SHEETS])
 
 
 @router.post("/orders", response_model=orders_schemas.OrderReadSystem | preorders_schemes.PreOrderReadSystem)

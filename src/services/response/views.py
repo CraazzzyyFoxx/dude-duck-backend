@@ -29,7 +29,7 @@ async def create_response(
 ):
     if is_preorder:
         preorder = await preorder_flows.get(session, order_id)
-        return await flows.create_preorder_response(session, user, preorder, data)
+        return await flows.create_order_response(session, user, preorder, data, is_preorder=True)
     else:
         order = await order_flows.get(session, order_id)
         return await flows.create_order_response(session, user, order, data)

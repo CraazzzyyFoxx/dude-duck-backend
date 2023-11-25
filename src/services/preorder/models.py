@@ -5,8 +5,8 @@ from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
+from src.services.integrations.sheets import models as sheets_models
 from src.services.order import models as order_models
-from src.services.sheets import models as sheets_models
 
 
 class PreOrderPriceUser(BaseModel):

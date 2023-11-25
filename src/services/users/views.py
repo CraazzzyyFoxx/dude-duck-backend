@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, UploadFile
+from fastapi.responses import ORJSONResponse
 from starlette import status
 
 from src.core import db, enums, errors, pagination
@@ -69,7 +70,7 @@ async def read_google_token(user=Depends(auth_flows.current_active_superuser)):
 @router.post("/@me/generate-api-token")
 async def generate_api_token(user=Depends(auth_flows.current_active_superuser), session=Depends(db.get_async_session)):
     response = await auth_service.write_token_api(session, user)
-    return response
+    return ORJSONResponse({"access_token": response, "token_type": "bearer"})
 
 
 @router.post("/@me/orders", response_model=pagination.Paginated[orders_schemas.OrderReadActive])

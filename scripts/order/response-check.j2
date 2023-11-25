@@ -1,0 +1,14 @@
+**User:** {{ user.name }} - @{{ user.discord }} <br>
+{% if response.text %}
+**Message:** {{ response.text }}<br>
+{% endif %}
+{% if response.price %}
+**Price:** {{ response.price }}<br>
+{% endif %}
+{% if response.start_date %}
+**Start Date:** {{ response.start_date }}<br>
+{% endif %}
+{% if response.eta %}
+**ETA:** {{ response.eta }}<br>
+{% endif %}
+**Approved:** {{ response.approved }}<br>

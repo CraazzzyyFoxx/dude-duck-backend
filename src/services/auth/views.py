@@ -7,7 +7,7 @@ from starlette import status
 
 from src.core import enums, errors
 from src.core.db import get_async_session
-from src.services.telegram.message import service as message_service
+from src.services.integrations.bots.telegram import notifications
 
 from . import flows, models, service
 
@@ -20,15 +20,11 @@ async def login(credentials: OAuth2PasswordRequestForm = Depends(), session=Depe
     if user is None:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.LOGIN_BAD_CREDENTIALS, code=enums.ErrorCode.LOGIN_BAD_CREDENTIALS
-                )
-            ],
+            detail=[errors.ApiException(msg="LOGIN_BAD_CREDENTIALS", code="LOGIN_BAD_CREDENTIALS")],
         )
-    token = await service.write_token(session, user)
-    message_service.send_logged_notify(models.UserRead.model_validate(user))
-    return ORJSONResponse({"access_token": token, "token_type": "bearer"})
+    token = await service.create_access_token(session, user)
+    notifications.send_logged_notify(models.UserRead.model_validate(user))
+    return ORJSONResponse({"access_token": token[0], "refresh_token": token[1], "token_type": "bearer"})
 
 
 # @router.post("/logout")
@@ -42,7 +38,7 @@ async def register(user_create: models.UserCreate, session=Depends(get_async_ses
     created_user = await service.create(session, user_create, safe=True)
     logger.info(f"User {created_user.id} has registered.")
     user = models.UserRead.model_validate(created_user)
-    # message_service.send_registered_notify(user)
+    notifications.send_registered_notify(user)
     return user
 
 
@@ -75,3 +71,9 @@ async def forgot_password(email: EmailStr = Body(..., embed=True), session=Depen
 @router.post("/reset-password")
 async def reset_password(token: str = Body(...), password: str = Body(...), session=Depends(get_async_session)):
     await service.reset_password(session, token, password)
+
+
+@router.post("/refresh-token")
+async def refresh_token(token: str = Body(..., embed=True), session=Depends(get_async_session)):
+    tokens = await service.refresh_tokens(session, token)
+    return ORJSONResponse({"access_token": tokens[0], "refresh_token": tokens[1], "token_type": "bearer"})

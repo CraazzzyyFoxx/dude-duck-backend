@@ -1,5 +1,4 @@
 import secrets
-from datetime import UTC, datetime, timedelta
 
 import jwt
 import sqlalchemy as sa
@@ -9,10 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 from starlette import status
 
-from src.core import config, enums, errors
-from src.services.sheets import service as sheets_service
+from src.core import config, errors
+from src.services.integrations.sheets import service as sheets_service
+from src.services.integrations.bots.telegram import notifications
 from src.services.tasks import service as tasks_service
-from src.services.telegram.message import service as message_service
 
 from . import models, utils
 
@@ -48,17 +47,14 @@ async def create(session: AsyncSession, user_create: models.UserCreate, safe: bo
     if await get_by_email(session, user_create.email) is not None or await get_by_name(session, user_create.name):
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.REGISTER_USER_ALREADY_EXISTS, code=enums.ErrorCode.REGISTER_USER_ALREADY_EXISTS
-                )
-            ],
+            detail=[errors.ApiException(msg="REGISTER_USER_ALREADY_EXISTS", code="REGISTER_USER_ALREADY_EXISTS")],
         )
-    exclude_fields = {
-        "id",
-    }
     if safe:
-        exclude_fields.update({"is_superuser", "is_active", "is_verified"})
+        exclude_fields = {"id", "is_superuser", "is_active", "is_verified"}
+    else:
+        exclude_fields = {
+            "id",
+        }
     user_dict = user_create.model_dump(exclude=exclude_fields, exclude_unset=True)
     email: str = user_dict.pop("email")
     password = user_dict.pop("password")
@@ -69,7 +65,7 @@ async def create(session: AsyncSession, user_create: models.UserCreate, safe: bo
     await session.commit()
     created_user = result.one()
     created_user_read = models.UserRead.model_validate(created_user)
-    message_service.send_registered_notify(created_user_read)
+    notifications.send_registered_notify(created_user_read)
     parser = await sheets_service.get_default_booster_read(session)
     tasks_service.create_booster.delay(
         parser.model_dump_json(),
@@ -117,7 +113,7 @@ async def delete(session: AsyncSession, user: models.User) -> None:
     if parser is not None:
         tasks_service.delete_booster.delay(
             parser.model_dump_json(),
-            str(user.id),
+            user.id,
         )
 
 
@@ -125,11 +121,7 @@ async def request_verify(user: models.User) -> None:
     if user.is_verified:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED, code=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED
-                )
-            ],
+            detail=[errors.ApiException(msg="VERIFY_USER_ALREADY_VERIFIED", code="VERIFY_USER_ALREADY_VERIFIED")],
         )
 
     token_data = {
@@ -138,7 +130,7 @@ async def request_verify(user: models.User) -> None:
         "aud": config.app.verification_token_audience,
     }
     token = utils.generate_jwt(token_data, config.app.secret)
-    message_service.send_request_verify(models.UserRead.model_validate(user), token)
+    notifications.send_request_verify(models.UserRead.model_validate(user), token)
 
 
 async def verify(session: AsyncSession, token: str) -> models.User:
@@ -153,36 +145,24 @@ async def verify(session: AsyncSession, token: str) -> models.User:
     except (jwt.PyJWTError, KeyError):
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.VERIFY_USER_BAD_TOKEN, code=enums.ErrorCode.VERIFY_USER_BAD_TOKEN
-                )
-            ],
+            detail=[errors.ApiException(msg="VERIFY_USER_BAD_TOKEN", code="VERIFY_USER_BAD_TOKEN")],
         ) from None
 
     user = await get_by_email(session, email)
     if not user:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.VERIFY_USER_BAD_TOKEN, code=enums.ErrorCode.VERIFY_USER_BAD_TOKEN
-                )
-            ],
+            detail=[errors.ApiException(msg="VERIFY_USER_BAD_TOKEN", code="VERIFY_USER_BAD_TOKEN")],
         )
 
     if user.is_verified:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED, code=enums.ErrorCode.VERIFY_USER_ALREADY_VERIFIED
-                )
-            ],
+            detail=[errors.ApiException(msg="VERIFY_USER_ALREADY_VERIFIED", code="VERIFY_USER_ALREADY_VERIFIED")],
         )
 
     verified_user = await update(session, user, models.UserUpdateAdmin(is_verified=True))
-    message_service.send_verified_notify(models.UserRead.model_validate(user))
+    notifications.send_verified_notify(models.UserRead.model_validate(user))
     return verified_user
 
 
@@ -228,67 +208,100 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     except jwt.PyJWTError:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
-                    code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
-                )
-            ],
+            detail=[errors.ApiException(msg="RESET_PASSWORD_INVALID_PASSWORD", code="RESET_PASSWORD_INVALID_PASSWORD")],
         ) from None
-    logger.warning(f"Try reset password for user {user_id}")
+    logger.info(f"Try reset password for user {user_id}")
     user = await get(session, user_id)
     if not user:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[
-                errors.ApiException(
-                    msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
-                )
-            ],
+            detail=[errors.ApiException(msg="RESET_PASSWORD_BAD_TOKEN", code="RESET_PASSWORD_BAD_TOKEN")],
         )
     valid_password_fingerprint, _ = utils.verify_and_update_password(user.hashed_password, password_fingerprint)
     logger.warning(f"Try reset password for user, password validation = {valid_password_fingerprint}")
     if not valid_password_fingerprint:
-        e = errors.ApiException(
-            msg=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
-            code=enums.ErrorCode.RESET_PASSWORD_INVALID_PASSWORD,
-        )
+        e = errors.ApiException(msg="RESET_PASSWORD_INVALID_PASSWORD", code="RESET_PASSWORD_INVALID_PASSWORD")
         raise errors.ApiHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     if not user.is_active:
-        e = errors.ApiException(
-            msg=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN, code=enums.ErrorCode.RESET_PASSWORD_BAD_TOKEN
-        )
+        e = errors.ApiException(msg="RESET_PASSWORD_BAD_TOKEN", code="RESET_PASSWORD_BAD_TOKEN")
         raise errors.ApiHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     updated_user = await update(session, user, models.UserUpdate(password=password))
     return updated_user
 
 
-async def read_token(session: AsyncSession, token: str | None) -> models.User | None:
+async def verify_access_token(session: AsyncSession, token: str | None) -> models.User | None:
     if token is None:
         return None
+    try:
+        data = utils.decode_jwt(
+            token,
+            config.app.access_token_secret,
+            [config.app.access_token_audience],
+        )
+        user = data["sub"]
+    except jwt.PyJWTError:
+        return None
 
-    max_age = datetime.now(UTC) - timedelta(seconds=24 * 3600)
+    query = (sa.select(models.User).where(models.User.id == user["id"])).limit(1)
+    result = await session.scalars(query)
+    return result.first()
+
+
+async def refresh_tokens(session: AsyncSession, token: str | None) -> tuple[str, str]:
+    if token is None:
+        raise errors.ApiHTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=[errors.ApiException(msg="INVALID_REFRESH_TOKEN", code="INVALID_REFRESH_TOKEN")],
+        )
+    try:
+        data = utils.decode_jwt(
+            token,
+            config.app.refresh_token_secret,
+            [config.app.access_token_audience],
+        )
+        user = data["sub"]
+    except jwt.PyJWTError:
+        raise errors.ApiHTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=[errors.ApiException(msg="INVALID_REFRESH_TOKEN", code="INVALID_REFRESH_TOKEN")],
+        )
+
     query = (
-        sa.select(models.AccessToken)
-        .where(models.AccessToken.token == token, models.AccessToken.created_at > max_age)
-        .options(joinedload(models.AccessToken.user))
+        sa.select(models.RefreshToken)
+        .where(models.RefreshToken.user_id == user["id"], models.RefreshToken.token == token)
         .limit(1)
     )
     result = await session.scalars(query)
-    access_token = result.first()
-    if access_token is None:
-        return None
-    return access_token.user
+    refresh_token = result.first()
+    if refresh_token is None:
+        raise errors.ApiHTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=[errors.ApiException(msg="INVALID_REFRESH_TOKEN", code="INVALID_REFRESH_TOKEN")],
+        )
 
-
-async def write_token(session: AsyncSession, user: models.User) -> str:
-    token = secrets.token_urlsafe()
-    query = sa.insert(models.AccessToken).values(token=token, user_id=user.id)
+    query = (sa.select(models.User).where(models.User.id == user["id"])).limit(1)
+    result = await session.scalars(query)
+    user = result.first()
+    tokens = await create_access_token(session, user)
+    query = sa.delete(models.RefreshToken).where(models.RefreshToken.token == token)
     await session.execute(query)
     await session.commit()
-    return token
+    return tokens
+
+
+async def create_access_token(session: AsyncSession, user: models.User) -> tuple[str, str]:
+    token_data = {
+        "sub": models.UserRead.model_validate(user, from_attributes=True).model_dump(mode="json"),
+        "aud": config.app.access_token_audience,
+    }
+    access_token = utils.generate_jwt(token_data, config.app.access_token_secret, 24 * 3600)
+    refresh_token = utils.generate_jwt(token_data, config.app.refresh_token_secret, 24 * 3600 * 30)
+    query = sa.insert(models.RefreshToken).values(token=refresh_token, user_id=user.id)
+    await session.execute(query)
+    await session.commit()
+    return access_token, refresh_token
 
 
 async def read_token_api(session: AsyncSession, token: str | None) -> models.User | None:

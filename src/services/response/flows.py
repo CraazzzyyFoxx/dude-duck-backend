@@ -3,15 +3,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from src.core import errors, pagination
+from src.core import errors, pagination, enums
 from src.services.accounting import flows as accounting_flows
 from src.services.auth import models as auth_models
+from src.services.integrations.bots.telegram import notifications
 from src.services.order import flows as order_flows
 from src.services.order import models as order_models
 from src.services.preorder import flows as preorder_flows
 from src.services.preorder import models as preorder_models
 from src.services.preorder import service as preorder_service
-from src.services.telegram.message import service as messages_service
+from src.services.integrations.render import flows as render_flows
+from src.services.integrations.message import flows as message_flows
 
 from . import models, service
 
@@ -86,33 +88,33 @@ async def is_already_respond(session: AsyncSession, order_id: int, user: auth_mo
 
 
 async def create_order_response(
-    session: AsyncSession, user: auth_models.User, order: order_models.Order, response: models.ResponseExtra
-) -> models.Response:
-    await order_available(session, order)
-    await is_already_respond(session, order.id, user)
-    await accounting_flows.can_user_pick_order(session, user, order)
-    resp = await service.create(
-        session, models.ResponseCreate(order_id=order.id, user_id=user.id, **response.model_dump())
-    )
-    messages_service.send_order_response_admin(
-        await order_flows.format_order_system(session, order),
-        auth_models.UserRead.model_validate(user, from_attributes=True),
-        models.ResponseRead.model_validate(resp),
-    )
-    return resp
-
-
-async def create_preorder_response(
-    session: AsyncSession, user: auth_models.User, order: preorder_models.PreOrder, response: models.ResponseExtra
+    session: AsyncSession,
+    user: auth_models.User,
+    order: preorder_models.PreOrder | order_models.Order,
+    response: models.ResponseExtra,
+    is_preorder: bool = False,
 ) -> models.Response:
     await is_already_respond(session, order.id, user)
     resp = await service.create(
-        session, models.ResponseCreate(order_id=order.id, user_id=user.id, **response.model_dump()), pre=True
+        session,
+        models.ResponseCreate(order_id=order.id, user_id=user.id, **response.model_dump()),
+        is_preorder=is_preorder,
     )
-    messages_service.send_preorder_response_admin(
-        await preorder_flows.format_preorder_system(session, order),
-        auth_models.UserRead.model_validate(user, from_attributes=True),
-        models.ResponseRead.model_validate(resp),
+    order_read = (
+        await preorder_flows.format_preorder_system(session, order)
+        if is_preorder
+        else await order_flows.format_order_system(session, order)
+    )
+    configs = render_flows.get_order_configs(order_read, is_preorder=is_preorder, with_response=True)
+    user_read = auth_models.UserRead.model_validate(user, from_attributes=True)
+    text = await render_flows.get_order_text(
+        session,
+        enums.Integration.telegram,
+        configs,
+        data={"order": order_read, "response": response, "user": user_read},
+    )
+    notifications.send_order_response_admin(
+        order_read, auth_models.UserRead.model_validate(user, from_attributes=True), text, is_preorder=is_preorder
     )
     return resp
 
@@ -123,22 +125,36 @@ async def approve_response(session: AsyncSession, user: auth_models.User, order:
     await accounting_flows.add_booster(session, order, user)
     responds = await service.get_by_order_id(session, order.id)
     user_read = auth_models.UserRead.model_validate(user, from_attributes=True)
+    order_read = await order_flows.format_order_system(session, order)
     for resp in responds:
         if not resp.closed:
             if resp.user_id == user.id:
                 await service.patch(session, resp, models.ResponseUpdate(approved=True, closed=True))
-                messages_service.send_response_approve(user_read, order.id, models.ResponseRead.model_validate(resp))
+                text = await render_flows.get_order_text(
+                    session,
+                    enums.Integration.telegram,
+                    render_flows.get_order_configs(order_read, creds=True),
+                    data={"order": order_read},
+                    )
+                notifications.send_response_approve(
+                    user_read, order_read, models.ResponseRead.model_validate(resp), text
+                )
             else:
                 await _decline_response(session, resp, order)
-    await messages_service.order_delete(await order_flows.format_order_system(session, order))
-    messages_service.send_response_chose_notify(order.order_id, user_read, len(responds))
+    notifications.send_response_chose_notify(order.order_id, user_read, len(responds))
+    await message_flows.pull_delete(
+        session, enums.Integration.telegram, await order_flows.format_order_system(session, order)
+    )
+    await message_flows.pull_delete(
+        session, enums.Integration.discord, await order_flows.format_order_system(session, order)
+    )
     return await get_by_order_id_user_id(session, order.id, user.id)
 
 
 async def _decline_response(session: AsyncSession, response: models.Response, order: order_models.Order) -> None:
     user_declined = auth_models.UserRead.model_validate(response.user, from_attributes=True)
     await service.patch(session, response, models.ResponseUpdate(approved=False, closed=True))
-    messages_service.send_response_decline(user_declined, order.order_id)
+    notifications.send_response_decline(user_declined, order.order_id)
 
 
 async def decline_response(session: AsyncSession, user: auth_models.User, order: order_models.Order) -> models.Response:
@@ -152,7 +168,12 @@ async def decline_response(session: AsyncSession, user: auth_models.User, order:
 async def approve_preorder_response(
     session: AsyncSession, user: auth_models.User, order: preorder_models.PreOrder
 ) -> models.Response:
-    await messages_service.order_delete(await preorder_flows.format_preorder_system(session, order), pre=True)
+    await message_flows.pull_delete(
+        session, enums.Integration.telegram, await preorder_flows.format_preorder_system(session, order)
+    )
+    await message_flows.pull_delete(
+        session, enums.Integration.discord, await preorder_flows.format_preorder_system(session, order)
+    )
     for resp in await service.get_by_order_id(session, order_id=order.id):
         await service.patch(session, resp, models.ResponseUpdate(approved=resp.user_id == user.id, closed=True))
     await preorder_service.update(session, order, preorder_models.PreOrderUpdate(has_response=True))
@@ -164,7 +185,7 @@ async def _decline_preorder_response(
 ) -> None:
     user_declined = auth_models.UserRead.model_validate(response.user, from_attributes=True)
     await service.patch(session, response, models.ResponseUpdate(approved=False, closed=True))
-    messages_service.send_response_decline(user_declined, order.order_id)
+    notifications.send_response_decline(user_declined, order.order_id)
 
 
 async def decline_preorder_response(

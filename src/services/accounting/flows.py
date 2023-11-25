@@ -9,13 +9,13 @@ from starlette import status
 from src.core import errors, pagination
 from src.services.auth import models as auth_models
 from src.services.currency import flows as currency_flows
+from src.services.integrations.bots.telegram import notifications
 from src.services.order import flows as order_flows
 from src.services.order import models as order_models
 from src.services.order import schemas as order_schemas
 from src.services.order import service as order_service
 from src.services.payroll import service as payroll_service
 from src.services.permissions import flows as permissions_flows
-from src.services.telegram.message import service as messages_service
 
 from . import models, service
 
@@ -222,7 +222,7 @@ async def close_order(
         )
     update_model = order_models.OrderUpdate(screenshot=str(data.url), end_date=datetime.now(tz=UTC))
     new_order = await order_service.update_with_sync(session, order, update_model)
-    messages_service.send_order_close_notify(
+    notifications.send_order_close_notify(
         auth_models.UserRead.model_validate(user), order.order_id, str(data.url), data.message
     )
     return new_order

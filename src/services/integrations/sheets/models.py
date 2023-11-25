@@ -6,7 +6,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core import db
-from src.services.order import models as order_models
 from src.services.order import schemas as order_schemas
 
 allowed_types = [
