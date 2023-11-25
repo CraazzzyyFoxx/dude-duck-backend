@@ -93,11 +93,7 @@ async def render_order(
         if preorder_read.price.booster_gold is None and is_gold:
             raise errors.ApiHTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=[
-                    errors.ApiException(
-                        msg="This order doesn't have a gold price.", code="bad_request"
-                    )
-                ],
+                detail=[errors.ApiException(msg="This order doesn't have a gold price.", code="bad_request")],
             )
         configs = flows.get_order_configs(preorder_read, is_preorder=is_preorder, is_gold=is_gold)
         data = await flows.generate_body(session, integration, preorder_read, configs, is_preorder, is_gold)
@@ -109,11 +105,7 @@ async def render_order(
         if order_read.price.booster_gold is None and is_gold:
             raise errors.ApiHTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=[
-                    errors.ApiException(
-                        msg="This order doesn't have a gold price.", code="bad_request"
-                    )
-                ],
+                detail=[errors.ApiException(msg="This order doesn't have a gold price.", code="bad_request")],
             )
         if with_response:
             if not user_id:
@@ -133,22 +125,16 @@ async def render_order(
                 is_preorder=is_preorder,
                 is_gold=is_gold,
                 with_response=True,
-                response_checked=response_checked
+                response_checked=response_checked,
             )
             text = await flows.get_order_text(
-                session,
-                integration,
-                configs,
-                data={"order": order_read, "response": response, "user": specified_user}
+                session, integration, configs, data={"order": order_read, "response": response, "user": specified_user}
             )
         else:
             if with_credentials:
                 user_order = await accounting_flows.get_by_order_id_user_id(session, order, user)
                 configs = flows.get_order_configs(
-                    order_read,
-                    is_preorder=is_preorder,
-                    is_gold=is_gold,
-                    creds=user_order or user.is_superuser
+                    order_read, is_preorder=is_preorder, is_gold=is_gold, creds=user_order or user.is_superuser
                 )
             else:
                 configs = flows.get_order_configs(order_read, is_preorder=is_preorder, is_gold=is_gold)

@@ -135,7 +135,7 @@ async def approve_response(session: AsyncSession, user: auth_models.User, order:
                     enums.Integration.telegram,
                     render_flows.get_order_configs(order_read, creds=True),
                     data={"order": order_read},
-                    )
+                )
                 notifications.send_response_approve(
                     user_read, order_read, models.ResponseRead.model_validate(resp), text
                 )

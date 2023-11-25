@@ -17,7 +17,7 @@ async def pull_create(
     categories: list[str],
     configs: list[str],
     is_preorder: bool = False,
-    is_gold: bool = False
+    is_gold: bool = False,
 ) -> models.OrderResponse:
     chs_id = [
         ch.channel_id

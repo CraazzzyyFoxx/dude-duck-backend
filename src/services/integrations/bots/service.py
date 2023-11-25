@@ -35,7 +35,7 @@ BotService = BotServiceMeta()
 
 
 async def request(
-        integration: enums.Integration, endpoint: str, method: str, data: dict | list | BaseModel | None = None
+    integration: enums.Integration, endpoint: str, method: str, data: dict | list | BaseModel | None = None
 ) -> httpx.Response:
     url = config.app.telegram_url if integration == enums.Integration.telegram else config.app.discord_url
     error_msg = "Telegram" if integration == enums.Integration.telegram else "Discord"
@@ -71,9 +71,7 @@ async def request(
 
 
 async def create_message(
-    session: AsyncSession,
-        integration: enums.Integration,
-        messages_in: list[message_models.MessageCreate]
+    session: AsyncSession, integration: enums.Integration, messages_in: list[message_models.MessageCreate]
 ) -> list[tuple[message_models.Message | None, message_models.MessageStatus]]:
     resp: list[tuple[message_models.Message | None, message_models.MessageStatus]] = []
     for message_in in messages_in:
@@ -104,8 +102,8 @@ async def create_message(
 
 async def update_message(
     session: AsyncSession,
-        integration: enums.Integration,
-        messages_in: list[tuple[message_models.Message, message_models.MessageUpdate]]
+    integration: enums.Integration,
+    messages_in: list[tuple[message_models.Message, message_models.MessageUpdate]],
 ) -> list[tuple[message_models.Message | None, message_models.MessageStatus]]:
     resp: list[tuple[message_models.Message | None, message_models.MessageStatus]] = []
     for msg, message_in in messages_in:

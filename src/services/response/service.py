@@ -18,7 +18,7 @@ async def get(session: AsyncSession, response_id: int, pre: bool = False) -> mod
 
 
 async def create(
-        session: AsyncSession, response_in: models.ResponseCreate, is_preorder: bool = False
+    session: AsyncSession, response_in: models.ResponseCreate, is_preorder: bool = False
 ) -> models.Response:
     response = models.Response(**response_in.model_dump())
     response.is_preorder = is_preorder
@@ -35,7 +35,7 @@ async def delete(session: AsyncSession, response_id: int, is_preorder: bool = Fa
 
 
 async def get_by_order_id(
-        session: AsyncSession, order_id: int, is_preorder: bool = False
+    session: AsyncSession, order_id: int, is_preorder: bool = False
 ) -> typing.Sequence[models.Response]:
     result = await session.scalars(
         sa.select(models.Response)
