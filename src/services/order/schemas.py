@@ -14,6 +14,8 @@ from .models import (
     OrderPriceMeta,
     OrderPriceNone,
     OrderStatus,
+    Screenshot,
+    ScreenshotRead,
 )
 
 
@@ -32,8 +34,9 @@ class OrderPriceSystem(OrderPriceNone):
 class OrderReadHasPerms(BaseModel):
     id: int
     order_id: str
-    screenshot: str | None
     status: OrderStatus
+
+    screenshots: list[ScreenshotRead]
 
     info: OrderInfoRead
     price: OrderPriceUser
@@ -48,7 +51,7 @@ class OrderReadNoPerms(BaseModel):
     price: OrderPriceUser
 
 
-class OrderReadSystemBase(BaseModel):
+class OrderReadSystemMeta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     order_id: str
@@ -57,8 +60,6 @@ class OrderReadSystemBase(BaseModel):
     shop: str | None
     shop_order_id: str | None
     contact: str | None
-
-    screenshot: str | None
 
     status: OrderStatus
     status_paid: OrderPaidStatus
@@ -71,6 +72,12 @@ class OrderReadSystemBase(BaseModel):
     end_date: datetime.datetime | None = None
 
 
+class OrderReadSystemBase(OrderReadSystemMeta):
+    model_config = ConfigDict(from_attributes=True)
+
+    screenshots: list[ScreenshotRead]
+
+
 class OrderReadSystem(OrderReadSystemBase):
     id: int
     price: OrderPriceSystem
@@ -81,12 +88,13 @@ class OrderReadActive(BaseModel):
 
     id: int
     order_id: str
-    screenshot: str | None
     status: OrderStatus
 
     info: OrderInfoRead
     price: OrderPriceUser
     credentials: OrderCredentialsRead
+
+    screenshots: list[ScreenshotRead]
 
     paid_at: datetime.datetime | None
     auth_date: datetime.datetime | None = None
@@ -115,4 +123,19 @@ class OrderFilterParams(pagination.PaginationParams):
 
         if self.status != OrderStatusFilter.All:
             query = query.where(Order.status == OrderStatus(self.status.value))
+        return query
+
+
+class ScreenshotParams(pagination.PaginationParams):
+    order_id: int | None = None
+    user_id: int | None = None
+    source: str | None = None
+
+    def apply_filters(self, query: Select) -> Select:
+        if self.order_id:
+            query = query.where(Screenshot.order_id == self.order_id)
+        if self.user_id:
+            query = query.where(Screenshot.user_id == self.user_id)
+        if self.source:
+            query = query.where(Screenshot.source.like(f"%{self.source}%"))
         return query

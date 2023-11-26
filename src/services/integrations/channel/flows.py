@@ -42,5 +42,5 @@ async def get_by_filter(
     query = params.apply_filter(sa.select(models.Channel))
     result = await session.execute(params.apply_pagination(query))
     results = [models.ChannelRead.model_validate(channel, from_attributes=True) for channel in result.scalars().all()]
-    total = await session.execute(params.apply_filter(sa.select(sa.func.count(models.Channel.id))))
-    return pagination.Paginated(results=results, total=total.scalar(), page=params.page, per_page=params.per_page)
+    total = await session.scalars(params.apply_filter(sa.select(sa.func.count(models.Channel.id))))
+    return pagination.Paginated(results=results, total=total.one(), page=params.page, per_page=params.per_page)

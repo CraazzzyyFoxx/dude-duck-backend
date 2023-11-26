@@ -45,7 +45,7 @@ async def patch_order(
     session=Depends(db.get_async_session),
 ):
     order = await flows.get(session, order_id)
-    patched_order = await service.patch(session, order, data)
+    patched_order = await service.update(session, order, data, patch=True)
     return await flows.format_order_system(session, patched_order)
 
 

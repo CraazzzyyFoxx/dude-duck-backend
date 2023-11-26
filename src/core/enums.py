@@ -20,6 +20,7 @@ class RouteTag(StrEnum):
     ADMIN = "🤷🏿‍♀️‍ Admin"
     CURRENCY = "💰 Currency"
     ORDER_RENDERS = "📒 Order Renders"
+    SCREENSHOTS = "📷 Screenshots"
 
 
 class Integration(StrEnum):

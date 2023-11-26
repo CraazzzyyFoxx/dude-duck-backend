@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from src.core import enums, errors, pagination
 from src.services.order import schemas as order_schemas
@@ -42,7 +43,7 @@ async def delete(session: AsyncSession, config_id: int) -> models.RenderConfig:
     config = await get(session, config_id)
     if not config:
         raise errors.ApiHTTPException(
-            status_code=errors.status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=[errors.ApiException(msg=f"Render Config with id={config_id} not found.", code="not_found")],
         )
     await session.delete(config)

@@ -2,8 +2,8 @@ import asyncio
 
 from src.core import config, enums
 from src.services.auth import models as auth_models
-from src.services.integrations.message import models as message_models
 from src.services.integrations.bots.service import request as service_request
+from src.services.integrations.message import models as message_models
 from src.services.order import schemas as order_schemas
 from src.services.response import models as response_models
 

@@ -7,15 +7,18 @@ from sqlalchemy.sql.functions import count
 from starlette import status
 
 from src.core import errors, pagination
+from src.services.auth import flows as auth_flows
 from src.services.auth import models as auth_models
 from src.services.currency import flows as currency_flows
 from src.services.integrations.bots.telegram import notifications
+from src.services.integrations.sheets import flows as sheets_flows
 from src.services.order import flows as order_flows
 from src.services.order import models as order_models
 from src.services.order import schemas as order_schemas
 from src.services.order import service as order_service
 from src.services.payroll import service as payroll_service
 from src.services.permissions import flows as permissions_flows
+from src.services.screenshot import service as screenshot_service
 
 from . import models, service
 
@@ -211,17 +214,15 @@ async def create_report(
 async def close_order(
     session: AsyncSession, user: auth_models.User, order: order_models.Order, data: models.CloseOrderForm
 ) -> order_models.Order:
-    f = False
-    for price in await service.get_by_order_id(session, order.id):
-        if f := price.user_id == user.id:
-            break
-    if not f:
+    if await service.get_by_order_id_user_id(session, order.id, user.id) is None:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=[errors.ApiException(msg="You don't have access to the order", code="forbidden")],
         )
-    update_model = order_models.OrderUpdate(screenshot=str(data.url), end_date=datetime.now(tz=UTC))
-    new_order = await order_service.update_with_sync(session, order, update_model)
+    await screenshot_service.create(session, user, order, data.url.unicode_string())
+    update_model = order_models.OrderUpdate(end_date=datetime.now(tz=UTC))
+    new_order = await order_service.update(session, order, update_model)
+    await sheets_flows.order_to_sheets(session, new_order, await order_flows.format_order_system(session, new_order))
     notifications.send_order_close_notify(
         auth_models.UserRead.model_validate(user), order.order_id, str(data.url), data.message
     )
@@ -241,11 +242,14 @@ async def paid_order(session: AsyncSession, payment_id: int) -> models.UserOrder
             ],
         )
     order = await order_flows.get(session, data.order_id)
-    await service.patch(session, data, models.UserOrderUpdate(paid=True))
+    user = await auth_flows.get(session, data.user_id)
+    await service.update(session, order, user, models.UserOrderUpdate(paid=True), patch=True)
     boosters = await service.get_by_order_id(session, order.id)
     if all(booster.paid for booster in boosters):
-        await order_service.update_with_sync(
-            session, order, order_models.OrderUpdate(status_paid=order_models.OrderPaidStatus.Paid)
+        update_model = order_models.OrderUpdate(status_paid=order_models.OrderPaidStatus.Paid)
+        new_order = await order_service.update(session, order, update_model)
+        await sheets_flows.order_to_sheets(
+            session, new_order, await order_flows.format_order_system(session, new_order)
         )
     return data
 
@@ -261,6 +265,7 @@ async def get_by_filter(
             joinedload(order_models.Order.info),
             joinedload(order_models.Order.price),
             joinedload(order_models.Order.credentials),
+            joinedload(order_models.Order.screenshots),
         )
     )
     query = params.apply_filters(query)
@@ -274,7 +279,7 @@ async def get_by_filter(
     )
     count_query = params.apply_filters(count_query)
     total = await session.execute(count_query)
-    for row in result:
+    for row in result.unique():
         user_order: models.UserOrder = row[0]
         order: order_models.Order = row[1]
         results.append(await order_flows.format_order_active(session, order, user_order))

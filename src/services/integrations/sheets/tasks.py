@@ -15,6 +15,7 @@ from src.services.auth import service as auth_service
 from src.services.currency import flows as currency_flows
 from src.services.order import models as order_models
 from src.services.order import service as order_service
+from src.services.screenshot import service as screenshot_service
 
 from . import models, service
 
@@ -53,6 +54,7 @@ async def boosters_from_order_sync(
 
 async def sync_data_from(
     session: AsyncSession,
+    user: auth_models.User,
     cfg: models.OrderSheetParseRead,
     orders: dict[str, models.OrderReadSheets],
     users: dict[str, auth_models.User],
@@ -63,7 +65,7 @@ async def sync_data_from(
     created = 0
     deleted = 0
     changed = 0
-    exclude = {"id", "booster", "created_at", "updated_at", "spreadsheet", "sheet_id", "row_id"}
+    exclude = {"id", "booster", "created_at", "updated_at", "spreadsheet", "sheet_id", "row_id", "screenshot"}
 
     for order_id, order_db in orders_db.items():
         order = orders.get(order_id)
@@ -81,6 +83,12 @@ async def sync_data_from(
                 except ValidationError as e:
                     logger.error(e.errors(include_url=False))
             await boosters_from_order_sync(session, order_db, order, users, users_ids)
+            if order.screenshot is not None:
+                urls = screenshot_service.find_url_in_text(order.screenshot)
+                urls_db = [screenshot.url for screenshot in order_db.screenshots]
+                await screenshot_service.bulk_create(
+                    session, user, order_db, [url for url in urls if url not in urls_db]
+                )
         # else:
         #     await order_service.delete(order_db.id)
         #     deleted += 1
@@ -91,6 +99,9 @@ async def sync_data_from(
                 insert_data = order_models.OrderCreate.model_validate(order.model_dump())
                 order_db = await order_service.create(session, insert_data)
                 await boosters_from_order_sync(session, order_db, order, users, users_ids)
+                if order.screenshot is not None:
+                    urls = screenshot_service.find_url_in_text(order.screenshot)
+                    await screenshot_service.bulk_create(session, user, order_db, urls)
                 created += 1
             except ValidationError as e:
                 logger.error(e.errors(include_url=False))
@@ -103,7 +114,7 @@ async def sync_data_from(
 
 async def sync_data_to(
     session: AsyncSession,
-    creds: auth_models.AdminGoogleTokenDB,
+    user: auth_models.User,
     cfg: models.OrderSheetParseRead,
     orders: dict[str, models.OrderReadSheets],
     users: list[auth_models.User],
@@ -130,7 +141,7 @@ async def sync_data_to(
         if booster is not None and order_sheet.booster != booster:
             to_sync.append((order.row_id, {"booster": booster}))
     if to_sync:
-        service.update_rows_data(creds, cfg, to_sync)
+        service.update_rows_data(user.google, cfg, to_sync)
     logger.info(
         f"Syncing data to sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] "
         f"completed in {time.time() - t}. Updated {len(to_sync)} orders"
@@ -145,8 +156,7 @@ async def sync_orders() -> None:
             if superuser.google is None:
                 logger.warning("Synchronization skipped, google token for first superuser missing")
                 return
-            query = sa.select(auth_models.User)
-            users = await session.scalars(query)
+            users = await session.scalars(sa.select(auth_models.User))
             users_names_dict = {user.name: user for user in users}
             users_ids_dict = {user.id: user for user in users}
             for cfg in await service.get_all_not_default_user_read(session):
@@ -158,12 +168,10 @@ async def sync_orders() -> None:
                 order_db_dict = {order.order_id: order for order in orders_db}
                 order_db_ids_dict = {order.id: order for order in orders_db}
                 await sync_data_from(
-                    session, cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy()
+                    session, superuser, cfg, order_dict.copy(), users_names_dict, users_ids_dict, order_db_dict.copy()
                 )
-                if config.app.sync_boosters:
-                    await sync_data_to(
-                        session, superuser.google, cfg, order_dict.copy(), users, order_db_ids_dict  # type: ignore
-                    )
+                # if config.app.sync_boosters:
+                #     await sync_data_to(session, superuser, cfg, order_dict.copy(), users, order_db_ids_dict)
             logger.info(f"Synchronization completed in {time.time() - t}")
         except Exception as e:
             logger.exception(f"Error while sync_orders Error: {e}")

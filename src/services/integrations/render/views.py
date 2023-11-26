@@ -134,7 +134,7 @@ async def render_order(
             if with_credentials:
                 user_order = await accounting_flows.get_by_order_id_user_id(session, order, user)
                 configs = flows.get_order_configs(
-                    order_read, is_preorder=is_preorder, is_gold=is_gold, creds=user_order or user.is_superuser
+                    order_read, is_preorder=is_preorder, is_gold=is_gold, creds=bool(user_order or user.is_superuser)
                 )
             else:
                 configs = flows.get_order_configs(order_read, is_preorder=is_preorder, is_gold=is_gold)

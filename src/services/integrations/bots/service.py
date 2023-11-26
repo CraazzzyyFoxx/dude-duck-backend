@@ -5,7 +5,7 @@ from loguru import logger
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core import config, errors, enums
+from src.core import config, enums, errors
 from src.services.integrations.message import models as message_models
 
 
@@ -13,7 +13,7 @@ class BotServiceMeta:
     __slots__ = ("client",)
 
     def __init__(self) -> None:
-        self.client = httpx.AsyncClient(verify=False)
+        self.client = httpx.AsyncClient(verify=False, http2=True)
 
     @staticmethod
     def _build_client() -> httpx.AsyncClient:

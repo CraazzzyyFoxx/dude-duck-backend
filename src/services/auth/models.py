@@ -152,7 +152,7 @@ class RefreshToken(db.TimeStampMixin):
 
 
 class AccessTokenAPI(db.TimeStampMixin):
-    __tablename__ = "access_token"
+    __tablename__ = "access_token_api"
 
     token: Mapped[str] = mapped_column(String(100), unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))

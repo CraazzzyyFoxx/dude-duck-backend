@@ -101,5 +101,6 @@ class OrderSheetParseCreate(BaseModel):
     is_user: bool = False
 
 
-class OrderReadSheets(order_schemas.OrderReadSystemBase, SheetEntity):
+class OrderReadSheets(order_schemas.OrderReadSystemMeta, SheetEntity):
     booster: str | None = None
+    screenshot: str | None = None

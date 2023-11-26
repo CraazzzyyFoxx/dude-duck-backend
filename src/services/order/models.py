@@ -1,8 +1,8 @@
 import enum
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import BigInteger, DateTime, Enum, Float, ForeignKey, String
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from sqlalchemy import BigInteger, DateTime, Enum, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
@@ -63,8 +63,25 @@ class OrderCredentialsRead(BaseModel):
     discord: str | None = None
 
 
+class ScreenshotRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+    source: str
+    url: HttpUrl
+    order_id: int
+
+
+class ScreenshotCreate(BaseModel):
+    order_id: int
+    url: HttpUrl
+
+
 class OrderCreate(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
     order_id: str
     spreadsheet: str
     sheet_id: int
@@ -74,8 +91,6 @@ class OrderCreate(BaseModel):
     shop: str | None = None
     shop_order_id: str | int | None = None
     contact: str | None = None
-
-    screenshot: str | None = None
 
     status: OrderStatus
     status_paid: OrderPaidStatus
@@ -92,8 +107,6 @@ class OrderUpdate(BaseModel):
     shop: str | None = None
     shop_order_id: str | None = None
     contact: str | None = None
-
-    screenshot: str | None = None
 
     status: OrderStatus | None = None
     status_paid: OrderPaidStatus | None = None
@@ -119,8 +132,6 @@ class Order(db.TimeStampMixin):
     shop_order_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     contact: Mapped[str | None] = mapped_column(String(), nullable=True)
 
-    screenshot: Mapped[str | None] = mapped_column(String(), nullable=True)
-
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus))
     status_paid: Mapped[OrderPaidStatus] = mapped_column(Enum(OrderPaidStatus))
     auth_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -129,6 +140,7 @@ class Order(db.TimeStampMixin):
     info: Mapped["OrderInfo"] = relationship(uselist=False)
     price: Mapped["OrderPrice"] = relationship(uselist=False)
     credentials: Mapped["OrderCredentials"] = relationship(uselist=False)
+    screenshots: Mapped[list["Screenshot"]] = relationship(uselist=True)
 
 
 class OrderInfo(db.TimeStampMixin):
@@ -170,3 +182,15 @@ class OrderCredentials(db.TimeStampMixin):
     password: Mapped[str | None] = mapped_column(String(), nullable=True)
     vpn: Mapped[str | None] = mapped_column(String(), nullable=True)
     discord: Mapped[str | None] = mapped_column(String(), nullable=True)
+
+
+class Screenshot(db.TimeStampMixin):
+    __tablename__ = "screenshot"
+    __table_args__ = (UniqueConstraint("order_id", "url", name="uix_order_url"),)
+
+    source: Mapped[str] = mapped_column(String(), nullable=False)
+    url: Mapped[str] = mapped_column(String(), nullable=False)
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    order: Mapped["Order"] = relationship(back_populates="screenshots")
+    user: Mapped["User"] = relationship()

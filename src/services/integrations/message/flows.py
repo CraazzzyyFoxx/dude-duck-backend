@@ -93,5 +93,5 @@ async def get_by_filter(
     query = params.apply_pagination(query)
     result = await session.execute(query)
     results = [models.MessageRead.model_validate(row, from_attributes=True) for row in result.scalars()]
-    total = await session.execute(params.apply_filter(sa.select(sa.func.count(models.Message.id))))
-    return pagination.Paginated(results=results, total=total.scalar(), page=params.page, per_page=params.per_page)
+    total = await session.scalars(params.apply_filter(sa.select(sa.func.count(models.Message.id))))
+    return pagination.Paginated(results=results, total=total.one(), page=params.page, per_page=params.per_page)

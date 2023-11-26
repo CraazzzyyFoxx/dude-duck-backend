@@ -14,6 +14,7 @@ from src.middlewares.exception import ExceptionMiddleware
 from src.middlewares.time import TimeMiddleware
 from src.services.auth import flows as auth_flows
 from src.services.integrations.bots import service as bot_service
+from src.services.integrations.sheets.tasks import sync_orders
 from src.services.settings import service as settings_service
 
 if os.name != "nt":
@@ -33,7 +34,7 @@ async def lifespan(_: FastAPI):
     await bot_service.BotService.init()
     logger.info("Application... Online!")
     yield
-    await bot_service.BotService.close()
+    await bot_service.BotService.shutdown()
 
 
 async def not_found(request, exc):

@@ -4,6 +4,9 @@ from starlette import status
 
 from src.core import errors
 from src.services.auth import models as auth_models
+from src.services.order import models as order_models
+from src.services.order import schemas as order_schemas
+from src.services.tasks import service as tasks_service
 
 from . import models, service
 
@@ -85,3 +88,9 @@ async def get_order_from_sheets(session: AsyncSession, data: models.SheetEntity,
             models.OrderReadSheets, data.spreadsheet, data.sheet_id, data.row_id, error
         ) from error
     return model
+
+
+async def order_to_sheets(session: AsyncSession, order: order_models.Order, order_in: order_schemas.OrderReadSystem):
+    parser = await get_by_spreadsheet_sheet_read(session, order.spreadsheet, order.sheet_id)
+    if parser is not None:
+        tasks_service.update_order.delay(parser.model_dump(mode="json"), order.row_id, order_in.model_dump(mode="json"))

@@ -1,12 +1,14 @@
 import sqlalchemy as sa
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import count
 
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 from src.services.auth import models as auth_models
 from src.services.order import flows as orders_flows
+from src.services.order import models as order_models
 from src.services.order import schemas as order_schemas
 from src.services.payroll import models as payroll_models
 from src.services.payroll import service as payroll_service
@@ -36,8 +38,21 @@ async def get_order(order_id: int, session=Depends(db.get_async_session)):
 
 
 @router.post(path="/orders/filter", response_model=pagination.Paginated[order_schemas.OrderReadSystem])
-async def get_orders(paging: order_schemas.OrderFilterParams = Depends(), session=Depends(db.get_async_session)):
-    return await orders_flows.get_by_filter(session, paging)
+async def get_orders(params: order_schemas.OrderFilterParams, session=Depends(db.get_async_session)):
+    query = sa.select(order_models.Order).options(
+        joinedload(order_models.Order.info),
+        joinedload(order_models.Order.price),
+        joinedload(order_models.Order.credentials),
+        joinedload(order_models.Order.screenshots),
+    )
+
+    query = params.apply_filters(query)
+    query = params.apply_pagination(query)
+    result = await session.execute(query)
+    results = [await orders_flows.format_order_system(session, order) for order in result.unique().scalars()]
+    count_query = params.apply_filters(sa.select(count(order_models.Order.id)))
+    total = await session.execute(count_query)
+    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.one()[0], results=results)
 
 
 @router.patch("/users/{user_id}", response_model=user_models.UserReadWithPayrolls)

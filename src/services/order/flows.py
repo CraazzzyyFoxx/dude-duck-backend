@@ -62,6 +62,9 @@ async def format_order_system(session: AsyncSession, order: models.Order):
     data["price"] = price
     data["info"] = order.info.to_dict()
     data["credentials"] = order.credentials.to_dict()
+    data["screenshots"] = [
+        models.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
+    ]
     return schemas.OrderReadSystem.model_validate(data)
 
 
@@ -79,6 +82,9 @@ async def format_order_perms(
     data["price"] = price
     data["info"] = order.info.to_dict()
     data["credentials"] = order.credentials.to_dict()
+    data["screenshots"] = [
+        models.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
+    ]
     if has:
         return schemas.OrderReadHasPerms.model_validate(data)
     return schemas.OrderReadNoPerms.model_validate(data)
@@ -102,6 +108,9 @@ async def format_order_active_prefetched(
     data["paid_at"] = order_active.paid_at
     data["info"] = order.info.to_dict()
     data["credentials"] = order.credentials.to_dict()
+    data["screenshots"] = [
+        models.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
+    ]
     return schemas.OrderReadActive.model_validate(data)
 
 
@@ -114,13 +123,16 @@ async def get_by_filter(
     session: AsyncSession, params: schemas.OrderFilterParams, *, has: bool = False
 ) -> pagination.Paginated[schemas.OrderReadNoPerms | schemas.OrderReadHasPerms]:  # noqa
     query = sa.select(models.Order).options(
-        joinedload(models.Order.info), joinedload(models.Order.price), joinedload(models.Order.credentials)
+        joinedload(models.Order.info),
+        joinedload(models.Order.price),
+        joinedload(models.Order.credentials),
+        joinedload(models.Order.screenshots),
     )
 
     query = params.apply_filters(query)
     query = params.apply_pagination(query)
     result = await session.execute(query)
-    results = [await format_order_perms(session, order, has=has) for order in result.scalars()]
+    results = [await format_order_perms(session, order, has=has) for order in result.unique().scalars()]
     count_query = params.apply_filters(sa.select(count(models.Order.id)))
     total = await session.execute(count_query)
     return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.one()[0], results=results)

@@ -12,7 +12,9 @@ from starlette import status
 from src.core import config, errors
 from src.services.auth import models as auth_models
 from src.services.currency import flows as currency_flows
+from src.services.integrations.sheets import flows as sheets_flows
 from src.services.integrations.sheets import service as sheets_service
+from src.services.order import flows as order_flows
 from src.services.order import models as order_models
 from src.services.order import service as order_service
 from src.services.tasks import service as tasks_service
@@ -103,7 +105,12 @@ async def create(
         logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
         if not boosters:
             order_update = order_models.OrderUpdate(auth_date=datetime.now(tz=UTC))
-            await order_service.update_with_sync(session, order, order_update)
+            new_order = await order_service.update(session, order, order_update)
+            if sync:
+                await sheets_flows.order_to_sheets(
+                    session, new_order, await order_flows.format_order_system(session, new_order)
+                )
+
         if sync:
             await sync_boosters_sheet(session, order)
     except Exception as e:
@@ -126,6 +133,7 @@ async def update(
     user: auth_models.User,
     update_model: models.UserOrderUpdate,
     sync: bool = True,
+    patch: bool = False,
 ) -> models.UserOrder:
     boosters = await get_by_order_id(session, order.id)
     boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
@@ -153,7 +161,7 @@ async def update(
             updated_user_order = await session.scalars(
                 sa.update(models.UserOrder)
                 .where(models.UserOrder.id == boosters_map[user.id].id)
-                .values(**update_model.model_dump(exclude_unset=True))
+                .values(**update_model.model_dump(exclude_unset=True, exclude_defaults=patch))
                 .returning(models.UserOrder)
             )
             if sync:
@@ -164,22 +172,9 @@ async def update(
             raise e
 
 
-async def patch(
-    session: AsyncSession, user_order: models.UserOrder, user_order_in: models.UserOrderUpdate
+async def delete(
+    session: AsyncSession, order: order_models.Order, user: auth_models.User, sync: bool = True
 ) -> models.UserOrder:
-    update_data = user_order_in.model_dump(exclude_defaults=True, exclude_unset=True)
-    user_order_updated = await session.execute(
-        sa.update(models.UserOrder)
-        .where(models.UserOrder.id == user_order.id)
-        .values(**update_data)
-        .returning(models.UserOrder)
-    )
-    await session.commit()
-    logger.info(f"Patched UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
-    return user_order_updated.scalar_one()
-
-
-async def delete(session: AsyncSession, order: order_models.Order, user: auth_models.User) -> models.UserOrder:
     boosters = await get_by_order_id(session, order.id)
     boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
     to_delete = boosters_map.get(user.id)
@@ -190,7 +185,8 @@ async def delete(session: AsyncSession, order: order_models.Order, user: auth_mo
         )
     await session.execute(sa.delete(models.UserOrder).where(models.UserOrder.id == to_delete.id))
     await session.commit()
-    await sync_boosters_sheet(session, order)
+    if sync:
+        await sync_boosters_sheet(session, order)
     logger.info(f"Deleted UserOrder [order_id={to_delete.order_id} user_id={to_delete.user_id}]")
     return to_delete
 

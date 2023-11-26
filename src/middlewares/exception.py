@@ -25,7 +25,7 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
             logger.exception("What!?")
             response = ORJSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]},
+                content={"detail": [{"msg": e.errors(include_url=False), "code": "unprocessable_entity"}]},
             )
         except errors.ApiHTTPException as e:
             response = ORJSONResponse(content={"detail": e.detail}, status_code=e.status_code)

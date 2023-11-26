@@ -61,7 +61,9 @@ async def patch_order_from_sheets(
     model = await flows.get_order_from_sheets(session, data, user)
     if model.shop_order_id:
         order = await orders_flows.get_by_order_id(session, model.order_id)
-        return await orders_service.patch(session, order, order_models.OrderUpdate.model_validate(model.model_dump()))
+        return await orders_service.update(
+            session, order, order_models.OrderUpdate.model_validate(model.model_dump()), patch=True
+        )
     else:
         preorder = await preorders_flows.get_by_order_id(session, model.order_id)
         return await preorder_service.patch(

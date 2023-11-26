@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session, joinedload
 from starlette import status
 
 from src.core import config, errors
-from src.services.integrations.sheets import service as sheets_service
 from src.services.integrations.bots.telegram import notifications
+from src.services.integrations.sheets import service as sheets_service
 from src.services.tasks import service as tasks_service
 
 from . import models, utils
@@ -129,7 +129,7 @@ async def request_verify(user: models.User) -> None:
         "email": user.email,
         "aud": config.app.verification_token_audience,
     }
-    token = utils.generate_jwt(token_data, config.app.secret)
+    token = utils.generate_jwt(token_data, config.app.request_verify_email_secret)
     notifications.send_request_verify(models.UserRead.model_validate(user), token)
 
 
@@ -137,7 +137,7 @@ async def verify(session: AsyncSession, token: str) -> models.User:
     try:
         data = utils.decode_jwt(
             token,
-            config.app.secret,
+            config.app.request_verify_email_secret,
             [config.app.verification_token_audience],
         )
         _ = data["sub"]
@@ -191,7 +191,7 @@ async def forgot_password(user: models.User) -> None:
         "password_fingerprint": utils.hash_password(user.hashed_password),
         "aud": config.app.reset_password_token_audience,
     }
-    token = utils.generate_jwt(token_data, config.app.secret, 900)
+    token = utils.generate_jwt(token_data, config.app.reset_password_secret, 900)
     logger.warning(token)
     return
 
@@ -200,7 +200,7 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     try:
         data = utils.decode_jwt(
             token,
-            config.app.secret,
+            config.app.reset_password_secret,
             [config.app.reset_password_token_audience],
         )
         user_id = data["sub"]
