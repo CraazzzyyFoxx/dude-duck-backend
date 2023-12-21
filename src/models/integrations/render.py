@@ -4,6 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core import db, enums, pagination
 
+__all__ = ("RenderConfig", "RenderConfigCreate", "RenderConfigUpdate", "RenderConfigRead", "RenderConfigParams")
+
 
 class RenderConfig(db.TimeStampMixin):
     __tablename__ = "integration_render_config"

@@ -5,36 +5,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from yarl import URL
 
+from src import models, schemas
 from src.core import errors, pagination
 from src.services.accounting import service as accounting_service
-from src.services.auth import models as auth_models
-from src.services.order import models as order_models
-from src.services.order import schemas as order_schemas
 
 link_regex = re.compile(r"((https?):((//)|(\\\\))+([\w\d:#@%/;$()~_?\+-=\\\.&](#!)?)*)", re.DOTALL)
 
 
-async def get(session: AsyncSession, screenshot_id: int) -> order_models.Screenshot | None:
-    query = sa.select(order_models.Screenshot).where(order_models.Screenshot.id == screenshot_id).limit(1)
+async def get(session: AsyncSession, screenshot_id: int) -> models.Screenshot | None:
+    query = sa.select(models.Screenshot).where(models.Screenshot.id == screenshot_id).limit(1)
     result = await session.execute(query)
     return result.scalar_one_or_none()
 
 
-async def get_by_order_id(session: AsyncSession, order_id: int) -> list[order_models.Screenshot]:
-    query = sa.select(order_models.Screenshot).where(order_models.Screenshot.order_id == order_id)
+async def get_by_order_id(session: AsyncSession, order_id: int) -> list[models.Screenshot]:
+    query = sa.select(models.Screenshot).where(models.Screenshot.order_id == order_id)
     result = await session.scalars(query)
     return result.all()  # type: ignore
 
 
 async def create(
     session: AsyncSession,
-    user: auth_models.User,
-    order: order_models.Order,
+    user: models.User,
+    order: models.Order,
     url: str,
-) -> order_models.Screenshot:
-    query = sa.select(order_models.Screenshot).where(
-        order_models.Screenshot.url == url, order_models.Screenshot.order_id == order.id
-    )
+) -> models.Screenshot:
+    query = sa.select(models.Screenshot).where(models.Screenshot.url == url, models.Screenshot.order_id == order.id)
     result = await session.scalars(query)
     if result.one_or_none():
         raise errors.ApiHTTPException(
@@ -46,20 +42,8 @@ async def create(
                 )
             ],
         )
-    if not user.is_superuser:  # TODO: Move it to flows
-        user_order = await accounting_service.get_by_order_id_user_id(session, order.id, user.id)
-        if not user_order:
-            raise errors.ApiHTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=[
-                    errors.ApiException(
-                        msg=f"User does not have access to this order. [user_id={user.id}, order_id={order.id}]",
-                        code="already_exist",
-                    )
-                ],
-            )
     url = URL(url)
-    model = order_models.Screenshot(
+    model = models.Screenshot(
         order_id=order.id,
         user_id=user.id,
         source=url.host,
@@ -70,13 +54,18 @@ async def create(
     return model
 
 
-async def bulk_create(session: AsyncSession, user: auth_models.User, order: order_models.Order, urls: list[str]):
-    screenshots: list[order_models.Screenshot] = []
+async def bulk_create(
+    session: AsyncSession,
+    user: models.User,
+    order: models.Order,
+    urls: list[str],
+):
+    screenshots: list[models.Screenshot] = []
     for raw_url in urls:
         url = URL(raw_url)
         if url.human_repr() in [screenshot.url for screenshot in screenshots]:
             continue
-        model = order_models.Screenshot(
+        model = models.Screenshot(
             order_id=order.id,
             user_id=user.id,
             source=url.host,
@@ -88,14 +77,14 @@ async def bulk_create(session: AsyncSession, user: auth_models.User, order: orde
     return screenshots
 
 
-async def delete(session: AsyncSession, user: auth_models.User, screenshot_id: int) -> order_models.Screenshot:
-    screenshot = await get(session, screenshot_id)
+async def delete(session: AsyncSession, user: models.User, screenshot: models.Screenshot) -> models.Screenshot:
     if not screenshot:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[
                 errors.ApiException(
-                    msg=f"A screenshot with this id does not exist. [screenshot={screenshot}]", code="not_exist"
+                    msg=f"A screenshot with this id does not exist. [screenshot={screenshot}]",
+                    code="not_exist",
                 )
             ],
         )
@@ -119,12 +108,17 @@ async def delete(session: AsyncSession, user: auth_models.User, screenshot_id: i
     return screenshot
 
 
-async def get_by_filter(session: AsyncSession, params: order_schemas.ScreenshotParams):
-    query = params.apply_filters(sa.select(order_models.Screenshot))
+async def get_by_filter(session: AsyncSession, params: schemas.ScreenshotParams):
+    query = params.apply_filters(sa.select(models.Screenshot))
     result = await session.scalars(params.apply_pagination(query))
-    total = await session.execute(params.apply_filters(sa.select(sa.func.count())))
-    results = [order_models.ScreenshotRead.model_validate(row, from_attributes=True) for row in result.all()]
-    return pagination.Paginated(results=results, total=total.scalar_one(), page=params.page, per_page=params.per_page)
+    total = await session.execute(params.apply_filters(sa.select(sa.func.count(models.Screenshot.id))))
+    results = [models.ScreenshotRead.model_validate(row, from_attributes=True) for row in result.all()]
+    return pagination.Paginated(
+        results=results,
+        total=total.scalar_one(),
+        page=params.page,
+        per_page=params.per_page,
+    )
 
 
 def find_url_in_text(text: str) -> list[str]:

@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
 
+from src import models
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 from src.services.order import flows as order_flows
 from src.services.preorder import flows as preorder_flows
 
-from . import flows, models, service
+from . import flows, service
 
 router = APIRouter(prefix="/response", tags=[enums.RouteTag.RESPONSES])
 
@@ -36,7 +37,11 @@ async def create_response(
 
 
 @router.get("/{order_id}/{user_id}", response_model=models.ResponseRead)
-async def get_response(order_id: int, user=Depends(auth_flows.resolve_user), session=Depends(db.get_async_session)):
+async def get_response(
+    order_id: int,
+    user=Depends(auth_flows.resolve_user),
+    session=Depends(db.get_async_session),
+):
     user = await auth_flows.get(session, user.id)
     return await flows.get_by_order_id_user_id(session, order_id, user.id)
 

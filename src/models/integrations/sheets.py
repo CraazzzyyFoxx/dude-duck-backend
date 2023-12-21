@@ -1,12 +1,33 @@
 import typing
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import BigInteger, Boolean, String, UniqueConstraint
+from pydantic import (BaseModel, ConfigDict, EmailStr, Field, HttpUrl,
+                      field_validator)
+from sqlalchemy import (BigInteger, Boolean, ForeignKey, String,
+                        UniqueConstraint)
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
-from src.services.order import schemas as order_schemas
+from src.models.auth import User
+from src.schemas import OrderReadSystemMeta
+
+__all__ = (
+    "SheetEntity",
+    "OrderSheetParseItem",
+    "OrderSheetParseItemDB",
+    "OrderSheetParse",
+    "OrderSheetParseRead",
+    "OrderSheetParseUpdate",
+    "OrderSheetParseCreate",
+    "OrderReadSheets",
+    "AdminGoogleToken",
+    "AdminGoogleTokenDB",
+    "GoogleTokenUser",
+    "UserReadSheets",
+    "allowed_types",
+    "CreateUpdateUserSheets",
+)
+
 
 allowed_types = [
     "int",
@@ -101,6 +122,65 @@ class OrderSheetParseCreate(BaseModel):
     is_user: bool = False
 
 
-class OrderReadSheets(order_schemas.OrderReadSystemMeta, SheetEntity):
+class OrderReadSheets(OrderReadSystemMeta, SheetEntity):
     booster: str | None = None
     screenshot: str | None = None
+
+
+class AdminGoogleToken(BaseModel):
+    type: str
+    project_id: str
+    private_key_id: str
+    private_key: str
+    client_email: str
+    client_id: str
+    auth_uri: HttpUrl
+    token_uri: HttpUrl
+    auth_provider_x509_cert_url: HttpUrl
+    client_x509_cert_url: HttpUrl
+    universe_domain: str
+
+
+class AdminGoogleTokenDB(typing.TypedDict):
+    type: str
+    project_id: str
+    private_key_id: str
+    private_key: str
+    client_email: str
+    client_id: str
+    auth_uri: str
+    token_uri: str
+    auth_provider_x509_cert_url: str
+    client_x509_cert_url: str
+    universe_domain: str
+
+
+class GoogleTokenUser(db.TimeStampMixin):
+    __tablename__ = "integration_google_token_user"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    user: Mapped["User"] = relationship()
+    token: Mapped[AdminGoogleTokenDB] = mapped_column(JSONB())
+
+
+class CreateUpdateUserSheets(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
+    is_verified: bool
+    is_verified_email: bool
+    name: str
+    max_orders: int
+    phone: str | None = None
+    bank: str | None = None
+    bankcard: str | None = None
+    binance_email: EmailStr | None = None
+    binance_id: int | None = None
+    trc20: str | None = None
+    discord: str | None = None
+    telegram: str | None = None
+
+
+class UserReadSheets(SheetEntity, CreateUpdateUserSheets):
+    pass

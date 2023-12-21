@@ -8,17 +8,17 @@ import sqlalchemy as sa
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
+from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
+                      create_model, field_validator)
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
+from src import models
 from src.core import config, errors
-from src.services.auth import models as auth_models
 from src.services.time import service as time_servie
-
-from . import models
 
 type_map = {
     "int": int,
@@ -105,7 +105,8 @@ async def get_by_spreadsheet_sheet(
 ) -> models.OrderSheetParse | None:
     result = await session.scalars(
         sa.select(models.OrderSheetParse).where(
-            models.OrderSheetParse.spreadsheet == spreadsheet, models.OrderSheetParse.sheet_id == sheet
+            models.OrderSheetParse.spreadsheet == spreadsheet,
+            models.OrderSheetParse.sheet_id == sheet,
         )
     )
     return result.first()
@@ -134,14 +135,18 @@ async def get_default_booster_read(session: AsyncSession) -> models.OrderSheetPa
     raise RuntimeError("Default user sheet parser didn't setup")
 
 
-async def get_all_not_default_user(session: AsyncSession) -> typing.Sequence[models.OrderSheetParse]:
+async def get_all_not_default_user(
+    session: AsyncSession,
+) -> typing.Sequence[models.OrderSheetParse]:
     result = await session.scalars(
         sa.select(models.OrderSheetParse).where(models.OrderSheetParse.is_user == False)  # noqa: E712
     )
     return result.all()
 
 
-async def get_all_not_default_user_read(session: AsyncSession) -> list[models.OrderSheetParseRead]:
+async def get_all_not_default_user_read(
+    session: AsyncSession,
+) -> list[models.OrderSheetParseRead]:
     parsers = await get_all_not_default_user(session)
     return [models.OrderSheetParseRead.model_validate(p, from_attributes=True) for p in parsers]
 
@@ -152,7 +157,9 @@ async def get_all(session: AsyncSession) -> typing.Sequence[models.OrderSheetPar
 
 
 async def update(
-    session: AsyncSession, parser: models.OrderSheetParse, parser_in: models.OrderSheetParseUpdate
+    session: AsyncSession,
+    parser: models.OrderSheetParse,
+    parser_in: models.OrderSheetParseUpdate,
 ) -> models.OrderSheetParse:
     update_data = parser_in.model_dump(exclude_none=True)
     updated_parser = await session.execute(
@@ -195,7 +202,10 @@ def generate_model(parser: models.OrderSheetParseRead):
     for getter in parser.items:
         name = getter.name
         field_type = getter.type
-        _fields[getter.name] = (get_type(field_type, getter.null), None if getter.null else ...)
+        _fields[getter.name] = (
+            get_type(field_type, getter.null),
+            None if getter.null else ...,
+        )
         if getter.valid_values:
             _validators[f"{name}_parse"] = field_validator(name, mode="before")(enum_parse(name, getter.valid_values))
         elif field_type == "datetime":
@@ -249,7 +259,12 @@ def parse_row(
                     if getter.name in fields:
                         data[key][getter.name] = validated_data[getter.name]
                         break
-        return model(spreadsheet=parser.spreadsheet, sheet_id=parser.sheet_id, row_id=row_id, **data)
+        return model(
+            spreadsheet=parser.spreadsheet,
+            sheet_id=parser.sheet_id,
+            row_id=row_id,
+            **data,
+        )
     except ValidationError as error:
         if is_raise:
             logger.error(f"Spreadsheet={parser.spreadsheet} sheet_id={parser.sheet_id} row_id={row_id}")
@@ -302,7 +317,7 @@ def parse_all_data(
 
 
 def get_all_data(
-    creds: auth_models.AdminGoogleTokenDB,
+    creds: models.AdminGoogleTokenDB,
     model: typing.Type[models.SheetEntity],
     parser: models.OrderSheetParseRead,
     is_raise: bool = False,
@@ -325,7 +340,7 @@ def get_all_data(
 
 
 def update_rows_data(
-    creds: auth_models.AdminGoogleTokenDB,
+    creds: models.AdminGoogleTokenDB,
     parser: models.OrderSheetParseRead,
     data: list[tuple[int, dict]],
 ) -> None:
@@ -347,7 +362,7 @@ def update_rows_data(
     )
 
 
-def clear_rows_data(creds: auth_models.AdminGoogleTokenDB, parser: models.OrderSheetParseRead, row_id: int) -> None:
+def clear_rows_data(creds: models.AdminGoogleTokenDB, parser: models.OrderSheetParseRead, row_id: int) -> None:
     gc = gspread.service_account_from_dict(creds)
     sh = gc.open(parser.spreadsheet)
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
@@ -364,7 +379,7 @@ def clear_rows_data(creds: auth_models.AdminGoogleTokenDB, parser: models.OrderS
 
 def get_row_data(
     model: typing.Type[models.SheetEntity],
-    creds: auth_models.AdminGoogleTokenDB,
+    creds: models.AdminGoogleTokenDB,
     parser: models.OrderSheetParseRead,
     row_id: int,
     *,
@@ -382,7 +397,10 @@ def get_row_data(
 
 
 def update_row_data(
-    creds: auth_models.AdminGoogleTokenDB, parser: models.OrderSheetParseRead, row_id: int, data: dict
+    creds: models.AdminGoogleTokenDB,
+    parser: models.OrderSheetParseRead,
+    row_id: int,
+    data: dict,
 ) -> None:
     gc = gspread.service_account_from_dict(creds)
     sh = gc.open(parser.spreadsheet)
@@ -398,7 +416,7 @@ def update_row_data(
 
 def create_row_data(
     model: typing.Type[models.SheetEntity],
-    creds: auth_models.AdminGoogleTokenDB,
+    creds: models.AdminGoogleTokenDB,
     parser: models.OrderSheetParseRead,
     data: dict,
 ) -> BaseModel:
@@ -422,7 +440,7 @@ def create_row_data(
 
 def find_by(
     model: typing.Type[models.SheetEntity],
-    creds: auth_models.AdminGoogleTokenDB,
+    creds: models.AdminGoogleTokenDB,
     parser: models.OrderSheetParseRead,
     value,
 ) -> models.SheetEntity | None:
@@ -436,38 +454,66 @@ def find_by(
 
 
 def create_or_update_booster(
-    creds: auth_models.AdminGoogleTokenDB,
+    creds: models.AdminGoogleTokenDB,
     parser: models.OrderSheetParseRead,
     value: str,
     user: dict,
 ):
     parser = models.OrderSheetParseRead.model_validate(parser)
-    booster = find_by(auth_models.UserReadSheets, creds, parser, value)
+    booster = find_by(models.UserReadSheets, creds, parser, value)
     if booster:
         update_row_data(creds, parser, booster.row_id, user)
     else:
-        create_row_data(auth_models.UserReadSheets, creds, parser, user)
+        create_row_data(models.UserReadSheets, creds, parser, user)
 
 
 def delete_booster(
-    creds: auth_models.AdminGoogleTokenDB,
+    creds: models.AdminGoogleTokenDB,
     parser: models.OrderSheetParseRead,
     value: str,
 ) -> None:
     parser = models.OrderSheetParseRead.model_validate(parser)
-    booster = find_by(auth_models.UserReadSheets, creds, parser, value)
+    booster = find_by(models.UserReadSheets, creds, parser, value)
     if booster:
         clear_row(creds, parser, booster.row_id)
 
 
-def clear_row(creds: auth_models.AdminGoogleTokenDB, parser: models.OrderSheetParseRead, row_id: int) -> None:
+def clear_row(creds: models.AdminGoogleTokenDB, parser: models.OrderSheetParseRead, row_id: int) -> None:
     parser = models.OrderSheetParseRead.model_validate(parser)
     clear_rows_data(creds, parser, row_id)
 
 
-def get_cell(creds: auth_models.AdminGoogleTokenDB, spreadsheet: str, sheet_id: int, cell: str) -> str:
+def get_cell(creds: models.AdminGoogleTokenDB, spreadsheet: str, sheet_id: int, cell: str) -> str:
     gc = gspread.service_account_from_dict(creds)
     sh = gc.open(spreadsheet)
     sheet = sh.get_worksheet_by_id(sheet_id)
     value = sheet.acell(cell)
     return value.value
+
+
+async def create_token(
+    session: AsyncSession, user: models.User, token: models.AdminGoogleToken
+) -> models.GoogleTokenUser:
+    token = models.GoogleTokenUser(user_id=user.id, token=token.model_dump(mode="json"))
+    session.add(token)
+    await session.commit()
+    return token
+
+
+async def get_token(session: AsyncSession, user: models.User) -> models.GoogleTokenUser | None:
+    result = await session.scalars(sa.select(models.GoogleTokenUser).where(models.GoogleTokenUser.user_id == user.id))
+    return result.first()
+
+
+async def get_first_superuser_token(session: AsyncSession) -> models.GoogleTokenUser:
+    result = await session.scalars(
+        sa.select(models.GoogleTokenUser).where(models.GoogleTokenUser.user.has(name=config.app.super_user_username))
+    )
+    return result.one()
+
+
+def get_first_superuser_token_sync(session: Session) -> models.GoogleTokenUser:
+    result = session.scalars(
+        sa.select(models.GoogleTokenUser).where(models.GoogleTokenUser.user.has(name=config.app.super_user_username))
+    )
+    return result.one()

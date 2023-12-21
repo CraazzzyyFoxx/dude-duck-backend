@@ -4,9 +4,22 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src import models
 from src.core import db
-from src.services.integrations.sheets import models as sheets_models
-from src.services.order import models as order_models
+
+__all__ = (
+    "PreOrderPriceUser",
+    "PreOrderPriceSystem",
+    "PreOrderCreate",
+    "PreOrderUpdate",
+    "PreOrder",
+    "PreOrderInfo",
+    "PreOrderPrice",
+    "PreOrderReadSystem",
+    "PreOrderReadUser",
+)
+
+from src.models.integrations.sheets import SheetEntity
 
 
 class PreOrderPriceUser(BaseModel):
@@ -23,16 +36,16 @@ class PreOrderPriceSystem(BaseModel):
     booster_gold: float | None = None
 
 
-class PreOrderCreate(sheets_models.SheetEntity):
+class PreOrderCreate(SheetEntity):
     date: datetime = Field(default_factory=lambda: datetime.now(UTC))
     order_id: str
 
-    info: order_models.OrderInfoRead
-    price: order_models.OrderPriceNone
+    info: models.OrderInfoRead
+    price: models.OrderPriceNone
 
 
 class PreOrderUpdate(BaseModel):
-    info: order_models.OrderInfoRead | None = None
+    info: models.OrderInfoRead | None = None
     price: PreOrderPriceUser | None = None
     has_response: bool | None = None
 
@@ -56,7 +69,7 @@ class PreOrder(db.TimeStampMixin):
 class PreOrderInfo(db.TimeStampMixin):
     __tablename__ = "preorder_info"
 
-    order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id", ondelete="CASCADE"))
     order: Mapped["PreOrder"] = relationship(back_populates="info")
     boost_type: Mapped[str] = mapped_column(String(length=10))
     region_fraction: Mapped[str | None] = mapped_column(String(), nullable=True)
@@ -73,7 +86,7 @@ class PreOrderInfo(db.TimeStampMixin):
 class PreOrderPrice(db.TimeStampMixin):
     __tablename__ = "preorder_price"
 
-    order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("preorder.id", ondelete="CASCADE"))
     order: Mapped["PreOrder"] = relationship(back_populates="price")
     dollar: Mapped[float] = mapped_column(Float(), nullable=True)
     booster_dollar: Mapped[float] = mapped_column(Float(), nullable=True)
@@ -88,7 +101,7 @@ class PreOrderReadSystem(BaseModel):
     order_id: str
     date: datetime
 
-    info: order_models.OrderInfoRead
+    info: models.OrderInfoRead
     price: PreOrderPriceSystem
 
 
@@ -98,5 +111,5 @@ class PreOrderReadUser(BaseModel):
     id: int
     order_id: str
 
-    info: order_models.OrderInfoRead
+    info: models.OrderInfoRead
     price: PreOrderPriceUser

@@ -4,6 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core import db, enums, pagination
 
+__all__ = ("Channel", "ChannelCreate", "ChannelUpdate", "ChannelRead", "ChannelPaginationParams")
+
 
 class Channel(db.TimeStampMixin):
     __tablename__ = "integration_channel"

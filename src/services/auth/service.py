@@ -5,15 +5,13 @@ import sqlalchemy as sa
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
 from starlette import status
 
+from src import models
 from src.core import config, errors
-from src.services.integrations.bots.telegram import notifications
-from src.services.integrations.sheets import service as sheets_service
-from src.services.tasks import service as tasks_service
 
-from . import models, utils
+from . import utils
 
 
 async def get(session: AsyncSession, user_id: int) -> models.User | None:
@@ -38,16 +36,16 @@ async def get_first_superuser(session: AsyncSession) -> models.User:
     return await get_by_email(session, config.app.super_user_email)  # type: ignore
 
 
-def get_first_superuser_sync(session: Session) -> models.User:
-    result = session.scalars(sa.select(models.User).where(models.User.email == config.app.super_user_email))
-    return result.one()
-
-
 async def create(session: AsyncSession, user_create: models.UserCreate, safe: bool = False) -> models.User:
     if await get_by_email(session, user_create.email) is not None or await get_by_name(session, user_create.name):
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[errors.ApiException(msg="REGISTER_USER_ALREADY_EXISTS", code="REGISTER_USER_ALREADY_EXISTS")],
+            detail=[
+                errors.ApiException(
+                    msg="REGISTER_USER_ALREADY_EXISTS",
+                    code="REGISTER_USER_ALREADY_EXISTS",
+                )
+            ],
         )
     if safe:
         exclude_fields = {"id", "is_superuser", "is_active", "is_verified"}
@@ -60,17 +58,9 @@ async def create(session: AsyncSession, user_create: models.UserCreate, safe: bo
     password = user_dict.pop("password")
     user_dict["hashed_password"] = utils.hash_password(password)
     user_dict["email"] = email.lower()
-    query = sa.insert(models.User).returning(models.User)
-    result = await session.scalars(query, [user_dict])
+    created_user = models.User(**user_dict)
+    session.add(created_user)
     await session.commit()
-    created_user = result.one()
-    created_user_read = models.UserRead.model_validate(created_user)
-    notifications.send_registered_notify(created_user_read)
-    parser = await sheets_service.get_default_booster_read(session)
-    tasks_service.create_booster.delay(
-        parser.model_dump_json(),
-        created_user_read.model_dump(),
-    )
     return created_user
 
 
@@ -80,14 +70,18 @@ async def update(
     user_in: models.BaseUserUpdate,
     safe: bool = False,
     exclude=True,
-    with_sync: bool = True,
 ) -> models.User:
     exclude_fields = {
         "password",
     }
     if safe:
         exclude_fields.update({"is_superuser", "is_active", "is_verified"})
-    update_data = user_in.model_dump(exclude=exclude_fields, exclude_unset=exclude, exclude_defaults=True, mode="json")
+    update_data = user_in.model_dump(
+        exclude=exclude_fields,
+        exclude_unset=exclude,
+        exclude_defaults=True,
+        mode="json",
+    )
 
     if user_in.password:
         user.hashed_password = utils.hash_password(user_in.password)
@@ -95,13 +89,6 @@ async def update(
     result = await session.scalars(query)
     user = result.one()
     await session.commit()
-    if with_sync:
-        parser = await sheets_service.get_default_booster_read(session)
-        tasks_service.create_or_update_booster.delay(
-            parser.model_dump_json(),
-            user.id,
-            models.UserRead.model_validate(user).model_dump(),
-        )
     return user
 
 
@@ -109,19 +96,19 @@ async def delete(session: AsyncSession, user: models.User) -> None:
     query = sa.delete(models.User).where(models.User.id == user.id)
     await session.execute(query)
     await session.commit()
-    parser = await sheets_service.get_default_booster_read(session)
-    if parser is not None:
-        tasks_service.delete_booster.delay(
-            parser.model_dump_json(),
-            user.id,
-        )
 
 
-async def request_verify(user: models.User) -> None:
-    if user.is_verified:
+async def request_verify_email(session: AsyncSession, user: models.User) -> None:
+    # TODO
+    if user.is_verified_email:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[errors.ApiException(msg="VERIFY_USER_ALREADY_VERIFIED", code="VERIFY_USER_ALREADY_VERIFIED")],
+            detail=[
+                errors.ApiException(
+                    msg="VERIFY_USER_ALREADY_VERIFIED",
+                    code="VERIFY_USER_ALREADY_VERIFIED",
+                )
+            ],
         )
 
     token_data = {
@@ -129,15 +116,14 @@ async def request_verify(user: models.User) -> None:
         "email": user.email,
         "aud": config.app.verification_token_audience,
     }
-    token = utils.generate_jwt(token_data, config.app.request_verify_email_secret)
-    notifications.send_request_verify(models.UserRead.model_validate(user), token)
+    token = utils.generate_jwt(token_data, config.app.verify_email_secret)
 
 
-async def verify(session: AsyncSession, token: str) -> models.User:
+async def verify_email(session: AsyncSession, token: str) -> models.User:
     try:
         data = utils.decode_jwt(
             token,
-            config.app.request_verify_email_secret,
+            config.app.verify_email_secret,
             [config.app.verification_token_audience],
         )
         _ = data["sub"]
@@ -158,11 +144,15 @@ async def verify(session: AsyncSession, token: str) -> models.User:
     if user.is_verified:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[errors.ApiException(msg="VERIFY_USER_ALREADY_VERIFIED", code="VERIFY_USER_ALREADY_VERIFIED")],
+            detail=[
+                errors.ApiException(
+                    msg="VERIFY_USER_ALREADY_VERIFIED",
+                    code="VERIFY_USER_ALREADY_VERIFIED",
+                )
+            ],
         )
 
-    verified_user = await update(session, user, models.UserUpdateAdmin(is_verified=True))
-    notifications.send_verified_notify(models.UserRead.model_validate(user))
+    verified_user = await update(session, user, models.UserUpdateAdmin(is_verified_email=True))
     return verified_user
 
 
@@ -208,7 +198,12 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     except jwt.PyJWTError:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=[errors.ApiException(msg="RESET_PASSWORD_INVALID_PASSWORD", code="RESET_PASSWORD_INVALID_PASSWORD")],
+            detail=[
+                errors.ApiException(
+                    msg="RESET_PASSWORD_INVALID_PASSWORD",
+                    code="RESET_PASSWORD_INVALID_PASSWORD",
+                )
+            ],
         ) from None
     logger.info(f"Try reset password for user {user_id}")
     user = await get(session, user_id)
@@ -220,7 +215,10 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
     valid_password_fingerprint, _ = utils.verify_and_update_password(user.hashed_password, password_fingerprint)
     logger.warning(f"Try reset password for user, password validation = {valid_password_fingerprint}")
     if not valid_password_fingerprint:
-        e = errors.ApiException(msg="RESET_PASSWORD_INVALID_PASSWORD", code="RESET_PASSWORD_INVALID_PASSWORD")
+        e = errors.ApiException(
+            msg="RESET_PASSWORD_INVALID_PASSWORD",
+            code="RESET_PASSWORD_INVALID_PASSWORD",
+        )
         raise errors.ApiHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
     if not user.is_active:
@@ -249,6 +247,22 @@ async def verify_access_token(session: AsyncSession, token: str | None) -> model
     return result.first()
 
 
+async def verify(session: AsyncSession, user: models.User) -> models.User:
+    if user.is_verified:
+        raise errors.ApiHTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=[
+                errors.ApiException(
+                    msg="VERIFY_USER_ALREADY_VERIFIED",
+                    code="VERIFY_USER_ALREADY_VERIFIED",
+                )
+            ],
+        )
+
+    updated_user = await update(session, user, models.UserUpdateAdmin(is_verified=True))
+    return updated_user
+
+
 async def refresh_tokens(session: AsyncSession, token: str | None) -> tuple[str, str]:
     if token is None:
         raise errors.ApiHTTPException(
@@ -262,15 +276,18 @@ async def refresh_tokens(session: AsyncSession, token: str | None) -> tuple[str,
             [config.app.access_token_audience],
         )
         user = data["sub"]
-    except jwt.PyJWTError:
+    except jwt.PyJWTError as e:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[errors.ApiException(msg="INVALID_REFRESH_TOKEN", code="INVALID_REFRESH_TOKEN")],
-        )
+        ) from e
 
     query = (
         sa.select(models.RefreshToken)
-        .where(models.RefreshToken.user_id == user["id"], models.RefreshToken.token == token)
+        .where(
+            models.RefreshToken.user_id == user["id"],
+            models.RefreshToken.token == token,
+        )
         .limit(1)
     )
     result = await session.scalars(query)

@@ -5,10 +5,9 @@ from celery import Celery
 from celery.signals import celeryd_init
 from sentry_sdk.integrations.celery import CeleryIntegration
 
+from src import models
 from src.core import config, db
-from src.services.auth import models as auth_models
-from src.services.auth import service as auth_service
-from src.services.integrations.sheets import models as sheets_models
+from src.services.auth import tasks as auth_tasks
 from src.services.integrations.sheets import service as sheets_service
 from src.services.integrations.sheets import tasks as sheets_tasks
 from src.services.preorder import tasks as preorders_tasks
@@ -43,6 +42,10 @@ celery.conf.beat_schedule = {
         "task": "manage_preorders",
         "schedule": config.app.celery_preorders_manage,
     },
+    "remove_expired_tokens-every-5-minutes": {
+        "task": "remove_expired_tokens",
+        "schedule": config.app.celery_remove_expired_tokens,
+    },
 }
 celery.conf.timezone = "UTC"
 
@@ -56,40 +59,42 @@ def sync_data():
 @celery.task(name="update_order")
 def update_order(parser: dict, row_id: int, data: dict):
     with db.session_maker() as session:
-        creds = auth_service.get_first_superuser_sync(session)
-    parser_model = sheets_models.OrderSheetParseRead.model_validate(parser)
-    if creds.google is not None:
-        sheets_service.update_row_data(creds.google, parser_model, row_id, data)
+        creds = sheets_service.get_first_superuser_token_sync(session)
+    parser_model = models.OrderSheetParseRead.model_validate(parser)
+    sheets_service.update_row_data(creds.token, parser_model, row_id, data)
 
 
 @celery.task(name="create_booster")
 def create_booster(parser: str, data: dict):
     with db.session_maker() as session:
-        creds = auth_service.get_first_superuser_sync(session)
-    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    if creds.google is not None:
-        sheets_service.create_row_data(auth_models.UserReadSheets, creds.google, parser_model, data)
+        creds = sheets_service.get_first_superuser_token_sync(session)
+    parser_model = models.OrderSheetParseRead.model_validate_json(parser)
+    sheets_service.create_row_data(models.UserReadSheets, creds.token, parser_model, data)
 
 
 @celery.task(name="create_or_update_booster")
 def create_or_update_booster(parser: str, value: str, data: dict):
     with db.session_maker() as session:
-        creds = auth_service.get_first_superuser_sync(session)
-    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    if creds.google is not None:
-        sheets_service.create_or_update_booster(creds.google, parser_model, value, data)
+        creds = sheets_service.get_first_superuser_token_sync(session)
+    parser_model = models.OrderSheetParseRead.model_validate_json(parser)
+    sheets_service.create_or_update_booster(creds.token, parser_model, value, data)
 
 
 @celery.task(name="delete_booster")
 def delete_booster(parser: str, value: str):
     with db.session_maker() as session:
-        creds = auth_service.get_first_superuser_sync(session)
-    parser_model = sheets_models.OrderSheetParseRead.model_validate_json(parser)
-    if creds.google is not None:
-        sheets_service.delete_booster(creds.google, parser_model, value)
+        creds = sheets_service.get_first_superuser_token_sync(session)
+    parser_model = models.OrderSheetParseRead.model_validate_json(parser)
+    sheets_service.delete_booster(creds.token, parser_model, value)
 
 
 @celery.task(name="manage_preorders")
 def manage_preorders():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(preorders_tasks.manage_preorders())
+
+
+@celery.task(name="remove_expired_tokens")
+def remove_expired_tokens():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(auth_tasks.remove_expired_tokens())

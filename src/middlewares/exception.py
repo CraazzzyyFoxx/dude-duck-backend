@@ -1,9 +1,11 @@
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import ValidationError
 from starlette import status
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import (BaseHTTPMiddleware,
+                                       RequestResponseEndpoint)
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -19,13 +21,27 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
                 logger.exception("What!?")
             response = ORJSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"detail": [{"msg": e.errors(), "code": "unprocessable_entity"}]},
+                content={
+                    "detail": [
+                        {
+                            "msg": jsonable_encoder(e.errors(), exclude={"url", "type", "ctx"}),
+                            "code": "unprocessable_entity",
+                        }
+                    ]
+                },
             )
         except ValidationError as e:
             logger.exception("What!?")
             response = ORJSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"detail": [{"msg": e.errors(include_url=False), "code": "unprocessable_entity"}]},
+                content={
+                    "detail": [
+                        {
+                            "msg": e.errors(include_url=False),
+                            "code": "unprocessable_entity",
+                        }
+                    ]
+                },
             )
         except errors.ApiHTTPException as e:
             response = ORJSONResponse(content={"detail": e.detail}, status_code=e.status_code)

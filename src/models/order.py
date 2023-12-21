@@ -2,10 +2,33 @@ import enum
 from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
-from sqlalchemy import BigInteger, DateTime, Enum, Float, ForeignKey, String, UniqueConstraint
+from sqlalchemy import (BigInteger, DateTime, Enum, Float, ForeignKey, String,
+                        UniqueConstraint)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
+
+from .auth import User
+
+__all__ = (
+    "OrderStatus",
+    "OrderPaidStatus",
+    "OrderInfoMetaRead",
+    "OrderInfoRead",
+    "OrderPriceMeta",
+    "OrderPriceNone",
+    "OrderPriceRead",
+    "OrderCredentialsRead",
+    "ScreenshotRead",
+    "ScreenshotCreate",
+    "OrderCreate",
+    "OrderUpdate",
+    "Order",
+    "OrderInfo",
+    "OrderPrice",
+    "OrderCredentials",
+    "Screenshot",
+)
 
 
 class OrderStatus(enum.Enum):
@@ -72,6 +95,7 @@ class ScreenshotRead(BaseModel):
     source: str
     url: HttpUrl
     order_id: int
+    user_id: int
 
 
 class ScreenshotCreate(BaseModel):
@@ -104,19 +128,19 @@ class OrderCreate(BaseModel):
 
 
 class OrderUpdate(BaseModel):
-    shop: str | None = None
-    shop_order_id: str | None = None
-    contact: str | None = None
+    shop: str | None = ...
+    shop_order_id: str | None = ...
+    contact: str | None = ...
 
-    status: OrderStatus | None = None
-    status_paid: OrderPaidStatus | None = None
+    status: OrderStatus | None = ...
+    status_paid: OrderPaidStatus | None = ...
 
-    info: OrderInfoMetaRead | None = None
-    price: OrderPriceNone | None = None
-    credentials: OrderCredentialsRead | None = None
+    info: OrderInfoMetaRead | None = ...
+    price: OrderPriceNone | None = ...
+    credentials: OrderCredentialsRead | None = ...
 
-    auth_date: datetime | None = None
-    end_date: datetime | None = None
+    auth_date: datetime | None = ...
+    end_date: datetime | None = ...
 
 
 class Order(db.TimeStampMixin):
@@ -146,7 +170,7 @@ class Order(db.TimeStampMixin):
 class OrderInfo(db.TimeStampMixin):
     __tablename__ = "order_info"
 
-    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id", ondelete="CASCADE"))
     order: Mapped["Order"] = relationship(back_populates="info")
     boost_type: Mapped[str] = mapped_column(String(length=10))
     region_fraction: Mapped[str | None] = mapped_column(String(), nullable=True)
@@ -163,7 +187,7 @@ class OrderInfo(db.TimeStampMixin):
 class OrderPrice(db.TimeStampMixin):
     __tablename__ = "order_price"
 
-    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id", ondelete="CASCADE"))
     order: Mapped["Order"] = relationship(back_populates="price")
     dollar: Mapped[float] = mapped_column(Float())
     booster_dollar: Mapped[float] = mapped_column(Float())
@@ -174,7 +198,7 @@ class OrderPrice(db.TimeStampMixin):
 class OrderCredentials(db.TimeStampMixin):
     __tablename__ = "order_credentials"
 
-    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id", ondelete="CASCADE"))
     order: Mapped["Order"] = relationship(back_populates="credentials")
     battle_tag: Mapped[str | None] = mapped_column(String(), nullable=True)
     nickname: Mapped[str | None] = mapped_column(String(), nullable=True)
@@ -190,7 +214,7 @@ class Screenshot(db.TimeStampMixin):
 
     source: Mapped[str] = mapped_column(String(), nullable=False)
     url: Mapped[str] = mapped_column(String(), nullable=False)
-    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
     order: Mapped["Order"] = relationship(back_populates="screenshots")
     user: Mapped["User"] = relationship()

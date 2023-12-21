@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import ORJSONResponse
 from starlette import status
 
+from src import models
 from src.core import db, enums, errors, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.auth import flows as auth_flows
@@ -9,7 +10,7 @@ from src.services.order import flows as order_flows
 from src.services.preorder import flows as preorder_flows
 from src.services.response import flows as response_flows
 
-from . import flows, models, service
+from . import flows, service
 
 router = APIRouter(
     prefix="/integrations/render",
@@ -39,7 +40,8 @@ async def create_render_config(
             status_code=status.HTTP_409_CONFLICT,
             detail=[
                 errors.ApiException(
-                    msg=f"A Render Config with this name={render_in.name} already exists.", code="already_exists"
+                    msg=f"A Render Config with this name={render_in.name} already exists.",
+                    code="already_exists",
                 )
             ],
         )
@@ -59,7 +61,9 @@ async def update_render_config(
 
 @router.delete("")
 async def delete_render_config(
-    id: int, session=Depends(db.get_async_session), _=Depends(auth_flows.current_active_superuser)
+    id: int,
+    session=Depends(db.get_async_session),
+    _=Depends(auth_flows.current_active_superuser),
 ):
     parser = await flows.get(session, id)
     return await service.delete(session, parser.id)
@@ -83,7 +87,8 @@ async def render_order(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
                 errors.ApiException(
-                    msg="You can't use with_credentials and with_response at the same time.", code="bad_request"
+                    msg="You can't use with_credentials and with_response at the same time.",
+                    code="bad_request",
                 )
             ],
         )
@@ -128,13 +133,24 @@ async def render_order(
                 response_checked=response_checked,
             )
             text = await flows.get_order_text(
-                session, integration, configs, data={"order": order_read, "response": response, "user": specified_user}
+                session,
+                integration,
+                configs,
+                data={
+                    "order": order_read,
+                    "response": response,
+                    "user": specified_user,
+                },
             )
         else:
             if with_credentials:
-                user_order = await accounting_flows.get_by_order_id_user_id(session, order, user)
+                if not user.is_superuser:
+                    await accounting_flows.get_by_order_id_user_id(session, order, user)
                 configs = flows.get_order_configs(
-                    order_read, is_preorder=is_preorder, is_gold=is_gold, creds=bool(user_order or user.is_superuser)
+                    order_read,
+                    is_preorder=is_preorder,
+                    is_gold=is_gold,
+                    creds=with_credentials,
                 )
             else:
                 configs = flows.get_order_configs(order_read, is_preorder=is_preorder, is_gold=is_gold)

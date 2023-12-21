@@ -4,12 +4,11 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import count
 from starlette import status
 
+from src import models, schemas
 from src.core import errors, pagination
-from src.services.accounting import models as accounting_models
 from src.services.currency import flows as currency_flows
-from src.services.currency import models as currency_models
 
-from . import models, schemas, service
+from . import service
 
 
 async def get(session: AsyncSession, order_id: int) -> models.Order:
@@ -28,7 +27,10 @@ async def get_by_order_id(session: AsyncSession, order_id: str) -> models.Order:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[
-                errors.ApiException(msg=f"A order with this id does not exist. [order_id={order_id}]", code="not_exist")
+                errors.ApiException(
+                    msg=f"A order with this id does not exist. [order_id={order_id}]",
+                    code="not_exist",
+                )
             ],
         )
     return order
@@ -41,7 +43,8 @@ async def create(session: AsyncSession, order_in: models.OrderCreate) -> models.
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
                 errors.ApiException(
-                    msg=f"A order with this id already exist. [order_id={order_in.order_id}]", code="already_exist"
+                    msg=f"A order with this id already exist. [order_id={order_in.order_id}]",
+                    code="already_exist",
                 )
             ],
         )
@@ -93,8 +96,8 @@ async def format_order_perms(
 async def format_order_active_prefetched(
     session: AsyncSession,
     order: models.Order,
-    order_active: accounting_models.UserOrder,
-    currency: currency_models.Currency,
+    order_active: models.UserOrder,
+    currency: models.Currency,
 ):
     data = order.to_dict()
 
@@ -114,7 +117,11 @@ async def format_order_active_prefetched(
     return schemas.OrderReadActive.model_validate(data)
 
 
-async def format_order_active(session: AsyncSession, order: models.Order, order_active: accounting_models.UserOrder):
+async def format_order_active(
+    session: AsyncSession,
+    order: models.Order,
+    order_active: models.UserOrder,
+):
     currency = await currency_flows.get(session, order.date)
     return await format_order_active_prefetched(session, order, order_active, currency)
 
@@ -135,4 +142,9 @@ async def get_by_filter(
     results = [await format_order_perms(session, order, has=has) for order in result.unique().scalars()]
     count_query = params.apply_filters(sa.select(count(models.Order.id)))
     total = await session.execute(count_query)
-    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.one()[0], results=results)
+    return pagination.Paginated(
+        page=params.page,
+        per_page=params.per_page,
+        total=total.one()[0],
+        results=results,
+    )

@@ -2,8 +2,10 @@ from datetime import datetime
 from typing import AsyncGenerator
 
 from sqlalchemy import BigInteger, DateTime, create_engine, func
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
+from sqlalchemy.orm import (DeclarativeBase, Mapped, Session, mapped_column,
+                            sessionmaker)
 
 from src.core import config
 

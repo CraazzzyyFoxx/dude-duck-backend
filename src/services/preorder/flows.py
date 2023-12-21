@@ -4,10 +4,11 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import count
 from starlette import status
 
+from src import models
 from src.core import errors, pagination
 from src.services.currency import flows as currency_flows
 
-from . import models, service
+from . import service
 
 
 async def get(session: AsyncSession, order_id: int) -> models.PreOrder:
@@ -87,4 +88,9 @@ async def get_by_filter(
     result = await session.execute(query)
     results = [await format_preorder_perms(session, order) for order in result.scalars()]
     total = await session.execute(sa.select(count(models.PreOrder.id)))
-    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.one()[0], results=results)
+    return pagination.Paginated(
+        page=params.page,
+        per_page=params.per_page,
+        total=total.one()[0],
+        results=results,
+    )

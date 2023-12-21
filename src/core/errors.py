@@ -17,7 +17,11 @@ class ApiHTTPException(HTTPException):
         detail: list[ApiException],
         headers: dict[str, str] | None = None,
     ) -> None:
-        super().__init__(status_code=status_code, detail=[e.model_dump(mode="json") for e in detail], headers=headers)
+        super().__init__(
+            status_code=status_code,
+            detail=[e.model_dump(mode="json") for e in detail],
+            headers=headers,
+        )
 
 
 class ValidationErrorDetail(BaseModel):

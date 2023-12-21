@@ -6,26 +6,23 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import count
 from starlette import status
 
+from src import models, schemas
 from src.core import errors, pagination
 from src.services.auth import flows as auth_flows
-from src.services.auth import models as auth_models
 from src.services.currency import flows as currency_flows
-from src.services.integrations.bots.telegram import notifications
+from src.services.integrations.notifications import \
+    flows as notifications_flows
 from src.services.integrations.sheets import flows as sheets_flows
 from src.services.order import flows as order_flows
-from src.services.order import models as order_models
-from src.services.order import schemas as order_schemas
 from src.services.order import service as order_service
 from src.services.payroll import service as payroll_service
 from src.services.permissions import flows as permissions_flows
 from src.services.screenshot import service as screenshot_service
 
-from . import models, service
+from . import service
 
 
-async def get_by_order_id_user_id(
-    session: AsyncSession, order: order_models.Order, user: auth_models.User
-) -> models.UserOrder:
+async def get_by_order_id_user_id(session: AsyncSession, order: models.Order, user: models.User) -> models.UserOrder:
     order_user = await service.get_by_order_id_user_id(session, order.id, user.id)
     if not order_user:
         raise errors.ApiHTTPException(
@@ -45,7 +42,7 @@ async def get(session: AsyncSession, payment_id: int) -> models.UserOrder:
     return order_user
 
 
-async def check_user_total_orders(session: AsyncSession, user: auth_models.User) -> bool:
+async def check_user_total_orders(session: AsyncSession, user: models.User) -> bool:
     if await service.check_user_total_orders(session, user):
         return True
     raise errors.ApiHTTPException(
@@ -54,13 +51,13 @@ async def check_user_total_orders(session: AsyncSession, user: auth_models.User)
     )
 
 
-async def can_user_pick(session: AsyncSession, user: auth_models.User) -> bool:
+async def can_user_pick(session: AsyncSession, user: models.User) -> bool:
     await permissions_flows.can_user_pick(user)
     await check_user_total_orders(session, user)
     return True
 
 
-async def can_user_pick_order(session: AsyncSession, user: auth_models.User, order: order_models.Order) -> bool:
+async def can_user_pick_order(session: AsyncSession, user: models.User, order: models.Order) -> bool:
     await can_user_pick(session, user)
     order_user = await service.get_by_order_id_user_id(session, order.id, user.id)
     if order_user:
@@ -73,8 +70,8 @@ async def can_user_pick_order(session: AsyncSession, user: auth_models.User, ord
 
 async def add_booster(
     session: AsyncSession,
-    order: order_models.Order,
-    user: auth_models.User,
+    order: models.Order,
+    user: models.User,
     sync: bool = True,
 ) -> models.UserOrder:
     await can_user_pick_order(session, user, order)
@@ -85,8 +82,8 @@ async def add_booster(
 
 async def add_booster_with_price(
     session: AsyncSession,
-    order: order_models.Order,
-    user: auth_models.User,
+    order: models.Order,
+    user: models.User,
     price: float,
     sync: bool = True,
 ) -> models.UserOrder:
@@ -108,7 +105,7 @@ async def add_booster_with_price(
     return await service.create(session, order, user, boosters, price, sync)
 
 
-async def create_user_report(session: AsyncSession, user: auth_models.User) -> models.UserAccountReport:
+async def create_user_report(session: AsyncSession, user: models.User) -> models.UserAccountReport:
     result = await session.scalars(sa.select(models.UserOrder).filter_by(user_id=user.id, completed=True))
     total: float = 0.0
     total_rub: float = 0.0
@@ -158,27 +155,30 @@ async def create_report(
 ) -> models.AccountingReport:
     items: list[models.AccountingReportItem] = []
     query = (
-        sa.select(order_models.Order, models.UserOrder, auth_models.User)
-        .where(order_models.Order.date >= start, order_models.Order.date <= end)
+        sa.select(models.Order, models.UserOrder, models.User)
+        .where(models.Order.date >= start, models.Order.date <= end)
         .where(models.UserOrder.completed == is_completed, models.UserOrder.paid == is_paid)
-        .options(joinedload(order_models.Order.price))
-        .order_by(order_models.Order.date)
+        .options(joinedload(models.Order.price))
+        .order_by(models.Order.date)
     )
     if sheet_id is not None:
-        query = query.where(order_models.Order.sheet_id == sheet_id, order_models.Order.spreadsheet == spreadsheet)
-    query = query.join(models.UserOrder, order_models.Order.id == models.UserOrder.order_id).join(
-        auth_models.User, models.UserOrder.user_id == auth_models.User.id
+        query = query.where(
+            models.Order.sheet_id == sheet_id,
+            models.Order.spreadsheet == spreadsheet,
+        )
+    query = query.join(models.UserOrder, models.Order.id == models.UserOrder.order_id).join(
+        models.User, models.UserOrder.user_id == models.User.id
     )
     if username is not None:
-        query = query.where(auth_models.User.name == username)
+        query = query.where(models.User.name == username)
     count_orders: int = 0
     total = 0.0
     earned = 0.0
     for row in await session.execute(query):
         count_orders += 1
-        order: order_models.Order = row[0]
+        order: models.Order = row[0]
         payment: models.UserOrder = row[1]
-        user: auth_models.User = row[2]
+        user: models.User = row[2]
         if order and user:
             payroll = await payroll_service.get_by_priority(session, user)
             total += order.price.dollar
@@ -212,19 +212,25 @@ async def create_report(
 
 
 async def close_order(
-    session: AsyncSession, user: auth_models.User, order: order_models.Order, data: models.CloseOrderForm
-) -> order_models.Order:
+    session: AsyncSession,
+    user: models.User,
+    order: models.Order,
+    data: models.CloseOrderForm,
+) -> models.Order:
     if await service.get_by_order_id_user_id(session, order.id, user.id) is None:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=[errors.ApiException(msg="You don't have access to the order", code="forbidden")],
         )
     await screenshot_service.create(session, user, order, data.url.unicode_string())
-    update_model = order_models.OrderUpdate(end_date=datetime.now(tz=UTC))
+    update_model = models.OrderUpdate(end_date=datetime.now(tz=UTC))
     new_order = await order_service.update(session, order, update_model)
     await sheets_flows.order_to_sheets(session, new_order, await order_flows.format_order_system(session, new_order))
-    notifications.send_order_close_notify(
-        auth_models.UserRead.model_validate(user), order.order_id, str(data.url), data.message
+    notifications_flows.send_order_close_notify(
+        models.UserRead.model_validate(user),
+        order.order_id,
+        str(data.url),
+        data.message,
     )
     return new_order
 
@@ -246,26 +252,34 @@ async def paid_order(session: AsyncSession, payment_id: int) -> models.UserOrder
     await service.update(session, order, user, models.UserOrderUpdate(paid=True), patch=True)
     boosters = await service.get_by_order_id(session, order.id)
     if all(booster.paid for booster in boosters):
-        update_model = order_models.OrderUpdate(status_paid=order_models.OrderPaidStatus.Paid)
+        update_model = models.OrderUpdate(status_paid=models.OrderPaidStatus.Paid)
         new_order = await order_service.update(session, order, update_model)
         await sheets_flows.order_to_sheets(
-            session, new_order, await order_flows.format_order_system(session, new_order)
+            session,
+            new_order,
+            await order_flows.format_order_system(session, new_order),
         )
     return data
 
 
 async def get_by_filter(
-    session: AsyncSession, user: auth_models.User, params: order_schemas.OrderFilterParams
-) -> pagination.Paginated[order_schemas.OrderReadActive]:
+    session: AsyncSession,
+    user: models.User,
+    params: schemas.OrderFilterParams,
+) -> pagination.Paginated[schemas.OrderReadActive]:
     query = (
-        sa.select(models.UserOrder, order_models.Order)
+        sa.select(models.UserOrder, models.Order)
         .where(models.UserOrder.user_id == user.id)
-        .join(order_models.Order, models.UserOrder.order_id == order_models.Order.id, isouter=True)
+        .join(
+            models.Order,
+            models.UserOrder.order_id == models.Order.id,
+            isouter=True,
+        )
         .options(
-            joinedload(order_models.Order.info),
-            joinedload(order_models.Order.price),
-            joinedload(order_models.Order.credentials),
-            joinedload(order_models.Order.screenshots),
+            joinedload(models.Order.info),
+            joinedload(models.Order.price),
+            joinedload(models.Order.credentials),
+            joinedload(models.Order.screenshots),
         )
     )
     query = params.apply_filters(query)
@@ -274,13 +288,18 @@ async def get_by_filter(
     results = []
     count_query = (
         sa.select(count(models.UserOrder.id))
-        .join(order_models.Order, order_models.Order.id == models.UserOrder.order_id)
+        .join(models.Order, models.Order.id == models.UserOrder.order_id)
         .where(models.UserOrder.user_id == user.id)
     )
     count_query = params.apply_filters(count_query)
     total = await session.execute(count_query)
     for row in result.unique():
         user_order: models.UserOrder = row[0]
-        order: order_models.Order = row[1]
+        order: models.Order = row[1]
         results.append(await order_flows.format_order_active(session, order, user_order))
-    return pagination.Paginated(page=params.page, per_page=params.per_page, total=total.one()[0], results=results)
+    return pagination.Paginated(
+        page=params.page,
+        per_page=params.per_page,
+        total=total.one()[0],
+        results=results,
+    )

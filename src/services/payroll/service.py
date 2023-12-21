@@ -5,10 +5,8 @@ from pydantic_extra_types.phone_numbers import PhoneNumber
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from src import models
 from src.core import errors, pagination
-from src.services.auth import models as auth_models
-
-from . import models
 
 payroll_priority: dict[models.PayrollType, int] = {
     models.PayrollType.binance_id: 1,
@@ -38,6 +36,7 @@ class PayrollValidator(BaseModel):
             return str(self.phone).replace("tel:", "")
         if self.card:
             return str(self.card)
+        return "Хуй знает"
 
 
 def validate_payroll(name: models.PayrollType, value: str) -> PayrollValidator:
@@ -70,7 +69,7 @@ async def get_by_user_id(session: AsyncSession, user_id: int) -> list[models.Pay
     return result.scalars().all()  # type: ignore
 
 
-async def create(session: AsyncSession, user: auth_models.User, payroll_in: models.PayrollCreate) -> models.Payroll:
+async def create(session: AsyncSession, user: models.User, payroll_in: models.PayrollCreate) -> models.Payroll:
     query = sa.select(models.Payroll).filter_by(user_id=user.id, type=payroll_in.type)
     result = await session.execute(query)
     if result.scalars().first():
@@ -78,7 +77,8 @@ async def create(session: AsyncSession, user: auth_models.User, payroll_in: mode
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=[
                 errors.ApiException(
-                    msg=f"A payroll with this name already exist. [name={payroll_in.type}]", code="already_exist"
+                    msg=f"A payroll with this name already exist. [name={payroll_in.type}]",
+                    code="already_exist",
                 )
             ],
         )
@@ -100,7 +100,8 @@ async def update(session: AsyncSession, payroll_id: int, model: models.PayrollUp
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[
                 errors.ApiException(
-                    msg=f"A payroll with this id does not exist. [payroll_id={payroll_id}]", code="not_exist"
+                    msg=f"A payroll with this id does not exist. [payroll_id={payroll_id}]",
+                    code="not_exist",
                 )
             ],
         )
@@ -118,7 +119,8 @@ async def delete(session: AsyncSession, payroll_id: int) -> models.Payroll:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[
                 errors.ApiException(
-                    msg=f"A payroll with this id does not exist. [payroll_id={payroll_id}]", code="not_exist"
+                    msg=f"A payroll with this id does not exist. [payroll_id={payroll_id}]",
+                    code="not_exist",
                 )
             ],
         )
@@ -128,7 +130,7 @@ async def delete(session: AsyncSession, payroll_id: int) -> models.Payroll:
 
 
 async def get_by_filter(
-    session: AsyncSession, user: auth_models.User, params: pagination.PaginationParams
+    session: AsyncSession, user: models.User, params: pagination.PaginationParams
 ) -> pagination.Paginated[models.PayrollRead]:
     query = sa.select(models.Payroll).where(models.Payroll.user_id == user.id)
     query = params.apply_pagination(query)
@@ -138,7 +140,7 @@ async def get_by_filter(
     return pagination.Paginated(results=results, total=total.one(), page=params.page, per_page=params.per_page)
 
 
-async def get_by_priority(session: AsyncSession, user: auth_models.User) -> models.PayrollRead:
+async def get_by_priority(session: AsyncSession, user: models.User) -> models.PayrollRead:
     query = sa.select(models.Payroll).where(models.Payroll.user_id == user.id)
     result = await session.execute(query)
     payroll = models.PayrollRead(user_id=user.id, type="Хуй знает", value="Хуй знает", bank="Хуй знает")

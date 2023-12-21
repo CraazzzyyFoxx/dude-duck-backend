@@ -13,7 +13,7 @@ services :
       dockerfile: Dockerfile
     volumes:
       - ./logs:/logs
-    command: uvicorn main:app --host 0.0.0.0 --port ${PORT}
+    command: uvicorn main:app --host 0.0.0.0 --port ${PORT} --loop uvloop
     environment:
       - DEBUG=${DEBUG}
       - TELEGRAM_INTEGRATION=${TELEGRAM_INTEGRATION}
@@ -37,7 +37,7 @@ services :
       - redis
   flower:
     build: .
-    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --url_prefix=flower --basic_auth=${POSTGRES_USER}:${POSTGRES_PASSWORD}
+    command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --basic_auth=${POSTGRES_USER}:${POSTGRES_PASSWORD}
     ports:
       - "5555:5555"
     depends_on:

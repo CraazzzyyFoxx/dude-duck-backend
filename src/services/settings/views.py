@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Depends
 
+from src import models
 from src.core import enums
 from src.core.db import get_async_session
 from src.services.auth import flows as auth_flows
 
-from . import models, service
+from . import service
 
 router = APIRouter(
-    prefix="/settings", tags=[enums.RouteTag.SETTINGS], dependencies=[Depends(auth_flows.current_active_superuser)]
+    prefix="/settings",
+    tags=[enums.RouteTag.SETTINGS],
+    dependencies=[Depends(auth_flows.current_active_superuser)],
 )
 
 

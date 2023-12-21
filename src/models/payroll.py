@@ -5,7 +5,9 @@ from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
-from src.services.auth import models as auth_models
+from src.models import User, auth
+
+__all__ = ("PayrollType", "PayrollRead", "PayrollCreate", "PayrollUpdate", "Payroll", "UserReadWithPayrolls")
 
 
 class PayrollType(str, enum.Enum):
@@ -19,8 +21,8 @@ class PayrollType(str, enum.Enum):
 class Payroll(db.TimeStampMixin):
     __tablename__ = "payroll"
     __table_args__ = (UniqueConstraint("user_id", "bank", "type", name="unique_user_payroll"),)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    user: Mapped[auth_models.User] = relationship()
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    user: Mapped[User] = relationship()
     bank: Mapped[str] = mapped_column(String())
     type: Mapped[PayrollType] = mapped_column(Enum(PayrollType))
     value: Mapped[str] = mapped_column(String(), nullable=False)
@@ -45,3 +47,7 @@ class PayrollUpdate(BaseModel):
     type: PayrollType
     bank: str
     value: str
+
+
+class UserReadWithPayrolls(auth.UserRead):
+    payrolls: list[PayrollRead]

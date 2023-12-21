@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core import db
 
+__all__ = ("Currency", "CurrencyToken", "CurrencyTokenRead", "CurrencyApiLayer")
+
 
 class Currency(db.TimeStampMixin):
     __tablename__ = "currency"

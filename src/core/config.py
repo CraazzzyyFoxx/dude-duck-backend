@@ -10,7 +10,9 @@ class AppConfig(BaseSettings):
     # Application
     project_name: str = "Dude Duck CRM"
     project_version: str = "1.0.0"
-    debug: bool = True
+    debug: bool = False
+    project_url: str = "https://crypto.asuscomm.com:8080/api/v1"
+    username_regex: str = r"([a-zA-Z0-9_-]+)"
 
     # CORS_ORIGINS is a JSON-formatted list of origins
     # e.g: '["http://localhost", "http://localhost:4200", "http://localhost:3000"]'
@@ -35,6 +37,8 @@ class AppConfig(BaseSettings):
     discord_url: str
     discord_integration: bool
     discord_token_bot: str
+    discord_client_id: int
+    discord_client_secret: str
 
     # Postgres
     postgres_user: str
@@ -47,7 +51,6 @@ class AppConfig(BaseSettings):
     access_token_secret: str
     refresh_token_secret: str
     reset_password_secret: str
-    request_verify_email_secret: str
     verify_email_secret: str
     algorithm: str = "HS256"
     expires_s: int = 3600
@@ -61,16 +64,19 @@ class AppConfig(BaseSettings):
     super_user_email: EmailStr
     super_user_password: str
 
-    username_regex: str = r"([a-zA-Z0-9_-]+)"
-
     # Celery
     celery_broker_url: RedisDsn
     celery_result_backend: RedisDsn
     celery_sheets_sync_time: int = 300
     celery_preorders_manage: int = 300
+    celery_remove_expired_tokens: int = 300
 
+    # Sheets
     sync_boosters: bool = False
     datetime_format_sheets: str = "%d.%m.%Y %H:%M:%S"
+
+    # Redis
+    redis_url: RedisDsn
 
     @property
     def db_url_asyncpg(self):

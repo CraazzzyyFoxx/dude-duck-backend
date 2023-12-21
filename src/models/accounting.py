@@ -2,13 +2,30 @@ import typing
 from datetime import UTC, date, datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, StringConstraints, model_validator
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, UniqueConstraint, event
+from pydantic import (BaseModel, ConfigDict, Field, HttpUrl, StringConstraints,
+                      model_validator)
+from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, UniqueConstraint,
+                        event)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
-from src.services.auth import models as auth_models
-from src.services.order import models as order_models
+
+from .auth import User
+from .order import Order, OrderStatus
+
+__all__ = (
+    "FirstSort",
+    "SecondSort",
+    "UserOrder",
+    "UserOrderCreate",
+    "UserOrderRead",
+    "UserOrderUpdate",
+    "UserAccountReport",
+    "CloseOrderForm",
+    "AccountingReportSheetsForm",
+    "AccountingReportItem",
+    "AccountingReport",
+)
 
 
 class FirstSort(str, Enum):
@@ -28,10 +45,10 @@ class UserOrder(db.TimeStampMixin):
         UniqueConstraint("user_id", "order_id", name="u_user_order"),
     )
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    user: Mapped["auth_models.User"] = relationship()
-    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"))
-    order: Mapped["order_models.Order"] = relationship()
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    user: Mapped["User"] = relationship()
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id", ondelete="CASCADE"))
+    order: Mapped["Order"] = relationship()
     dollars: Mapped[float] = mapped_column(Float())
     completed: Mapped[bool] = mapped_column(Boolean(), default=False)
     refunded: Mapped[bool] = mapped_column(Boolean(), default=False)
@@ -105,7 +122,7 @@ class AccountingReportItem(BaseModel):
     end_date: datetime | None
     payment: str
     bank: str
-    status: order_models.OrderStatus
+    status: OrderStatus
     payment_id: int
 
 

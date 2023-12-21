@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from . import models
+from src import models
 
 
 async def get(session: AsyncSession, response_id: int, pre: bool = False) -> models.Response | None:
@@ -39,7 +39,10 @@ async def get_by_order_id(
 ) -> typing.Sequence[models.Response]:
     result = await session.scalars(
         sa.select(models.Response)
-        .where(models.Response.order_id == order_id, models.Response.is_preorder == is_preorder)
+        .where(
+            models.Response.order_id == order_id,
+            models.Response.is_preorder == is_preorder,
+        )
         .options(joinedload(models.Response.user))
     )
     return result.all()
@@ -70,23 +73,9 @@ async def update(
     session: AsyncSession,
     response: models.Response,
     response_in: models.ResponseUpdate,
+    patch: bool = False,
 ) -> models.Response:
-    update_data = response_in.model_dump()
-    if response_in.approved is True and not response.approved:
-        update_data["approved_at"] = datetime.now(UTC)
-    if response_in.approved is False:
-        update_data["approved_at"] = None
-    await session.execute(sa.update(models.Response).where(models.Response.id == response.id).values(**update_data))
-    await session.commit()
-    return response
-
-
-async def patch(
-    session: AsyncSession,
-    response: models.Response,
-    response_in: models.ResponseUpdate,
-) -> models.Response:
-    update_data = response_in.model_dump(exclude_none=True, exclude_defaults=True)
+    update_data = response_in.model_dump(exclude_none=True, exclude_defaults=patch)
     if response_in.approved is True and not response.approved:
         update_data["approved_at"] = datetime.now(UTC)
     if response_in.approved is False:

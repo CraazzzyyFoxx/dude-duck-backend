@@ -6,11 +6,12 @@ from lxml.builder import E, ElementMaker
 from lxml.etree import tostring
 from starlette.responses import Response
 
+from src import models
 from src.core import db, enums, errors, pagination
 from src.services.auth import flows as auth_flows
 from src.services.currency import flows as currency_flows
 
-from . import models, service
+from . import service
 
 router = APIRouter(prefix="/currency", tags=[enums.RouteTag.CURRENCY])
 
@@ -35,12 +36,19 @@ async def get_currency_token_filter(
     total = await session.execute(sa.select(sa.func.count(models.CurrencyToken.id)))
     result = await session.scalars(query)
     results = [models.CurrencyTokenRead.model_validate(x, from_attributes=True) for x in result]
-    return pagination.Paginated(results=results, total=total.scalar(), page=params.page, per_page=params.per_page)
+    return pagination.Paginated(
+        results=results,
+        total=total.scalar(),
+        page=params.page,
+        per_page=params.per_page,
+    )
 
 
 @router.post("/api_layer_currency", response_model=models.CurrencyTokenRead)
 async def add_api_layer_currency_token(
-    token: str, _=Depends(auth_flows.current_active_superuser), session=Depends(db.get_async_session)
+    token: str,
+    _=Depends(auth_flows.current_active_superuser),
+    session=Depends(db.get_async_session),
 ):
     tokens = await service.get_tokens(session)
     if token in [x.token for x in tokens]:
@@ -52,12 +60,15 @@ async def add_api_layer_currency_token(
     if status:
         return await service.create_token(session, token)
     raise errors.ApiHTTPException(
-        status_code=400, detail=[errors.ApiException(msg="Token is not valid", code="not_valid")]
+        status_code=400,
+        detail=[errors.ApiException(msg="Token is not valid", code="not_valid")],
     )
 
 
 @router.delete("/api_layer_currency", response_model=models.CurrencyTokenRead)
 async def remove_api_layer_currency_token(
-    token: str, _=Depends(auth_flows.current_active_superuser), session=Depends(db.get_async_session)
+    token: str,
+    _=Depends(auth_flows.current_active_superuser),
+    session=Depends(db.get_async_session),
 ):
     return await service.delete_token(session, token)

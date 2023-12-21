@@ -6,9 +6,8 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from src import models
 from src.services.accounting import service as accounting_service
-
-from . import models
 
 
 async def get(session: AsyncSession, order_id: int) -> models.Order | None:
@@ -80,11 +79,16 @@ async def get_by_ids(session: AsyncSession, ids: list[int]) -> typing.Sequence[m
 
 
 async def update(
-    session: AsyncSession, order: models.Order, order_in: models.OrderUpdate, patch: bool = False
+    session: AsyncSession,
+    order: models.Order,
+    order_in: models.OrderUpdate,
+    patch: bool = False,
 ) -> models.Order:
     old = copy.deepcopy(order)
     update_data = order_in.model_dump(
-        exclude={"price", "info", "credentials"}, exclude_defaults=True, exclude_unset=patch
+        exclude={"price", "info", "credentials"},
+        exclude_defaults=True,
+        exclude_unset=patch,
     )
     await session.execute(sa.update(models.Order).where(models.Order.id == order.id).values(update_data))
     if order_in.info is not None:

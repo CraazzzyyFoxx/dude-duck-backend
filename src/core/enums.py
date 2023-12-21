@@ -12,15 +12,16 @@ class RouteTag(StrEnum):
     SHEETS = "📊 Google Sheets"
     RESPONSES = "📩 Responses"
     AUTH = "🤷🏿‍♀️‍ Auth"
-    MESSAGES = "✉️ Telegram Messages"
-    TELEGRAM_CHANNELS = "✉️ Telegram Channels"
+    MESSAGES = "✉️ Messages"
     CHANNELS = "✉️ Channels"
-    RENDER = "✉️ Telegram Message Render"
+    RENDER = "✉️ Message Render"
     ACCOUNTING = "📊 Accounting"
     ADMIN = "🤷🏿‍♀️‍ Admin"
     CURRENCY = "💰 Currency"
     ORDER_RENDERS = "📒 Order Renders"
     SCREENSHOTS = "📷 Screenshots"
+
+    DISCORD_OAUTH = "🤷🏿‍♀️‍ Discord OAuth"
 
 
 class Integration(StrEnum):

@@ -5,12 +5,10 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from src import models
 from src.core import errors
-from src.services.auth import service as auth_service
 from src.services.integrations.sheets import service as sheets_service
 from src.services.settings import service as settings_service
-
-from . import models
 
 _CACHE: dict[int, list[models.CurrencyToken]] = {}
 
@@ -75,10 +73,10 @@ async def create(session: AsyncSession, currency_in: models.CurrencyApiLayer) ->
         and settings.currency_wow_sheet_id is not None
         and settings.currency_wow_cell is not None
     ):
-        creds = await auth_service.get_first_superuser(session)
-        if creds.google is not None:
+        creds = await sheets_service.get_first_superuser_token(session)
+        if creds.token is not None:
             cell = sheets_service.get_cell(
-                creds.google,
+                creds.token,
                 settings.currency_wow_spreadsheet,
                 settings.currency_wow_sheet_id,
                 settings.currency_wow_cell,
@@ -147,12 +145,18 @@ async def get_currency_historical(session: AsyncSession, date: datetime) -> mode
         response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
     except Exception as e:
         raise errors.ApiHTTPException(
-            status_code=500, detail=[errors.ApiException(msg="Api Layer is not responding", code="internal_error")]
+            status_code=500,
+            detail=[errors.ApiException(msg="Api Layer is not responding", code="internal_error")],
         ) from e
     if response.status_code == 429:
         raise RuntimeError("API Layer currency request limit exceeded.")
     json = response.json()
     if json["success"] is False:
+        if json["error"]["code"] == 302:
+            raise errors.ApiHTTPException(
+                status_code=400,
+                detail=[errors.ApiException(msg="Invalid date", code="invalid_date")],
+            )
         raise RuntimeError(json)
     await used_token(session, token)
     return models.CurrencyApiLayer.model_validate(json)
@@ -164,7 +168,8 @@ async def validate_token(token: str) -> bool:
     response = await client.request("GET", f"/currency_data/historical?date={date}", headers=headers)
     if response.status_code != 200:
         raise errors.ApiHTTPException(
-            status_code=400, detail=[errors.ApiException(msg=response.json(), code="invalid_token")]
+            status_code=400,
+            detail=[errors.ApiException(msg=response.json(), code="invalid_token")],
         )
     else:
         return True

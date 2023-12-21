@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import models
+from src import models
 
 CACHE: dict[int, models.Settings] = {}
 
@@ -10,9 +10,9 @@ async def get(session: AsyncSession) -> models.Settings:
     if CACHE.get(0):
         return CACHE[0]
     result = await session.scalars(sa.select(models.Settings))
-    settings = result.one_or_none()
-    CACHE[0] = settings  # type: ignore
-    return settings  # type: ignore
+    settings = result.one()
+    CACHE[0] = settings
+    return settings
 
 
 async def create(session: AsyncSession) -> models.Settings:

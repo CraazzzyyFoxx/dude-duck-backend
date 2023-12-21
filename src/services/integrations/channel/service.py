@@ -1,9 +1,8 @@
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src import models
 from src.core import enums
-
-from . import models
 
 
 async def get(session: AsyncSession, channel_id: int) -> models.Channel | None:
@@ -36,7 +35,10 @@ async def delete(session: AsyncSession, channel_id: int) -> None:
 
 
 async def get_by_game_category(
-    session: AsyncSession, integration: enums.Integration, game: str, category: str | None = None
+    session: AsyncSession,
+    integration: enums.Integration,
+    game: str,
+    category: str | None = None,
 ) -> models.Channel | None:
     query = (
         sa.select(models.Channel)
@@ -48,7 +50,10 @@ async def get_by_game_category(
 
 
 async def get_by_game_categories(
-    session: AsyncSession, integration: enums.Integration, game: str, categories: list[str]
+    session: AsyncSession,
+    integration: enums.Integration,
+    game: str,
+    categories: list[str],
 ) -> list[models.Channel]:
     query = (
         sa.select(models.Channel)

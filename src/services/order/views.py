@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 
+from src import models, schemas
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 
-from . import flows, models, schemas, service
+from . import flows, service
 
 router = APIRouter(prefix="/orders", tags=[enums.RouteTag.ORDERS])
 
@@ -19,7 +20,9 @@ async def get_orders(
 
 @router.get(path="", response_model=schemas.OrderReadNoPerms)
 async def get_order(
-    order_id: int, _=Depends(auth_flows.current_active_verified), session=Depends(db.get_async_session)
+    order_id: int,
+    _=Depends(auth_flows.current_active_verified),
+    session=Depends(db.get_async_session),
 ):
     order = await flows.get(session, order_id)
     return await flows.format_order_perms(session, order)
@@ -51,7 +54,9 @@ async def patch_order(
 
 @router.delete("", response_model=schemas.OrderReadSystem)
 async def delete_order(
-    order_id: int, _=Depends(auth_flows.current_active_superuser), session=Depends(db.get_async_session)
+    order_id: int,
+    _=Depends(auth_flows.current_active_superuser),
+    session=Depends(db.get_async_session),
 ):
     order = await flows.get(session, order_id)
     await service.delete(session, order_id)

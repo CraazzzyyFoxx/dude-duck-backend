@@ -1,13 +1,15 @@
 from typing import Annotated
 
 from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordBearer
+from fastapi.security import (HTTPAuthorizationCredentials, HTTPBearer,
+                              OAuth2PasswordBearer)
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from src import models
 from src.core import config, db, errors
 
-from . import models, service
+from . import service
 
 oauth2_scheme = OAuth2PasswordBearer("auth/login", auto_error=False)
 bearer_scheme_api = HTTPBearer(bearerFormat="Bearer")
@@ -80,7 +82,8 @@ def current_user(
     superuser: bool = False,
 ):
     async def current_user_dependency(
-        token: Annotated[str, Depends(oauth2_scheme)], session: Annotated[AsyncSession, Depends(db.get_async_session)]
+        token: Annotated[str, Depends(oauth2_scheme)],
+        session: Annotated[AsyncSession, Depends(db.get_async_session)],
     ):
         user, _ = await get_current_user(session, token, active=active, verified=verified, superuser=superuser)
         return user
@@ -98,7 +101,12 @@ def current_user_api(
         session: Annotated[AsyncSession, Depends(db.get_async_session)],
     ):
         user, _ = await get_current_user(
-            session, token.credentials, active=active, verified=verified, superuser=superuser, api=True
+            session,
+            token.credentials,
+            active=active,
+            verified=verified,
+            superuser=superuser,
+            api=True,
         )
         return user
 
@@ -140,10 +148,5 @@ async def create_first_superuser(session: AsyncSession):
                 email=config.app.super_user_email,
                 password=config.app.super_user_password,
                 name=config.app.super_user_username,
-                telegram="None",
-                is_superuser=True,
-                is_active=True,
-                is_verified=True,
-                discord="@system",
             ),
         )

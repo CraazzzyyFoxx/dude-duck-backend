@@ -9,17 +9,14 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 from starlette import status
 
+from src import models
 from src.core import config, errors
-from src.services.auth import models as auth_models
 from src.services.currency import flows as currency_flows
 from src.services.integrations.sheets import flows as sheets_flows
 from src.services.integrations.sheets import service as sheets_service
 from src.services.order import flows as order_flows
-from src.services.order import models as order_models
 from src.services.order import service as order_service
 from src.services.tasks import service as tasks_service
-
-from . import models
 
 BOOSTER_WITH_PRICE_REGEX = re.compile(config.app.username_regex + r" ?(\(\d+\))", flags=re.UNICODE & re.MULTILINE)
 BOOSTER_REGEX = re.compile(config.app.username_regex, flags=re.UNICODE & re.MULTILINE)
@@ -62,12 +59,12 @@ async def get_by_orders(session: AsyncSession, orders_id: typing.Iterable[int]) 
     return result.all()
 
 
-async def sync_boosters_sheet(session: AsyncSession, order: order_models.Order) -> None:
+async def sync_boosters_sheet(session: AsyncSession, order: models.Order) -> None:
     if config.app.sync_boosters:
         parser = await sheets_service.get_by_spreadsheet_sheet_read(session, order.spreadsheet, order.sheet_id)
         if parser is not None:
             user_orders = await get_by_order_id(session, order.id)
-            query = sa.select(auth_models.User).where(auth_models.User.id.in_([d.user_id for d in user_orders]))
+            query = sa.select(models.User).where(models.User.id.in_([d.user_id for d in user_orders]))
             users = await session.scalars(query)
             booster_str = await _boosters_to_str(session, order, user_orders, users.all())  # type: ignore
             tasks_service.update_order.delay(parser.model_dump(mode="json"), order.row_id, {"booster": booster_str})
@@ -75,8 +72,8 @@ async def sync_boosters_sheet(session: AsyncSession, order: order_models.Order) 
 
 async def create(
     session: AsyncSession,
-    order: order_models.Order,
-    user: auth_models.User,
+    order: models.Order,
+    user: models.User,
     boosters: list[models.UserOrder],
     price: float,
     sync: bool = True,
@@ -86,8 +83,8 @@ async def create(
         user_id=user.id,
         dollars=price,
         order_date=order.date,
-        completed=True if order.status == order_models.OrderStatus.Completed else False,
-        paid=True if order.status_paid == order_models.OrderPaidStatus.Paid else False,
+        completed=True if order.status == models.OrderStatus.Completed else False,
+        paid=True if order.status_paid == models.OrderPaidStatus.Paid else False,
     )
     if user_order.paid:
         user_order.paid_at = datetime.now()
@@ -104,11 +101,13 @@ async def create(
         await session.commit()
         logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
         if not boosters:
-            order_update = order_models.OrderUpdate(auth_date=datetime.now(tz=UTC))
+            order_update = models.OrderUpdate(auth_date=datetime.now(tz=UTC))
             new_order = await order_service.update(session, order, order_update)
             if sync:
                 await sheets_flows.order_to_sheets(
-                    session, new_order, await order_flows.format_order_system(session, new_order)
+                    session,
+                    new_order,
+                    await order_flows.format_order_system(session, new_order),
                 )
 
         if sync:
@@ -129,8 +128,8 @@ async def delete_by_order_id(session: AsyncSession, order_id: int) -> None:
 
 async def update(
     session: AsyncSession,
-    order: order_models.Order,
-    user: auth_models.User,
+    order: models.Order,
+    user: models.User,
     update_model: models.UserOrderUpdate,
     sync: bool = True,
     patch: bool = False,
@@ -173,7 +172,10 @@ async def update(
 
 
 async def delete(
-    session: AsyncSession, order: order_models.Order, user: auth_models.User, sync: bool = True
+    session: AsyncSession,
+    order: models.Order,
+    user: models.User,
+    sync: bool = True,
 ) -> models.UserOrder:
     boosters = await get_by_order_id(session, order.id)
     boosters_map: dict[int, models.UserOrder] = {b.user_id: b for b in boosters}
@@ -191,17 +193,18 @@ async def delete(
     return to_delete
 
 
-async def check_user_total_orders(session: AsyncSession, user: auth_models.User) -> bool:
+async def check_user_total_orders(session: AsyncSession, user: models.User) -> bool:
     result = await session.execute(
         sa.select(func.count(models.UserOrder.id)).where(
-            models.UserOrder.user_id == user.id, models.UserOrder.completed == False  # noqa: E712
+            models.UserOrder.user_id == user.id,
+            models.UserOrder.completed == False,  # noqa: E712
         )
     )
     count = result.one()
     return bool(count[0] < user.max_orders)
 
 
-async def update_booster_price(session: AsyncSession, old: order_models.Order, new: order_models.Order) -> None:
+async def update_booster_price(session: AsyncSession, old: models.Order, new: models.Order) -> None:
     boosters = await get_by_order_id(session, new.id)
     if not boosters:
         return
@@ -232,14 +235,14 @@ def boosters_from_str(string: str) -> dict[str, int | None]:
 
 async def _boosters_to_str(
     session: AsyncSession,
-    order: order_models.Order,
+    order: models.Order,
     data: typing.Iterable[models.UserOrder],
-    users: list[auth_models.User],
+    users: list[models.User],
 ) -> str | None:
     if len(users) == 1:
         return users[0].name
     resp = []
-    users_map: dict[int, auth_models.User] = {user.id: user for user in users}
+    users_map: dict[int, models.User] = {user.id: user for user in users}
     for d in data:
         booster = users_map.get(d.user_id, None)
         if booster:
@@ -254,9 +257,9 @@ async def _boosters_to_str(
 
 async def boosters_to_str_sync(
     session: AsyncSession,
-    order: order_models.Order,
+    order: models.Order,
     data: typing.Iterable[models.UserOrder],
-    users_in: typing.Iterable[auth_models.User],
+    users_in: typing.Iterable[models.User],
 ) -> str | None:
     search = [d.user_id for d in data]
     users = [user_in for user_in in users_in if user_in.id in search]

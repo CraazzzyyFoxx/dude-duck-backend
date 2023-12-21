@@ -5,17 +5,23 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Select
 
 from src.core import pagination
+from src.models.order import (Order, OrderCredentialsRead, OrderInfo,
+                              OrderInfoRead, OrderPaidStatus, OrderPriceMeta,
+                              OrderPriceNone, OrderStatus, Screenshot,
+                              ScreenshotRead)
 
-from .models import (
-    Order,
-    OrderCredentialsRead,
-    OrderInfoRead,
-    OrderPaidStatus,
-    OrderPriceMeta,
-    OrderPriceNone,
-    OrderStatus,
-    Screenshot,
-    ScreenshotRead,
+__all__ = (
+    "OrderPriceUser",
+    "OrderPriceSystem",
+    "OrderReadHasPerms",
+    "OrderReadNoPerms",
+    "OrderReadSystemMeta",
+    "OrderReadSystemBase",
+    "OrderReadSystem",
+    "OrderReadActive",
+    "OrderStatusFilter",
+    "OrderFilterParams",
+    "ScreenshotParams",
 )
 
 
@@ -68,8 +74,8 @@ class OrderReadSystemMeta(BaseModel):
     price: OrderPriceNone
     credentials: OrderCredentialsRead
 
-    auth_date: datetime.datetime | None = None
-    end_date: datetime.datetime | None = None
+    auth_date: datetime.datetime | None
+    end_date: datetime.datetime | None
 
 
 class OrderReadSystemBase(OrderReadSystemMeta):
@@ -112,6 +118,7 @@ class OrderFilterParams(pagination.PaginationParams):
     status: OrderStatusFilter = OrderStatusFilter.All
     order_id: list[str] | None = None
     ids: list[int] | None = None
+    game: str | None = None
 
     def apply_filters(self, query: Select) -> Select:
         if self.order_id and not self.ids:
@@ -120,6 +127,9 @@ class OrderFilterParams(pagination.PaginationParams):
             query = query.where(Order.id.in_(self.ids))
         elif self.ids and self.order_id:
             query = query.where(Order.order_id.in_(self.order_id) | Order.id.in_(self.ids))
+
+        if self.game:
+            query = query.where(Order.info.has(OrderInfo.game == self.game))
 
         if self.status != OrderStatusFilter.All:
             query = query.where(Order.status == OrderStatus(self.status.value))

@@ -5,17 +5,24 @@ from loguru import logger
 from pydantic import EmailStr
 from starlette import status
 
+from src import models
 from src.core import enums, errors
 from src.core.db import get_async_session
-from src.services.integrations.bots.telegram import notifications
+from src.services.integrations.notifications import \
+    flows as notifications_flows
+from src.services.integrations.sheets import service as sheets_service
+from src.services.tasks import service as tasks_service
 
-from . import flows, models, service
+from . import flows, service
 
 router = APIRouter(prefix="/auth", tags=[enums.RouteTag.AUTH])
 
 
 @router.post("/login")
-async def login(credentials: OAuth2PasswordRequestForm = Depends(), session=Depends(get_async_session)):
+async def login(
+    credentials: OAuth2PasswordRequestForm = Depends(),
+    session=Depends(get_async_session),
+):
     user = await service.authenticate(session, credentials)
     if user is None:
         raise errors.ApiHTTPException(
@@ -23,14 +30,8 @@ async def login(credentials: OAuth2PasswordRequestForm = Depends(), session=Depe
             detail=[errors.ApiException(msg="LOGIN_BAD_CREDENTIALS", code="LOGIN_BAD_CREDENTIALS")],
         )
     token = await service.create_access_token(session, user)
-    notifications.send_logged_notify(models.UserRead.model_validate(user))
+    notifications_flows.send_logged_notify(models.UserRead.model_validate(user))
     return ORJSONResponse({"access_token": token[0], "refresh_token": token[1], "token_type": "bearer"})
-
-
-# @router.post("/logout")
-# async def logout(user_token: tuple[models.UserRead, str] = Depends(flows.current_user_token)):
-#     user, token = user_token
-#     return await service.logout(strategy, user, token)
 
 
 @router.post("/register", response_model=models.UserRead, status_code=status.HTTP_201_CREATED)
@@ -38,7 +39,12 @@ async def register(user_create: models.UserCreate, session=Depends(get_async_ses
     created_user = await service.create(session, user_create, safe=True)
     logger.info(f"User {created_user.id} has registered.")
     user = models.UserRead.model_validate(created_user)
-    notifications.send_registered_notify(user)
+    notifications_flows.send_registered_notify(user)
+    parser = await sheets_service.get_default_booster_read(session)
+    tasks_service.create_booster.delay(
+        parser.model_dump_json(),
+        user.model_dump(),
+    )
     return user
 
 
@@ -46,7 +52,7 @@ async def register(user_create: models.UserCreate, session=Depends(get_async_ses
 async def request_verify_token(email: EmailStr = Body(..., embed=True), session=Depends(get_async_session)):
     try:
         user = await flows.get_by_email(session, email.lower())
-        await service.request_verify(user)
+        await service.request_verify_email(session, user)
     except errors.ApiHTTPException:
         pass
     return None
@@ -54,7 +60,7 @@ async def request_verify_token(email: EmailStr = Body(..., embed=True), session=
 
 @router.post("/verify", response_model=models.UserRead)
 async def verify(token: str = Body(..., embed=True), session=Depends(get_async_session)):
-    user = await service.verify(session, token)
+    user = await service.verify_email(session, token)
     return models.UserRead.model_validate(user, from_attributes=True)
 
 
@@ -69,7 +75,11 @@ async def forgot_password(email: EmailStr = Body(..., embed=True), session=Depen
 
 
 @router.post("/reset-password")
-async def reset_password(token: str = Body(...), password: str = Body(...), session=Depends(get_async_session)):
+async def reset_password(
+    token: str = Body(...),
+    password: str = Body(...),
+    session=Depends(get_async_session),
+):
     await service.reset_password(session, token, password)
 
 

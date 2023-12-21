@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 
+from src import models
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 
-from . import flows, models, service
+from . import flows, service
 
 router = APIRouter(
     prefix="/integrations/channel",
@@ -14,7 +15,8 @@ router = APIRouter(
 
 @router.get("/filter", response_model=pagination.Paginated[models.ChannelRead])
 async def reads_order_channel(
-    params: models.ChannelPaginationParams = Depends(), session=Depends(db.get_async_session)
+    params: models.ChannelPaginationParams = Depends(),
+    session=Depends(db.get_async_session),
 ):
     return await flows.get_by_filter(session, params)
 

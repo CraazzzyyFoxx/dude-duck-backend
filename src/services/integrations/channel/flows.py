@@ -2,9 +2,10 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from src import models
 from src.core import errors, pagination
 
-from . import models, service
+from . import service
 
 
 async def get(session: AsyncSession, channel_id: int) -> models.Channel:
@@ -23,7 +24,10 @@ async def create(session: AsyncSession, channel_in: models.ChannelCreate) -> mod
         raise errors.ApiHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[
-                errors.ApiException(msg="A channel with this game and category already exists.", code="already_exists")
+                errors.ApiException(
+                    msg="A channel with this game and category already exists.",
+                    code="already_exists",
+                )
             ],
         )
     channel = await service.create(session, channel_in)

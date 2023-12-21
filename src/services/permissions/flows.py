@@ -1,14 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from src import models
 from src.core import errors
-from src.services.auth import models as auth_models
-from src.services.order import models as order_models
 
 from . import service
 
 
-async def has_access_to_order(session: AsyncSession, order: order_models.Order, user: auth_models.User):
+async def has_access_to_order(session: AsyncSession, order: models.Order, user: models.User):
     access = await service.has_access_to_order(session, order, user)
     if access:
         return True
@@ -18,7 +17,7 @@ async def has_access_to_order(session: AsyncSession, order: order_models.Order, 
     )
 
 
-async def can_user_pick(user: auth_models.User) -> bool:
+async def can_user_pick(user: models.User) -> bool:
     if user.is_verified:
         return True
 

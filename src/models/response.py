@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Interval, Select, String
+from sqlalchemy import (BigInteger, Boolean, DateTime, Float, ForeignKey,
+                        Interval, Select, String)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db, pagination
-from src.services.auth import models as auth_models
+from src.models.auth import User
+
+__all__ = ("ResponseExtra", "ResponseCreate", "ResponseRead", "ResponseUpdate", "Response", "ResponsePagination")
 
 
 class ResponseExtra(BaseModel):
@@ -29,8 +32,8 @@ class Response(db.TimeStampMixin):
 
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    user: Mapped["auth_models.User"] = relationship()
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
+    user: Mapped["User"] = relationship()
     order_id: Mapped[int] = mapped_column(BigInteger())
     is_preorder: Mapped[bool] = mapped_column(Boolean(), default=False)
 

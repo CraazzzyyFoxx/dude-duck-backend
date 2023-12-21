@@ -5,11 +5,10 @@ from jinja2 import FunctionLoader
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
+from src import models, schemas
 from src.core import enums, errors
-from src.services.order import schemas as order_schemas
-from src.services.preorder import models as preorder_models
 
-from . import models, service
+from . import service
 
 
 async def get(session: AsyncSession, render_id: int) -> models.RenderConfig:
@@ -18,14 +17,17 @@ async def get(session: AsyncSession, render_id: int) -> models.RenderConfig:
         raise errors.ApiHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=[
-                errors.ApiException(msg=f"A Render Config with this id={render_id} does not exist.", code="not_found")
+                errors.ApiException(
+                    msg=f"A Render Config with this id={render_id} does not exist.",
+                    code="not_found",
+                )
             ],
         )
     return parser
 
 
 def get_order_configs(
-    order_model: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem,
+    order_model: schemas.OrderReadSystem | models.PreOrderReadSystem,
     *,
     is_preorder: bool = False,
     creds: bool = False,
@@ -33,36 +35,27 @@ def get_order_configs(
     with_response: bool = False,
     response_checked: bool = False,
 ) -> list[str]:
-    game = order_model.info.game if not creds else f"{order_model.info.game}-cd"
-    resp = "response" if not response_checked else "response-check"
     if is_preorder:
-        configs = ["pre-order", game, "pre-eta-price" if not is_gold else "pre-eta-price-gold"]
+        configs = ["pre-order"]
     else:
-        configs = ["order", game, "eta-price" if not is_gold else "eta-price-gold"]
+        configs = ["order"]
+    if creds:
+        configs.extend([order_model.info.game, f"{order_model.info.game}-cd"])
+    else:
+        configs.append(order_model.info.game)
+    if is_preorder:
+        configs.append(["pre-eta-price" if not is_gold else "pre-eta-price-gold"])
+    else:
+        configs.append("eta-price" if not is_gold else "eta-price-gold")
     if with_response:
-        configs.append(resp)
+        configs.append("response" if not response_checked else "response-check")
     return configs
-
-
-def get_order_response_configs(
-    order_model: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem,
-    *,
-    pre: bool = False,
-    creds: bool = False,
-    checked: bool = False,
-    is_gold: bool = False,
-) -> list[str]:
-    game = order_model.info.game if not creds else f"{order_model.info.game}-cd"
-    resp = "response" if not checked else "response-check"
-    if pre:
-        return ["pre-order", game, "pre-eta-price" if not is_gold else "pre-eta-price-gold", resp]
-    return ["order", game, "eta-price" if not is_gold else "eta-price-gold", resp]
 
 
 async def check_availability_all_render_config_order(
     session: AsyncSession,
     integration: enums.Integration,
-    order_model: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem,
+    order_model: schemas.OrderReadSystem | models.PreOrderReadSystem,
 ) -> tuple[bool, list[str]]:
     configs = await service.get_all_configs_for_order(session, integration, order_model)
     names = service.get_all_config_names(order_model)
@@ -110,22 +103,25 @@ def _get_template_env() -> jinja2.Environment:
 
 
 async def get_order_text(
-    session: AsyncSession, integration: enums.Integration, templates: list[str], *, data: dict
+    session: AsyncSession,
+    integration: enums.Integration,
+    templates: list[str],
+    *,
+    data: dict,
 ) -> str:
     resp: list[str] = []
-    last_len = 0
     for index, render_config_name in enumerate(templates, 1):
         render_config = await service.get_by_name(session, integration, render_config_name)
         if render_config:
             template = jinja2.Template(render_config.binary)
             rendered = template.render(**data)
-            if not render_config.allow_separator_top and len(resp) > 0:
+            is_empty = len(rendered.replace("\n", "").replace("<br>", "").replace(" ", "")) < 1
+            if not render_config.allow_separator_top and (len(resp) > 0 or is_empty):
                 resp.pop(-1)
-            if len(rendered.replace("\n", "").replace("<br>", "").replace(" ", "")) > 1:
+            if not is_empty:
                 resp.append(rendered)
-            if index < len(templates) and len(resp) > last_len:
+            if index < len(templates) and not is_empty:
                 resp.append(f"{render_config.separator} <br>")
-            last_len = len(resp)
     rendered = "".join(resp)
     return _render_template("rendered_order", data={"rendered_order": rendered})
 
@@ -133,7 +129,7 @@ async def get_order_text(
 async def generate_body(
     session: AsyncSession,
     integration: enums.Integration,
-    order: order_schemas.OrderReadSystem | preorder_models.PreOrderReadSystem,
+    order: schemas.OrderReadSystem | models.PreOrderReadSystem,
     configs: list[str],
     is_preorder: bool,
     is_gold: bool,

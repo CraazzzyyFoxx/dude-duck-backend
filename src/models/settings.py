@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core import db
 
+__all__ = ("Settings", "SettingsRead", "SettingsUpdate", "AvailableCurrency")
+
 
 class AvailableCurrency(BaseModel):
     name: typing.Annotated[str, StringConstraints(to_upper=True)]
