@@ -32,6 +32,12 @@ async def get_by_name(session: AsyncSession, username: str) -> models.User | Non
     return user.first()
 
 
+async def get_all(session: AsyncSession) -> list[models.User]:
+    query = sa.select(models.User).order_by(models.User.id)
+    result = await session.scalars(query)
+    return result.all()  # type: ignore
+
+
 async def get_first_superuser(session: AsyncSession) -> models.User:
     return await get_by_email(session, config.app.super_user_email)  # type: ignore
 
@@ -79,7 +85,6 @@ async def update(
     update_data = user_in.model_dump(
         exclude=exclude_fields,
         exclude_unset=exclude,
-        exclude_defaults=True,
         mode="json",
     )
 

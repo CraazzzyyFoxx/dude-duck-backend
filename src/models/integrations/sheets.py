@@ -1,9 +1,7 @@
 import typing
 
-from pydantic import (BaseModel, ConfigDict, EmailStr, Field, HttpUrl,
-                      field_validator)
-from sqlalchemy import (BigInteger, Boolean, ForeignKey, String,
-                        UniqueConstraint)
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
+from sqlalchemy import BigInteger, Boolean, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

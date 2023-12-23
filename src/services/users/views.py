@@ -7,10 +7,11 @@ from src.services.accounting import flows as accounting_flows
 from src.services.auth import flows as auth_flows
 from src.services.auth import service as auth_service
 from src.services.integrations.notifications import flows as notifications_flows
+from src.services.integrations.notifications import service as notifications_service
 from src.services.integrations.sheets import flows as sheets_flows
+from src.services.integrations.telegram import service as telegram_service
 from src.services.order import flows as orders_flows
 from src.services.payroll import service as payroll_service
-from src.services.integrations.telegram import service as telegram_service
 
 router = APIRouter(prefix="/users", tags=[enums.RouteTag.USERS])
 
@@ -95,12 +96,14 @@ async def get_accounting_report(
 
 
 @router.post("/@me/request_verification", status_code=200)
-async def request_verification(user=Depends(auth_flows.current_active)):
+async def request_verification(user=Depends(auth_flows.current_active), session=Depends(db.get_async_session)):
     if user.is_verified:
         raise errors.ApiHTTPException(
             status_code=400, detail=[errors.ApiException(code="already_verified", msg="User already verified")]
         )
-    notifications_flows.send_request_verify(models.UserRead.model_validate(user))
+    notifications_flows.send_request_verify(
+        await notifications_flows.get_user_accounts(session, models.UserRead.model_validate(user))
+    )
     return ORJSONResponse({"detail": "ok"})
 
 
@@ -110,6 +113,7 @@ async def get_telegram(
     session=Depends(db.get_async_session),
 ):
     telegram_account = await telegram_service.get_tg_account(session, user.id)
+
     return models.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
 
 
@@ -120,6 +124,10 @@ async def connect_telegram(
     session=Depends(db.get_async_session),
 ):
     telegram_account = await telegram_service.connect_telegram(session, user, payload)
+    await notifications_service.create_notification_config(
+        session, user, models.UserNotificationCreate(type=enums.Integration.telegram)
+    )
+    await sheets_flows.create_or_update_user(session, user)
     return models.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
 
 
@@ -129,4 +137,6 @@ async def disconnect_telegram(
     session=Depends(db.get_async_session),
 ):
     telegram_account = await telegram_service.disconnect_telegram(session, user)
+    await notifications_service.delete_notification_config(session, user, enums.Integration.telegram)
+    await sheets_flows.create_or_update_user(session, user)
     return models.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)

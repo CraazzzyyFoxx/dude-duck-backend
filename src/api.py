@@ -5,13 +5,11 @@ from src.services.admin.views import router as admin_router
 from src.services.auth.views import router as auth_router
 from src.services.currency.views import router as currency_router
 from src.services.integrations.channel.views import router as channel_router
-from src.services.integrations.discord.oauth.views import \
-    router as discord_router
+from src.services.integrations.discord.oauth.views import router as discord_router
 from src.services.integrations.message.views import router as message_router
 from src.services.integrations.render.views import router as render_router
 from src.services.integrations.sheets.views import router as sheets_router
-from src.services.integrations.sheets.views import \
-    user_router as sheets_user_router
+from src.services.integrations.sheets.views import user_router as sheets_user_router
 from src.services.order.views import router as orders_router
 from src.services.preorder.views import router as preorders_router
 from src.services.response.views import router as response_router

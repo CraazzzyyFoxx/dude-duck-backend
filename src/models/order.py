@@ -2,8 +2,7 @@ import enum
 from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
-from sqlalchemy import (BigInteger, DateTime, Enum, Float, ForeignKey, String,
-                        UniqueConstraint)
+from sqlalchemy import BigInteger, DateTime, Enum, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
@@ -128,19 +127,19 @@ class OrderCreate(BaseModel):
 
 
 class OrderUpdate(BaseModel):
-    shop: str | None = ...
-    shop_order_id: str | None = ...
-    contact: str | None = ...
+    shop: str | None = Field(default=None)
+    shop_order_id: str | None = Field(default=None)
+    contact: str | None = Field(default=None)
 
-    status: OrderStatus | None = ...
-    status_paid: OrderPaidStatus | None = ...
+    status: OrderStatus | None = Field(default=None)
+    status_paid: OrderPaidStatus | None = Field(default=None)
 
-    info: OrderInfoMetaRead | None = ...
-    price: OrderPriceNone | None = ...
-    credentials: OrderCredentialsRead | None = ...
+    info: OrderInfoMetaRead | None = Field(default=None)
+    price: OrderPriceNone | None = Field(default=None)
+    credentials: OrderCredentialsRead | None = Field(default=None)
 
-    auth_date: datetime | None = ...
-    end_date: datetime | None = ...
+    auth_date: datetime | None = Field(default=None)
+    end_date: datetime | None = Field(default=None)
 
 
 class Order(db.TimeStampMixin):

@@ -7,9 +7,12 @@ from src import models, schemas
 from src.core import db, enums, errors, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.auth import flows as auth_flows
+from src.services.integrations.message import service as message_service
+from src.services.integrations.notifications import flows as notifications_flows
+from src.services.order import flows as order_flows
 from src.services.order import flows as orders_flows
 from src.services.order import service as orders_service
-from src.services.preorder import flows as preorders_flows
+from src.services.preorder import flows as preorder_flows
 from src.services.preorder import service as preorder_service
 
 from . import flows, service
@@ -19,7 +22,7 @@ user_router = APIRouter(prefix="/users", tags=[enums.RouteTag.USERS])
 
 
 @router.post(
-    "/orders",
+    "/order",
     response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
 )
 async def fetch_order_from_sheets(
@@ -31,11 +34,11 @@ async def fetch_order_from_sheets(
     if model.shop_order_id:
         return await orders_flows.create(session, models.OrderCreate.model_validate(model.model_dump()))
     else:
-        return await preorders_flows.create(session, models.PreOrderCreate.model_validate(model.model_dump()))
+        return await preorder_flows.create(session, models.PreOrderCreate.model_validate(model.model_dump()))
 
 
 @router.put(
-    "/orders",
+    "/order",
     response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
 )
 async def update_order_from_sheets(
@@ -48,7 +51,7 @@ async def update_order_from_sheets(
         order = await orders_flows.get_by_order_id(session, model.order_id)
         return await orders_service.update(session, order, models.OrderUpdate.model_validate(model.model_dump()))
     else:
-        preorder = await preorders_flows.get_by_order_id(session, model.order_id)
+        preorder = await preorder_flows.get_by_order_id(session, model.order_id)
         return await preorder_service.update(
             session,
             preorder,
@@ -57,7 +60,7 @@ async def update_order_from_sheets(
 
 
 @router.patch(
-    "/orders",
+    "/order",
     response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
 )
 async def patch_order_from_sheets(
@@ -75,16 +78,14 @@ async def patch_order_from_sheets(
             patch=True,
         )
     else:
-        preorder = await preorders_flows.get_by_order_id(session, model.order_id)
-        return await preorder_service.patch(
-            session,
-            preorder,
-            models.PreOrderUpdate.model_validate(model.model_dump()),
+        preorder = await preorder_flows.get_by_order_id(session, model.order_id)
+        return await preorder_service.update(
+            session, preorder, models.PreOrderUpdate.model_validate(model.model_dump()), patch=True
         )
 
 
 @router.delete(
-    "/orders",
+    "/order",
     response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
 )
 async def delete_order_from_sheets(
@@ -97,7 +98,7 @@ async def delete_order_from_sheets(
         order = await orders_flows.get_by_order_id(session, model.order_id)
         return await orders_service.delete(session, order.id)
     else:
-        preorder = await preorders_flows.get_by_order_id(session, model.order_id)
+        preorder = await preorder_flows.get_by_order_id(session, model.order_id)
         return await preorder_service.delete(session, preorder.id)
 
 
@@ -149,7 +150,7 @@ async def delete_google_sheets_parser(
     return await flows.delete(session, spreadsheet, sheet_id)
 
 
-@router.patch("/parser", response_model=models.OrderSheetParseRead)
+@router.put("/parser", response_model=models.OrderSheetParseRead)
 async def update_google_sheets_parser(
     spreadsheet: str,
     sheet_id: int,
@@ -158,6 +159,17 @@ async def update_google_sheets_parser(
     session=Depends(db.get_async_session),
 ):
     return await flows.update(session, spreadsheet, sheet_id, data)
+
+
+@router.patch("/parser", response_model=models.OrderSheetParseRead)
+async def patch_google_sheets_parser(
+    spreadsheet: str,
+    sheet_id: int,
+    data: models.OrderSheetParseUpdate,
+    _: models.User = Depends(auth_flows.current_active_superuser),
+    session=Depends(db.get_async_session),
+):
+    return await flows.update(session, spreadsheet, sheet_id, data, patch=True)
 
 
 @router.post("/report", response_model=models.AccountingReport)
@@ -203,3 +215,97 @@ async def read_google_token(
             detail=[errors.ApiException(msg="Google Service account doesn't setup.", code="not_exist")],
         )
     return models.AdminGoogleToken.model_validate(token.token)
+
+
+@router.post("/message/order", response_model=models.MessageCallback)
+async def create_order_message(data: schemas.CreateOrderSheetMessage, session=Depends(db.get_async_session)):
+    if data.is_preorder:
+        preorder = await preorder_flows.get_by_order_id(session, data.order_id)
+        preorder_read = await preorder_flows.format_preorder_system(session, preorder)
+        resp = await message_service.create_order_message(
+            session,
+            preorder_read,
+            models.CreateOrderMessage(
+                integration=data.integration,
+                order_id=preorder_read.id,
+                is_preorder=data.is_preorder,
+                categories=data.categories,
+                configs=data.configs,
+            ),
+        )
+        notifications_flows.send_sent_order_notify(preorder_read.order_id, resp)
+    else:
+        order = await order_flows.get_by_order_id(session, data.order_id)
+        order_read = await order_flows.format_order_system(session, order)
+        resp = await message_service.create_order_message(
+            session,
+            order_read,
+            models.CreateOrderMessage(
+                integration=data.integration,
+                order_id=order_read.id,
+                is_preorder=data.is_preorder,
+                categories=data.categories,
+                configs=data.configs,
+            ),
+        )
+        notifications_flows.send_sent_order_notify(order_read.order_id, resp)
+
+    return resp
+
+
+@router.delete("/message/order", response_model=models.MessageCallback)
+async def delete_order_message(data: schemas.DeleteOrderSheetMessage, session=Depends(db.get_async_session)):
+    if data.is_preorder:
+        preorder = await preorder_flows.get_by_order_id(session, data.order_id)
+        resp = await message_service.delete_order_message(
+            session,
+            models.DeleteOrderMessage(
+                integration=data.integration,
+                order_id=preorder.id,
+            ),
+        )
+        notifications_flows.send_deleted_order_notify(preorder.order_id, resp)
+    else:
+        order = await order_flows.get_by_order_id(session, data.order_id)
+        resp = await message_service.delete_order_message(
+            session,
+            models.DeleteOrderMessage(
+                integration=data.integration,
+                order_id=order.id,
+            ),
+        )
+        notifications_flows.send_deleted_order_notify(order.order_id, resp)
+    return resp
+
+
+@router.patch("/message/order", response_model=models.MessageCallback)
+async def update_order_message(data: schemas.UpdateOrderSheetMessage, session=Depends(db.get_async_session)):
+    if data.is_preorder:
+        preorder = await preorder_flows.get_by_order_id(session, data.order_id)
+        preorder_read = await preorder_flows.format_preorder_system(session, preorder)
+        resp = await message_service.update_order_message(
+            session,
+            preorder_read,
+            models.UpdateOrderMessage(
+                integration=data.integration,
+                order_id=preorder_read.id,
+                is_preorder=data.is_preorder,
+                configs=data.configs,
+            ),
+        )
+        notifications_flows.send_edited_order_notify(preorder.order_id, resp)
+    else:
+        order = await order_flows.get_by_order_id(session, data.order_id)
+        order_read = await order_flows.format_order_system(session, order)
+        resp = await message_service.update_order_message(
+            session,
+            order_read,
+            models.UpdateOrderMessage(
+                integration=data.integration,
+                order_id=order_read.id,
+                is_preorder=data.is_preorder,
+                configs=data.configs,
+            ),
+        )
+        notifications_flows.send_edited_order_notify(order.order_id, resp)
+    return resp

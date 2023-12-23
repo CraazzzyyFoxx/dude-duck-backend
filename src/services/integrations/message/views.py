@@ -1,10 +1,11 @@
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src import models
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
-from src.services.integrations.notifications import \
-    flows as notifications_flows
+from src.services.integrations.notifications import flows as notifications_flows
 from src.services.order import flows as order_flows
 from src.services.preorder import flows as preorder_flows
 
@@ -31,25 +32,25 @@ async def create_order_message(data: models.CreateOrderMessage, session=Depends(
         preorder = await preorder_flows.get(session, data.order_id)
         preorder_read = await preorder_flows.format_preorder_system(session, preorder)
         resp = await service.create_order_message(session, preorder_read, data)
+        notifications_flows.send_sent_order_notify(preorder.order_id, resp)
     else:
         order = await order_flows.get(session, data.order_id)
         order_read = await order_flows.format_order_system(session, order)
         resp = await service.create_order_message(session, order_read, data)
-
-    notifications_flows.send_sent_order_notify(session, resp)
+        notifications_flows.send_sent_order_notify(order.order_id, resp)
     return resp
 
 
 @router.delete("/order", response_model=models.MessageCallback)
 async def delete_order_message(data: models.DeleteOrderMessage, session=Depends(db.get_async_session)):
     if data.is_preorder:
-        await preorder_flows.get(session, data.order_id)
+        preorder = await preorder_flows.get(session, data.order_id)
         resp = await service.delete_order_message(session, data)
+        notifications_flows.send_deleted_order_notify(preorder.order_id, resp)
     else:
-        await order_flows.get(session, data.order_id)
+        order = await order_flows.get(session, data.order_id)
         resp = await service.delete_order_message(session, data)
-
-    notifications_flows.send_edited_order_notify(session, resp)
+        notifications_flows.send_deleted_order_notify(order.order_id, resp)
     return resp
 
 
@@ -59,11 +60,12 @@ async def update_order_message(data: models.UpdateOrderMessage, session=Depends(
         preorder = await preorder_flows.get(session, data.order_id)
         preorder_read = await preorder_flows.format_preorder_system(session, preorder)
         resp = await service.update_order_message(session, preorder_read, data)
+        notifications_flows.send_edited_order_notify(preorder.order_id, resp)
     else:
         order = await order_flows.get(session, data.order_id)
         order_read = await order_flows.format_order_system(session, order)
         resp = await service.update_order_message(session, order_read, data)
-    notifications_flows.send_deleted_order_notify(session, resp)
+        notifications_flows.send_edited_order_notify(order.order_id, resp)
     return resp
 
 
@@ -76,8 +78,17 @@ async def read_user_messages(
 
 
 @router.post("/user", response_model=models.MessageCallback)
-async def create_user_message(data: models.CreateUserMessage, session=Depends(db.get_async_session)):
-    return await service.create_user_message(session, data)
+async def create_user_message(data: models.CreateUserMessage, session: AsyncSession = Depends(db.get_async_session)):
+    if data.user_id == "@everyone":
+        query = sa.select(models.UserNotification).where(models.UserNotification.type == data.integration)
+
+        users = await session.scalars(query)
+        for user in users:
+            await service.create_user_message(
+                session, models.CreateUserMessage(user_id=user.user_id, integration=data.integration, text=data.text)
+            )
+    else:
+        return await service.create_user_message(session, data)
 
 
 @router.delete("/user", response_model=models.MessageCallback)

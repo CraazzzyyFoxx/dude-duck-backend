@@ -87,22 +87,25 @@ async def update(
     old = copy.deepcopy(order)
     update_data = order_in.model_dump(
         exclude={"price", "info", "credentials"},
-        exclude_defaults=True,
+        exclude_none=not patch,
         exclude_unset=patch,
     )
-    await session.execute(sa.update(models.Order).where(models.Order.id == order.id).values(update_data))
+    if update_data:
+        for field, value in update_data.items():
+            setattr(order, field, value)
+    session.add(order)
     if order_in.info is not None:
-        info_update = order_in.info.model_dump(exclude_defaults=True, exclude_unset=patch)
+        info_update = order_in.info.model_dump(exclude_unset=patch)
         if info_update:
             await session.execute(sa.update(models.OrderInfo).filter_by(order_id=order.id).values(info_update))
     if order_in.credentials is not None:
-        credentials_update = order_in.credentials.model_dump(exclude_defaults=True, exclude_unset=patch)
+        credentials_update = order_in.credentials.model_dump(exclude_unset=patch)
         if credentials_update:
             await session.execute(
                 sa.update(models.OrderCredentials).filter_by(order_id=order.id).values(credentials_update)
             )
     if order_in.price is not None:
-        update_data_price = order_in.price.model_dump(exclude_defaults=True, exclude_unset=patch)
+        update_data_price = order_in.price.model_dump(exclude_unset=patch)
         if update_data_price:
             await session.execute(sa.update(models.OrderPrice).filter_by(order_id=order.id).values(update_data_price))
             await accounting_service.update_booster_price(session, old, order)

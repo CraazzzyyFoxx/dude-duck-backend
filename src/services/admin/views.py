@@ -8,8 +8,7 @@ from src import models, schemas
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 from src.services.auth import service as auth_service
-from src.services.integrations.notifications import \
-    flows as notifications_flows
+from src.services.integrations.notifications import flows as notifications_flows
 from src.services.integrations.sheets import flows as sheets_flows
 from src.services.order import flows as orders_flows
 from src.services.payroll import service as payroll_service
@@ -71,7 +70,7 @@ async def verify_user(user_id: int, session=Depends(db.get_async_session)):
     user = await auth_flows.get(session, user_id)
     updated_user = await auth_service.verify(session, user)
     updated_user_read = models.UserRead.model_validate(updated_user)
-    notifications_flows.send_verified_notify(updated_user_read)
+    notifications_flows.send_verified_notify(await notifications_flows.get_user_accounts(session, updated_user_read))
     await sheets_flows.create_or_update_user(session, updated_user)
     return updated_user_read
 

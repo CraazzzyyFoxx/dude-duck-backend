@@ -62,34 +62,18 @@ async def get_order_id(session: AsyncSession, order_id: str) -> models.PreOrder 
     return result.first()
 
 
-async def patch(session: AsyncSession, order: models.PreOrder, order_in: models.PreOrderUpdate) -> models.PreOrder:
-    update_data = order_in.model_dump(exclude_defaults=True, exclude_unset=True, exclude={"price", "info"})
+async def update(
+    session: AsyncSession, order: models.PreOrder, order_in: models.PreOrderUpdate, patch: bool = False
+) -> models.PreOrder:
+    update_data = order_in.model_dump(exclude={"price", "info"}, exclude_unset=patch)
     await session.execute(sa.update(models.PreOrder).where(models.PreOrder.id == order.id).values(**update_data))
     if order_in.info is not None:
-        info_update = order_in.info.model_dump(exclude_defaults=True, exclude_unset=True)
+        info_update = order_in.info.model_dump(exclude_unset=patch)
         await session.execute(
             sa.update(models.PreOrderInfo).where(models.PreOrderInfo.order_id == order.id).values(**info_update)
         )
     if order_in.price is not None:
-        price_update = order_in.price.model_dump(exclude_defaults=True, exclude_unset=True)
-        await session.execute(
-            sa.update(models.PreOrderPrice).where(models.PreOrderPrice.order_id == order.id).values(**price_update)
-        )
-    await session.commit()
-    logger.info(f"PreOrder patched [id={order.id} order_id={order.order_id}]]")
-    return await get(session, order.id)  # type: ignore
-
-
-async def update(session: AsyncSession, order: models.PreOrder, order_in: models.PreOrderUpdate) -> models.PreOrder:
-    update_data = order_in.model_dump(exclude={"price", "info"}, exclude_defaults=True)
-    await session.execute(sa.update(models.PreOrder).where(models.PreOrder.id == order.id).values(**update_data))
-    if order_in.info is not None:
-        info_update = order_in.info.model_dump(exclude_defaults=True)
-        await session.execute(
-            sa.update(models.PreOrderInfo).where(models.PreOrderInfo.order_id == order.id).values(**info_update)
-        )
-    if order_in.price is not None:
-        price_update = order_in.price.model_dump(exclude_defaults=True)
+        price_update = order_in.price.model_dump(exclude_unset=patch)
         await session.execute(
             sa.update(models.PreOrderPrice).where(models.PreOrderPrice.order_id == order.id).values(**price_update)
         )

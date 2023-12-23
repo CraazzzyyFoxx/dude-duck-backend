@@ -8,8 +8,7 @@ from starlette import status
 from src import models
 from src.core import enums, errors
 from src.core.db import get_async_session
-from src.services.integrations.notifications import \
-    flows as notifications_flows
+from src.services.integrations.notifications import flows as notifications_flows
 from src.services.integrations.sheets import service as sheets_service
 from src.services.tasks import service as tasks_service
 
@@ -30,7 +29,9 @@ async def login(
             detail=[errors.ApiException(msg="LOGIN_BAD_CREDENTIALS", code="LOGIN_BAD_CREDENTIALS")],
         )
     token = await service.create_access_token(session, user)
-    notifications_flows.send_logged_notify(models.UserRead.model_validate(user))
+    notifications_flows.send_logged_notify(
+        await notifications_flows.get_user_accounts(session, models.UserRead.model_validate(user, from_attributes=True))
+    )
     return ORJSONResponse({"access_token": token[0], "refresh_token": token[1], "token_type": "bearer"})
 
 
@@ -39,10 +40,10 @@ async def register(user_create: models.UserCreate, session=Depends(get_async_ses
     created_user = await service.create(session, user_create, safe=True)
     logger.info(f"User {created_user.id} has registered.")
     user = models.UserRead.model_validate(created_user)
-    notifications_flows.send_registered_notify(user)
+    notifications_flows.send_registered_notify(await notifications_flows.get_user_accounts(session, user))
     parser = await sheets_service.get_default_booster_read(session)
     tasks_service.create_booster.delay(
-        parser.model_dump_json(),
+        parser.model_dump(mode="json"),
         user.model_dump(),
     )
     return user

@@ -12,8 +12,12 @@ from src.services.integrations.telegram import service as telegram_service
 from . import utils
 
 
-async def get_notification_config(session: AsyncSession, notification_id: int) -> models.UserNotification:
-    query = sa.select(models.UserNotification).where(models.UserNotification.id == notification_id)
+async def get_notification_config(
+    session: AsyncSession, user_id: int, notification_type: enums.Integration
+) -> models.UserNotification:
+    query = sa.select(models.UserNotification).where(
+        models.UserNotification.user_id == user_id, models.UserNotification.type == notification_type
+    )
     result = await session.execute(query)
     return result.scalars().first()
 
@@ -36,39 +40,17 @@ async def create_notification_config(
 
 
 async def delete_notification_config(
-    session: AsyncSession, user: models.User, notification_id: int
+    session: AsyncSession, user: models.User, notification_type: enums.Integration
 ) -> models.UserNotification:
-    notification = await get_notification_config(session, notification_id)
-    query = sa.delete(models.UserNotification).where(
-        sa.and_(
-            models.UserNotification.user_id == user.id,
-            models.UserNotification.id == notification_id,
+    notification = await get_notification_config(session, user.id, notification_type)
+    if notification is None:
+        raise errors.ApiHTTPException(
+            status_code=400,
+            detail=[errors.ApiException(code="not_found", msg="Notification not found")],
         )
-    )
-    await session.execute(query)
+    await session.delete(notification)
     await session.commit()
     return notification
-
-
-async def update_notification_config(
-    session: AsyncSession,
-    user: models.User,
-    notification_id: int,
-    notification: models.UserNotificationUpdate,
-) -> models.UserNotification:
-    query = (
-        sa.update(models.UserNotification)
-        .where(
-            sa.and_(
-                models.UserNotification.user_id == user.id,
-                models.UserNotification.id == notification_id,
-            )
-        )
-        .values(**notification.model_dump())
-    )
-    result = await session.execute(query)
-    await session.commit()
-    return result.scalars().first()
 
 
 async def get_notification_configs_by_user_id(session: AsyncSession, user_id: int) -> list[models.UserNotification]:

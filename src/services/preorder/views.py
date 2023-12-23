@@ -47,7 +47,7 @@ async def patch_preorder(
     session=Depends(db.get_async_session),
 ):
     order = await flows.get(session, order_id)
-    return await service.patch(session, order, data)
+    return await service.update(session, order, data, patch=True)
 
 
 @router.delete("", response_model=models.PreOrderReadSystem)

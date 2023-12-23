@@ -251,4 +251,3 @@ cython_debug/
 #.idea/
 
 /logs
-poetry.lock

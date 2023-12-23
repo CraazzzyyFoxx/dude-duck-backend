@@ -73,6 +73,7 @@ api_app = FastAPI(
     root_path="/api/v1",
     debug=config.app.debug,
     default_response_class=ORJSONResponse,
+    exception_handlers=exception_handlers,
 )
 api_app.add_middleware(ExceptionMiddleware)
 api_app.include_router(api.router)

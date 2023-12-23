@@ -5,9 +5,9 @@ from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
-from src.models import User, auth
+from src.models import User
 
-__all__ = ("PayrollType", "PayrollRead", "PayrollCreate", "PayrollUpdate", "Payroll", "UserReadWithPayrolls")
+__all__ = ("PayrollType", "PayrollRead", "PayrollCreate", "PayrollUpdate", "Payroll")
 
 
 class PayrollType(str, enum.Enum):
@@ -47,7 +47,3 @@ class PayrollUpdate(BaseModel):
     type: PayrollType
     bank: str
     value: str
-
-
-class UserReadWithPayrolls(auth.UserRead):
-    payrolls: list[PayrollRead]

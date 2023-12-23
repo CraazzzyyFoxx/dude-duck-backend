@@ -7,8 +7,7 @@ from loguru import logger
 from src import models
 from src.core import db, enums
 from src.services.integrations.message import service as message_service
-from src.services.integrations.notifications import \
-    flows as notifications_flows
+from src.services.integrations.notifications import flows as notifications_flows
 from src.services.integrations.sheets import service as sheets_service
 from src.services.order import service as order_service
 from src.services.settings import service as settings_service

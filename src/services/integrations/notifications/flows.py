@@ -1,6 +1,19 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src import models, schemas
+from src.services.integrations.telegram import service as telegram_service
 
 from . import service
+
+
+async def get_user_accounts(session: AsyncSession, user: models.UserRead) -> models.UserReadWithAccounts:
+    telegram_account = await telegram_service.get_tg_account(session, user.id)
+    return models.UserReadWithAccounts(
+        telegram=models.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
+        if telegram_account
+        else None,
+        **user.model_dump(),
+    )
 
 
 def send_response_approved(
@@ -28,25 +41,23 @@ def send_response_declined(user: models.UserRead, order_id: str) -> None:
     )
 
 
-def send_logged_notify(user: models.UserRead) -> None:
+def send_logged_notify(user: models.UserReadWithAccounts) -> None:
     service.send_system_notification(
-        models.NotificationSendSystem(
-            type=models.NotificationType.LOGGED_NOTIFY, data={"user": user}
-        ),
+        models.NotificationSendSystem(type=models.NotificationType.LOGGED_NOTIFY, data={"user": user}),
     )
 
 
-def send_registered_notify(user: models.UserRead) -> None:
+def send_registered_notify(user: models.UserReadWithAccounts) -> None:
     service.send_system_notification(
         models.NotificationSendSystem(type=models.NotificationType.REGISTERED_NOTIFY, data={"user": user}),
     )
 
 
-def send_verified_notify(user: models.UserRead) -> None:
+def send_verified_notify(user: models.UserReadWithAccounts) -> None:
     service.send_user_notification(models.NotificationSendUser(type=models.NotificationType.VERIFIED_NOTIFY, user=user))
 
 
-def send_request_verify(user: models.UserRead) -> None:
+def send_request_verify(user: models.UserReadWithAccounts) -> None:
     service.send_system_notification(
         models.NotificationSendSystem(type=models.NotificationType.REQUEST_VERIFY, data={"user": user})
     )
@@ -88,7 +99,7 @@ def send_deleted_order_notify(order_id: str, payload: models.MessageCallback) ->
     )
 
 
-def send_response_chose_notify(order_id: str, user: models.UserRead, responses: int) -> None:
+def send_response_chose_notify(order_id: str, user: models.UserReadWithAccounts, responses: int) -> None:
     service.send_system_notification(
         models.NotificationSendSystem(
             type=models.NotificationType.RESPONSE_CHOSE_NOTIFY,

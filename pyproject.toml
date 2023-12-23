@@ -131,6 +131,8 @@ warn_required_dynamic_aliases = true
 
 [tool.isort]
 skip_glob = "**/__init__.pyi"
+profile = "black"
+line_length = 120
 
 [build-system]
 requires = ["poetry-core"]

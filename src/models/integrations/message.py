@@ -1,4 +1,5 @@
 import enum
+import typing
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -130,7 +131,7 @@ class CreateResponseMessage(CreateMessage):
 
 
 class CreateUserMessage(CreateMessage):
-    user_id: int
+    user_id: int | typing.Literal["@everyone"]
     text: str
 
 

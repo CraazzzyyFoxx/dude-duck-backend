@@ -65,18 +65,18 @@ def update_order(parser: dict, row_id: int, data: dict):
 
 
 @celery.task(name="create_booster")
-def create_booster(parser: str, data: dict):
+def create_booster(parser: dict, data: dict):
     with db.session_maker() as session:
         creds = sheets_service.get_first_superuser_token_sync(session)
-    parser_model = models.OrderSheetParseRead.model_validate_json(parser)
+    parser_model = models.OrderSheetParseRead.model_validate(parser)
     sheets_service.create_row_data(models.UserReadSheets, creds.token, parser_model, data)
 
 
 @celery.task(name="create_or_update_booster")
-def create_or_update_booster(parser: str, value: str, data: dict):
+def create_or_update_booster(parser: dict, value: str, data: dict):
     with db.session_maker() as session:
         creds = sheets_service.get_first_superuser_token_sync(session)
-    parser_model = models.OrderSheetParseRead.model_validate_json(parser)
+    parser_model = models.OrderSheetParseRead.model_validate(parser)
     sheets_service.create_or_update_booster(creds.token, parser_model, value, data)
 
 

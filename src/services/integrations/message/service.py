@@ -41,7 +41,7 @@ async def get_message_by_order_id_user_id(
     query = (
         sa.select(models.ResponseMessage)
         .where(models.ResponseMessage.user_id == user_id, models.ResponseMessage.order_id == order_id)
-        .where(models.Message.integration == integration)
+        .where(models.ResponseMessage.integration == integration)
     )
     result = await session.execute(query)
     return result.scalars().first()
@@ -143,7 +143,6 @@ async def delete_order_message(
         response = await request(message.integration, "message/order", "DELETE", data=payload)
         response_data = models.MessageCallback.model_validate(response.json())
         for deleted_msg in response_data.deleted:
-            await channel_service.delete(session, message.channel_id)
             await session.delete(message)
             deleted.append(deleted_msg)
         for skipped_msg in response_data.skipped:
@@ -179,7 +178,7 @@ async def create_response_message(
         },
     )
     if message:
-        return models.MessageCallback(error=True, error_msg="Response message already exists")
+        await session.delete(message)
     payload = {
         "user": user,
         "text": text,

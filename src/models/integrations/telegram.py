@@ -1,13 +1,11 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import String, Text, BigInteger, ForeignKey
+from sqlalchemy import BigInteger, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 
 from src.core import db
 from src.models.auth import User
-
 
 __all__ = ("TelegramAccount", "TelegramAccountCreate", "TelegramAccountRead")
 

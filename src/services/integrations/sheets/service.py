@@ -8,8 +8,7 @@ import sqlalchemy as sa
 from fastapi.encoders import jsonable_encoder
 from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
 from loguru import logger
-from pydantic import (BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError,
-                      create_model, field_validator)
+from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic_extra_types.payment import PaymentCardNumber
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -160,8 +159,9 @@ async def update(
     session: AsyncSession,
     parser: models.OrderSheetParse,
     parser_in: models.OrderSheetParseUpdate,
+    patch: bool = False,
 ) -> models.OrderSheetParse:
-    update_data = parser_in.model_dump(exclude_none=True)
+    update_data = parser_in.model_dump(exclude_unset=patch)
     updated_parser = await session.execute(
         sa.update(models.OrderSheetParse)
         .where(models.OrderSheetParse.id == parser.id)

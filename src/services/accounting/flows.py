@@ -10,8 +10,7 @@ from src import models, schemas
 from src.core import errors, pagination
 from src.services.auth import flows as auth_flows
 from src.services.currency import flows as currency_flows
-from src.services.integrations.notifications import \
-    flows as notifications_flows
+from src.services.integrations.notifications import flows as notifications_flows
 from src.services.integrations.sheets import flows as sheets_flows
 from src.services.order import flows as order_flows
 from src.services.order import service as order_service

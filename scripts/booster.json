@@ -1,6 +1,7 @@
 {
-  "spreadsheet": "Copy B2B order",
-  "sheet_id": 1683225420,
+  "id": 4,
+  "spreadsheet": "Copy of B2B order",
+  "sheet_id": 2104667277,
   "start": 2,
   "items": [
     {
@@ -68,15 +69,15 @@
       "type": "str"
     },
     {
-      "name": "telegram",
+      "name": "trc20",
       "row": 8,
-      "null": false,
+      "null": true,
       "generated": false,
       "valid_values": [],
       "type": "str"
     },
     {
-      "name": "discord",
+      "name": "telegram",
       "row": 9,
       "null": true,
       "generated": false,
@@ -84,8 +85,32 @@
       "type": "str"
     },
     {
-      "name": "is_verified",
+      "name": "discord",
       "row": 10,
+      "null": true,
+      "generated": false,
+      "valid_values": [],
+      "type": "str"
+    },
+    {
+      "name": "max_orders",
+      "row": 11,
+      "null": false,
+      "generated": false,
+      "valid_values": [],
+      "type": "int"
+    },
+    {
+      "name": "is_verified_email",
+      "row": 12,
+      "null": false,
+      "generated": false,
+      "valid_values": [],
+      "type": "bool"
+    },
+    {
+      "name": "is_verified",
+      "row": 13,
       "null": false,
       "generated": false,
       "valid_values": [],

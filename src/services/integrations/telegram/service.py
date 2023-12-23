@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core import config, errors
 from src import models
+from src.core import config, errors
 
 telegram_client = httpx.AsyncClient(
     verify=False,
@@ -38,6 +38,7 @@ async def request(endpoint: str, method: str, data: dict | list | BaseModel | No
         if response.status_code not in (200, 201, 404):
             logger.error(response.json())
             raise error from None
+        logger.info(response.json())
         return response
     except (TimeoutException, HTTPError, ConnectError):
         raise error from None
@@ -50,7 +51,7 @@ async def get_tg_account(session: AsyncSession, user_id: int) -> models.Telegram
 
 
 async def connect_telegram(
-        session: AsyncSession, user: models.User, payload: models.TelegramAccountCreate
+    session: AsyncSession, user: models.User, payload: models.TelegramAccountCreate
 ) -> models.TelegramAccount:
     query = (
         sa.insert(models.TelegramAccount)

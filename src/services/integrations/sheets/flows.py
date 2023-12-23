@@ -4,6 +4,7 @@ from starlette import status
 
 from src import models, schemas
 from src.core import errors
+from src.services.integrations.notifications import flows as notifications_flows
 from src.services.payroll import service as payroll_service
 from src.services.tasks import service as tasks_service
 
@@ -71,13 +72,10 @@ async def create(session: AsyncSession, parser_in: models.OrderSheetParseCreate)
 
 
 async def update(
-    session: AsyncSession,
-    spreadsheet,
-    sheet_id,
-    parser_in: models.OrderSheetParseUpdate,
+    session: AsyncSession, spreadsheet, sheet_id, parser_in: models.OrderSheetParseUpdate, patch: bool = False
 ):
     data = await get_by_spreadsheet_sheet(session, spreadsheet, sheet_id)
-    return await service.update(session, data, parser_in)
+    return await service.update(session, data, parser_in, patch=patch)
 
 
 async def delete(session: AsyncSession, spreadsheet: str, sheet_id: int):
@@ -121,7 +119,7 @@ async def order_to_sheets(
         )
 
 
-def convert_user_to_sheets(user: models.UserReadWithPayrolls) -> models.CreateUpdateUserSheets:
+def convert_user_to_sheets(user: models.UserReadWithAccountsAndPayrolls) -> models.CreateUpdateUserSheets:
     model = models.CreateUpdateUserSheets(
         id=user.id,
         name=user.name,
@@ -143,17 +141,21 @@ def convert_user_to_sheets(user: models.UserReadWithPayrolls) -> models.CreateUp
         elif payroll.type == models.PayrollType.card:
             model.bankcard = payroll.value
             model.bank = payroll.bank
-
+    if user.telegram is not None:
+        model.telegram = user.telegram.username
     return model
 
 
 async def create_or_update_user(
     session: AsyncSession,
     user: models.User,
-) -> models.UserReadWithPayrolls:
+) -> models.UserReadWithAccountsAndPayrolls:
     payrolls = await payroll_service.get_by_user_id(session, user.id)
-    user_read = models.UserReadWithPayrolls(
-        **user.to_dict(),
+    user_with_accounts = await notifications_flows.get_user_accounts(
+        session, models.UserRead.model_validate(user, from_attributes=True)
+    )
+    user_read = models.UserReadWithAccountsAndPayrolls(
+        **user_with_accounts.model_dump(),
         payrolls=[models.PayrollRead.model_validate(p, from_attributes=True) for p in payrolls],
     )
     parser = await service.get_default_booster_read(session)

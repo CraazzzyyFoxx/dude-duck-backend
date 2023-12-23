@@ -7,8 +7,7 @@ from src import models
 from src.core import enums, errors, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.integrations.message import service as message_flows
-from src.services.integrations.notifications import \
-    flows as notifications_flows
+from src.services.integrations.notifications import flows as notifications_flows
 from src.services.integrations.render import flows as render_flows
 from src.services.order import flows as order_flows
 from src.services.preorder import flows as preorder_flows
@@ -142,7 +141,9 @@ async def approve_response(session: AsyncSession, user: models.User, order: mode
                 )
             else:
                 await _decline_response(session, resp, order)
-    notifications_flows.send_response_chose_notify(order.order_id, user_read, len(responds))
+    notifications_flows.send_response_chose_notify(
+        order.order_id, await notifications_flows.get_user_accounts(session, user_read), len(responds)
+    )
     await message_flows.delete_order_message(
         session,
         data=models.DeleteOrderMessage(

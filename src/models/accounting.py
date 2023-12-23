@@ -2,10 +2,8 @@ import typing
 from datetime import UTC, date, datetime
 from enum import Enum
 
-from pydantic import (BaseModel, ConfigDict, Field, HttpUrl, StringConstraints,
-                      model_validator)
-from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, UniqueConstraint,
-                        event)
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, StringConstraints, model_validator
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, UniqueConstraint, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
