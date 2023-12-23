@@ -19,6 +19,8 @@ services :
       - TELEGRAM_INTEGRATION=${TELEGRAM_INTEGRATION}
     ports:
       - "${PORT}:${PORT}"
+    networks:
+      - npm
   worker:
     restart: unless-stopped
     build:
@@ -43,3 +45,11 @@ services :
     depends_on:
       - redis
       - worker
+    networks:
+      - npm
+
+
+networks:
+  npm:
+    external: true
+    name: npm
