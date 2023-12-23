@@ -73,7 +73,6 @@ class OrderReadSystemMeta(BaseModel):
 
     shop: str | None
     shop_order_id: str | None
-    contact: str | None
 
     status: OrderStatus
     status_paid: OrderPaidStatus

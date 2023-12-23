@@ -113,7 +113,6 @@ class OrderCreate(BaseModel):
     date: datetime = Field(default_factory=lambda: datetime.now(UTC))
     shop: str | None = None
     shop_order_id: str | int | None = None
-    contact: str | None = None
 
     status: OrderStatus
     status_paid: OrderPaidStatus
@@ -129,7 +128,6 @@ class OrderCreate(BaseModel):
 class OrderUpdate(BaseModel):
     shop: str | None = Field(default=None)
     shop_order_id: str | None = Field(default=None)
-    contact: str | None = Field(default=None)
 
     status: OrderStatus | None = Field(default=None)
     status_paid: OrderPaidStatus | None = Field(default=None)
@@ -153,7 +151,6 @@ class Order(db.TimeStampMixin):
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     shop: Mapped[str | None] = mapped_column(String(), nullable=True)
     shop_order_id: Mapped[str | None] = mapped_column(String(), nullable=True)
-    contact: Mapped[str | None] = mapped_column(String(), nullable=True)
 
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus))
     status_paid: Mapped[OrderPaidStatus] = mapped_column(Enum(OrderPaidStatus))

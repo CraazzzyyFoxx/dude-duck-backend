@@ -268,7 +268,7 @@
     },
     {
       "name": "status_paid",
-      "row": 33,
+      "row": 34,
       "null": true,
       "generated": true,
       "valid_values": [
