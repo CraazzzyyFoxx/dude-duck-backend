@@ -6,6 +6,9 @@ services :
     restart: always
     ports:
       - "6379:6379"
+    networks:
+      - backend
+
   app:
     restart: unless-stopped
     build:
@@ -21,6 +24,7 @@ services :
       - "${PORT}:${PORT}"
     networks:
       - npm
+      - backend
   worker:
     restart: unless-stopped
     build:
@@ -37,6 +41,8 @@ services :
       - POSTGRES_HOST=192.168.1.88
     depends_on:
       - redis
+    networks:
+      - backend
   flower:
     build: .
     command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --basic_auth=${POSTGRES_USER}:${POSTGRES_PASSWORD}
@@ -47,9 +53,12 @@ services :
       - worker
     networks:
       - npm
+      - backend
 
 
 networks:
+  backend:
+    driver: bridge
   npm:
     external: true
     name: npm

@@ -10,9 +10,9 @@ async def get(session: AsyncSession) -> models.Settings:
     if CACHE.get(0):
         return CACHE[0]
     result = await session.scalars(sa.select(models.Settings))
-    settings = result.one()
+    settings = result.one_or_none()
     CACHE[0] = settings
-    return settings
+    return settings  # type: ignore
 
 
 async def create(session: AsyncSession) -> models.Settings:
