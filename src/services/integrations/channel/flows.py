@@ -22,7 +22,7 @@ async def create(session: AsyncSession, channel_in: models.ChannelCreate) -> mod
     channel = await service.get_by_game_category(session, channel_in.integration, channel_in.game, channel_in.category)
     if channel:
         raise errors.ApiHTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=400,
             detail=[
                 errors.ApiException(
                     msg="A channel with this game and category already exists.",

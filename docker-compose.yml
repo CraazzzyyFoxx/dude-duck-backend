@@ -43,6 +43,7 @@ services :
       - redis
     networks:
       - backend
+      - npm
   flower:
     build: .
     command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --basic_auth=${POSTGRES_USER}:${POSTGRES_PASSWORD}

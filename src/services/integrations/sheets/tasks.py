@@ -1,4 +1,3 @@
-import datetime
 import time
 import typing
 
@@ -82,15 +81,7 @@ async def sync_data_from(
             orders.pop(order_id)
             por = models.OrderReadSheets.model_validate(order_db, from_attributes=True).model_dump(exclude=exclude)
             diff = DeepDiff(por, order.model_dump(exclude=exclude), truncate_datetime="second")
-            values_changed = diff.get("values_changed", None)
-            if (
-                diff
-                and values_changed is not None
-                and (
-                    (values_changed["root"]["date"]["new_value"] - values_changed["root"]["date"]["old_value"])
-                    >= datetime.timedelta(hours=3)
-                )
-            ):
+            if diff:
                 if config.app.debug:
                     logger.info(diff)
                 try:
