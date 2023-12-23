@@ -55,7 +55,8 @@ exception_handlers = {404: not_found}
 
 
 app = FastAPI(
-    openapi_url="",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
     lifespan=lifespan,
     default_response_class=ORJSONResponse,
     debug=config.app.debug,
@@ -66,46 +67,4 @@ app.add_middleware(SentryAsgiMiddleware)
 app.add_middleware(TimeMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-api_app = FastAPI(
-    title="DudeDuck CRM Backend",
-    root_path="/api/v1",
-    debug=config.app.debug,
-    default_response_class=ORJSONResponse,
-    exception_handlers=exception_handlers,
-)
-api_app.add_middleware(ExceptionMiddleware)
-api_app.include_router(api.router)
-
-
-@api_app.exception_handler(RequestValidationError)
-async def validation_exception_handler(_: Request, exc: RequestValidationError):
-    return ORJSONResponse(
-        status_code=422,
-        content={
-            "detail": [
-                {
-                    "msg": jsonable_encoder(exc.errors(), exclude={"url", "type", "ctx"}),
-                    "code": "unprocessable_entity",
-                }
-            ]
-        },
-    )
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=config.app.cors_origins if config.app.cors_origins else ["*"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "PATCH", "PUT"],
-    allow_headers=["*"],
-)
-
-
-if config.app.use_correlation_id:
-    from src.middlewares.correlation import CorrelationMiddleware
-
-    app.add_middleware(CorrelationMiddleware)
-
-app.mount("/api/v1", app=api_app)
+app.include_router(api.router)
