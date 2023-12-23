@@ -7,17 +7,12 @@ from src.services.settings import service as settings_service
 
 from . import service
 
-_CACHE: dict[datetime, models.Currency] = {}
-
 
 async def get(session: AsyncSession, currency_date: datetime) -> models.Currency:
-    if _CACHE.get(currency_date) is not None:
-        return _CACHE[currency_date]
     currency = await service.get_by_date(session, currency_date)
     if currency is None:
         data = await service.get_currency_historical(session, currency_date)
         currency = await service.create(session, data)
-    _CACHE[currency_date] = currency
     return currency
 
 
