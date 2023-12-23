@@ -10,8 +10,6 @@ from src.core import errors
 from src.services.integrations.sheets import service as sheets_service
 from src.services.settings import service as settings_service
 
-_CACHE: dict[int, list[models.CurrencyToken]] = {}
-
 
 client = httpx.AsyncClient(
     base_url="https://api.apilayer.com",
@@ -20,11 +18,8 @@ client = httpx.AsyncClient(
 
 
 async def get_tokens(session: AsyncSession) -> list[models.CurrencyToken]:
-    if _CACHE.get(0):
-        return _CACHE[0]
     result = await session.scalars(sa.select(models.CurrencyToken))
     tokens = result.all()
-    _CACHE[0] = tokens  # type: ignore
     return tokens  # type: ignore
 
 
@@ -39,7 +34,6 @@ async def create_token(session: AsyncSession, token: str) -> models.CurrencyToke
     model = models.CurrencyToken(token=token, uses=1, last_use=datetime.now(UTC))
     session.add(model)
     await session.commit()
-    _CACHE.clear()
     return model
 
 
@@ -55,7 +49,6 @@ async def delete_token(session: AsyncSession, token: str) -> models.CurrencyToke
         )
     await session.delete(x)
     await session.commit()
-    _CACHE.clear()
     return x
 
 
