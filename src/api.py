@@ -17,7 +17,7 @@ from src.services.screenshot.views import router as screenshot_router
 from src.services.settings.views import router as settings_router
 from src.services.users.views import router as users_router
 
-router = APIRouter(prefix="/api/v1")
+router = APIRouter()
 router.include_router(settings_router)
 router.include_router(currency_router)
 router.include_router(auth_router)
