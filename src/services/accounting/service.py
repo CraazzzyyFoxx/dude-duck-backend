@@ -163,10 +163,11 @@ async def update(
                 .values(**update_model.model_dump(exclude_unset=True, exclude_defaults=patch))
                 .returning(models.UserOrder)
             )
-            await session.commit()
             if sync:
                 await sync_boosters_sheet(session, order)
-            return updated_user_order.one()
+            updated = updated_user_order.one()
+            await session.commit()
+            return updated
         except Exception as e:
             await session.rollback()
             raise e
