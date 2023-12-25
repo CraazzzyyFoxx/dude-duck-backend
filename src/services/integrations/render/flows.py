@@ -44,7 +44,7 @@ def get_order_configs(
     else:
         configs.append(order_model.info.game)
     if is_preorder:
-        configs.append(["pre-eta-price" if not is_gold else "pre-eta-price-gold"])
+        configs.append("pre-eta-price" if not is_gold else "pre-eta-price-gold")
     else:
         configs.append("eta-price" if not is_gold else "eta-price-gold")
     if with_response:
