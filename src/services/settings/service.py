@@ -34,5 +34,6 @@ async def update(session: AsyncSession, settings_in: models.SettingsUpdate) -> m
         .returning(models.Settings)
     )
     result = await session.scalars(query)
+    await session.commit()
     CACHE.clear()
     return result.one()
