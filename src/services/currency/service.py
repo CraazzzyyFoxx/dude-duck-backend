@@ -10,7 +10,6 @@ from src.core import errors
 from src.services.integrations.sheets import service as sheets_service
 from src.services.settings import service as settings_service
 
-
 client = httpx.AsyncClient(
     base_url="https://api.apilayer.com",
     limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),

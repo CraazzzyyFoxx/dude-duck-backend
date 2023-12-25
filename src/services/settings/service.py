@@ -27,7 +27,12 @@ async def create(session: AsyncSession) -> models.Settings:
 async def update(session: AsyncSession, settings_in: models.SettingsUpdate) -> models.Settings:
     settings = await get(session)
     update_data = settings_in.model_dump(exclude_defaults=True, mode="json")
-    query = sa.update(models.Settings).where(models.Settings.id == settings.id).values(**update_data)
+    query = (
+        sa.update(models.Settings)
+        .where(models.Settings.id == settings.id)
+        .values(**update_data)
+        .returning(models.Settings)
+    )
     result = await session.scalars(query)
     CACHE.clear()
     return result.one()
