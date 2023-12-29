@@ -41,7 +41,7 @@
       "null": true,
       "generated": false,
       "valid_values": [],
-      "type": "str | int"
+      "type": "str"
     },
     {
       "name": "login",

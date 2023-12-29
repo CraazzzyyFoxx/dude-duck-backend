@@ -66,6 +66,8 @@ async def update(
     session: AsyncSession, order: models.PreOrder, order_in: models.PreOrderUpdate, patch: bool = False
 ) -> models.PreOrder:
     update_data = order_in.model_dump(exclude={"price", "info"}, exclude_unset=patch)
+    if order_in.has_response is None:
+        update_data["has_response"] = order.has_response
     await session.execute(sa.update(models.PreOrder).where(models.PreOrder.id == order.id).values(**update_data))
     if order_in.info is not None:
         info_update = order_in.info.model_dump(exclude_unset=patch)

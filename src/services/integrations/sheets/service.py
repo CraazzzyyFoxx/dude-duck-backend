@@ -6,7 +6,7 @@ from typing import Callable
 import gspread
 import sqlalchemy as sa
 from fastapi.encoders import jsonable_encoder
-from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption
+from gspread.utils import DateTimeOption, ValueInputOption, ValueRenderOption, rowcol_to_a1
 from loguru import logger
 from pydantic import BaseModel, EmailStr, HttpUrl, SecretStr, ValidationError, create_model, field_validator
 from pydantic._internal._model_construction import ModelMetaclass
@@ -174,11 +174,6 @@ async def update(
     return updated_parser.scalar_one()
 
 
-def n2a(n: int) -> str:
-    d, m = divmod(n, 26)  # 26 is the number of ASCII letters
-    return "" if n < 0 else n2a(d - 1) + chr(m + 65)  # chr(65) = 'A'
-
-
 def get_range(parser: models.OrderSheetParseRead, *, row_id: int | None = None, end_id: int = 0) -> str:
     columns = 0
     start = 100000000000000
@@ -189,8 +184,8 @@ def get_range(parser: models.OrderSheetParseRead, *, row_id: int | None = None, 
         if row_p < start:
             start = row_p
     if row_id is not None:
-        return f"{n2a(start)}{row_id}:{n2a(columns)}{row_id}"
-    return f"{n2a(start)}{parser.start}:{n2a(columns)}{end_id}"
+        return f"{rowcol_to_a1(start, row_id)}:{rowcol_to_a1(columns, row_id)}"
+    return f"{rowcol_to_a1(start, parser.start)}:{rowcol_to_a1(columns, end_id)}"
 
 
 def generate_model(parser: models.OrderSheetParseRead):
@@ -352,7 +347,7 @@ def update_rows_data(
     for row_id, d in data:
         row = data_to_row(parser, d)
         for col, value in row.items():
-            data_range.append({"range": f"{n2a(col)}{row_id}", "values": [[value]]})
+            data_range.append({"range": rowcol_to_a1(col, row_id), "values": [[value]]})
 
     sheet.batch_update(
         data_range,
@@ -369,7 +364,7 @@ def clear_rows_data(creds: models.AdminGoogleTokenDB, parser: models.OrderSheetP
     data_range = []
     for item in parser.items:
         if not item.generated:
-            data_range.append({"range": f"{n2a(item.row)}{row_id}", "values": [[""]]})
+            data_range.append({"range": rowcol_to_a1(item.row, row_id), "values": [[""]]})
     sheet.batch_update(
         data_range,
         response_value_render_option=ValueRenderOption.formatted,
@@ -407,7 +402,7 @@ def update_row_data(
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
     row = data_to_row(parser, data)
     sheet.batch_update(
-        [{"range": f"{n2a(col)}{row_id}", "values": [[value]]} for col, value in row.items()],
+        [{"range": rowcol_to_a1(col, row_id), "values": [[value]]} for col, value in row.items()],
         value_input_option=ValueInputOption.user_entered,
         response_value_render_option=ValueRenderOption.formatted,
         response_date_time_render_option=DateTimeOption.formatted_string,

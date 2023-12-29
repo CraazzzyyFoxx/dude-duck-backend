@@ -7,10 +7,13 @@
 {% if order.info.character_class %}
 <b>Class:</b> {{ order.info.character_class }}<br>
 {% endif %}
-▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬<br>
 {% if order.credentials.nickname %}
 <b>Nickname:</b> {{ order.credentials.nickname }}<br>
 {% endif %}
+{% if order.credentials.battle_tag %}
+<b>Battle tag:</b> {{ order.credentials.battle_tag }}<br>
+{% endif %}
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬<br>
 {% if order.credentials.login %}
 <b>Login:</b> {{ order.credentials.login }}<br>
 {% endif %}

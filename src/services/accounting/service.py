@@ -100,6 +100,10 @@ async def create(
             session.add_all(boosters)
         await session.commit()
         logger.info(f"Created UserOrder [order_id={user_order.order_id} user_id={user_order.user_id}]")
+    except Exception as e:
+        await session.rollback()
+        raise e
+    else:
         if not boosters:
             order_update = models.OrderUpdate(auth_date=datetime.now(tz=UTC))
             new_order = await order_service.update(session, order, order_update)
@@ -112,9 +116,6 @@ async def create(
 
         if sync:
             await sync_boosters_sheet(session, order)
-    except Exception as e:
-        await session.rollback()
-        raise e
     return user_order
 
 

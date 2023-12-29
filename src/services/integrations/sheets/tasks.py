@@ -173,6 +173,7 @@ async def sync_orders() -> None:
                 orders: list[models.OrderReadSheets] = service.get_all_data(  # type: ignore
                     token.token, models.OrderReadSheets, cfg
                 )
+                logger.info(f"Collected data from sheet total orders {len(orders)}")
                 logger.info(
                     f"Getting data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] completed in {time.time() - t1}"
                 )
