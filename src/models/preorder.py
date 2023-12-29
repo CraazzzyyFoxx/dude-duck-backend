@@ -22,18 +22,22 @@ __all__ = (
 from src.models.integrations.sheets import SheetEntity
 
 
-class PreOrderPriceUser(BaseModel):
+class PreOrderPriceMeta(BaseModel):
     booster_dollar_fee: float | None = None
-    booster_rub: float | None = None
-    booster_gold: float | None = None
-
-
-class PreOrderPriceSystem(BaseModel):
-    dollar: float | None = None
     booster_dollar: float | None = None
-    booster_dollar_fee: float | None = None
-    booster_rub: float | None = None
     booster_gold: float | None = None
+
+
+class PreOrderPriceNone(PreOrderPriceMeta):
+    dollar: float | None = None
+
+
+class PreOrderPriceUser(PreOrderPriceMeta):
+    booster_rub: float | None = None
+
+
+class PreOrderPriceSystem(PreOrderPriceNone):
+    booster_rub: float | None = None
 
 
 class PreOrderCreate(SheetEntity):
@@ -46,7 +50,7 @@ class PreOrderCreate(SheetEntity):
 
 class PreOrderUpdate(BaseModel):
     info: models.OrderInfoRead | None = None
-    price: PreOrderPriceUser | None = None
+    price: PreOrderPriceNone | None = None
     has_response: bool | None = None
 
 
