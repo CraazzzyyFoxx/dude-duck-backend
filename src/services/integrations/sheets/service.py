@@ -184,8 +184,8 @@ def get_range(parser: models.OrderSheetParseRead, *, row_id: int | None = None, 
         if row_p < start:
             start = row_p
     if row_id is not None:
-        return f"{rowcol_to_a1(start, row_id)}:{rowcol_to_a1(columns, row_id)}"
-    return f"{rowcol_to_a1(start, parser.start)}:{rowcol_to_a1(columns, end_id)}"
+        return f"{rowcol_to_a1(row_id, start + 1)}:{rowcol_to_a1(row_id, columns + 1)}"
+    return f"{rowcol_to_a1(parser.start, start + 1)}:{rowcol_to_a1(end_id, columns + 1)}"
 
 
 def generate_model(parser: models.OrderSheetParseRead):
@@ -347,7 +347,7 @@ def update_rows_data(
     for row_id, d in data:
         row = data_to_row(parser, d)
         for col, value in row.items():
-            data_range.append({"range": rowcol_to_a1(col, row_id), "values": [[value]]})
+            data_range.append({"range": rowcol_to_a1(row_id, col + 1), "values": [[value]]})
 
     sheet.batch_update(
         data_range,
@@ -364,7 +364,7 @@ def clear_rows_data(creds: models.AdminGoogleTokenDB, parser: models.OrderSheetP
     data_range = []
     for item in parser.items:
         if not item.generated:
-            data_range.append({"range": rowcol_to_a1(item.row, row_id), "values": [[""]]})
+            data_range.append({"range": rowcol_to_a1(row_id, item.row + 1), "values": [[""]]})
     sheet.batch_update(
         data_range,
         response_value_render_option=ValueRenderOption.formatted,
@@ -402,7 +402,7 @@ def update_row_data(
     sheet = sh.get_worksheet_by_id(parser.sheet_id)
     row = data_to_row(parser, data)
     sheet.batch_update(
-        [{"range": rowcol_to_a1(col, row_id), "values": [[value]]} for col, value in row.items()],
+        [{"range": rowcol_to_a1(row_id, col + 1), "values": [[value]]} for col, value in row.items()],
         value_input_option=ValueInputOption.user_entered,
         response_value_render_option=ValueRenderOption.formatted,
         response_date_time_render_option=DateTimeOption.formatted_string,
