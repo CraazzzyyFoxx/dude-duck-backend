@@ -87,7 +87,7 @@ async def create(
         paid=True if order.status_paid == models.OrderPaidStatus.Paid else False,
     )
     if user_order.paid:
-        user_order.paid_at = datetime.now()
+        user_order.paid_at = datetime.now(UTC)
     if user_order.completed:
         user_order.completed_at = order.end_date if order.end_date else datetime.now(UTC)
     try:
@@ -105,7 +105,7 @@ async def create(
         raise e
     else:
         if not boosters:
-            order_update = models.OrderUpdate(auth_date=datetime.now(tz=UTC))
+            order_update = models.OrderUpdate(auth_date=datetime.now(UTC))
             new_order = await order_service.update(session, order, order_update)
             if sync:
                 await sheets_flows.order_to_sheets(
@@ -142,36 +142,43 @@ async def update(
             status_code=status.HTTP_409_CONFLICT,
             detail=[errors.ApiException(msg="The user is not a booster of this order", code="not_exist")],
         )
-    else:
-        try:
-            if update_model.dollars is not None:
-                total_price = sum([b.dollars for b in boosters])
-                if update_model.dollars + total_price > order.price.booster_dollar_fee:
-                    raise errors.ApiHTTPException(
-                        status_code=status.HTTP_409_CONFLICT,
-                        detail=[
-                            errors.ApiException(
-                                msg=f"The price for the booster is incorrect. "
-                                f"Order price {order.price.booster_dollar_fee}, total price for boosters {total_price}."
-                                f" \n{total_price} > {order.price.booster_dollar_fee}",
-                                code="invalid_price",
-                            )
-                        ],
-                    )
-            updated_user_order = await session.scalars(
-                sa.update(models.UserOrder)
-                .where(models.UserOrder.id == boosters_map[user.id].id)
-                .values(**update_model.model_dump(exclude_unset=True, exclude_defaults=patch))
-                .returning(models.UserOrder)
-            )
-            if sync:
-                await sync_boosters_sheet(session, order)
-            updated = updated_user_order.one()
-            await session.commit()
-            return updated
-        except Exception as e:
-            await session.rollback()
-            raise e
+
+    try:
+        if update_model.dollars is not None:
+            total_price = sum([b.dollars for b in boosters])
+            if update_model.dollars + total_price > order.price.booster_dollar_fee:
+                raise errors.ApiHTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=[
+                        errors.ApiException(
+                            msg=f"The price for the booster is incorrect. "
+                            f"Order price {order.price.booster_dollar_fee}, total price for boosters {total_price}."
+                            f" \n{total_price} > {order.price.booster_dollar_fee}",
+                            code="invalid_price",
+                        )
+                    ],
+                )
+        user_order = boosters_map[user.id]
+        if update_model.completed is not None:
+            if update_model.completed:
+                user_order.completed_at = datetime.now(UTC)
+            else:
+                user_order.completed_at = None
+        if update_model.paid is not None:
+            if update_model.paid:
+                user_order.paid_at = datetime.now(UTC)
+            else:
+                user_order.paid_at = None
+        for key, value in update_model.model_dump(exclude_unset=True, exclude_defaults=patch).items():
+            setattr(user_order, key, value)
+        session.add(user_order)
+        if sync:
+            await sync_boosters_sheet(session, order)
+        await session.commit()
+        return user_order
+    except Exception as e:
+        await session.rollback()
+        raise e
 
 
 async def delete(

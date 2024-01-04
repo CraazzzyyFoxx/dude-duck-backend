@@ -40,15 +40,22 @@ async def boosters_from_order_sync(
                         dollars = await currency_flows.currency_to_usd(session, price, order.date, currency="RUB")
                         await accounting_flows.add_booster_with_price(session, order_db, user, dollars, sync=False)
                     except errors.ApiHTTPException as e:
-                        logger.error(e.detail)
+                        logger.error(
+                            f"Error while add booster {user.name} [id: {user.id}] "
+                            f"to order {order.order_id} [id: {order.id}] Error: {e}"
+                        )
 
-    if order_db.status != order.status or order_db.status_paid != order.status_paid:
-        update_model = models.UserOrderUpdate(
-            completed=True if order.status == models.OrderStatus.Completed else False,
-            paid=True if order.status_paid == models.OrderPaidStatus.Paid else False,
-        )
-        for b in boosters:
-            await accounting_service.update(session, order_db, users_in_ids[b.user_id], update_model, sync=False)
+    for b in boosters:
+        if b.completed != (order.status == models.OrderStatus.Completed) or b.paid != (
+            order.status_paid == models.OrderPaidStatus.Paid
+        ):
+            update_model = models.UserOrderUpdate(
+                completed=True if order.status == models.OrderStatus.Completed else False,
+                paid=True if order.status_paid == models.OrderPaidStatus.Paid else False,
+            )
+            await accounting_service.update(
+                session, order_db, users_in_ids[b.user_id], update_model, sync=False, patch=True
+            )
 
 
 async def sync_data_from(
@@ -111,7 +118,7 @@ async def sync_data_from(
                     urls = screenshot_service.find_url_in_text(order.screenshot)
                     await screenshot_service.bulk_create(session, user, order_db, urls)
                 created += 1
-            except ValidationError as e:
+            except ValidationError:
                 logger.error(f"Skipping order {order.order_id} validation error")
 
     logger.info(
@@ -173,9 +180,9 @@ async def sync_orders() -> None:
                 orders: list[models.OrderReadSheets] = service.get_all_data(  # type: ignore
                     token.token, models.OrderReadSheets, cfg
                 )
-                logger.info(f"Collected data from sheet total orders {len(orders)}")
                 logger.info(
-                    f"Getting data from sheet[spreadsheet={cfg.spreadsheet} sheet_id={cfg.sheet_id}] completed in {time.time() - t1}"
+                    f"Getting data from sheet[spreadsheet={cfg.spreadsheet} "
+                    f"sheet_id={cfg.sheet_id}] completed in {time.time() - t1}, collected {len(orders)} orders"
                 )
                 orders_db = await order_service.get_all_by_sheet(session, cfg.spreadsheet, cfg.sheet_id)
                 order_dict = {order.order_id: order for order in orders}
