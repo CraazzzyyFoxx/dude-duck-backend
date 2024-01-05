@@ -108,9 +108,9 @@ async def sync_data_from(
                 await screenshot_service.bulk_create(
                     session, user, order_db, [url for url in urls if url not in urls_db]
                 )
-        else:
-            await order_service.delete(order_db.id)
-            deleted += 1
+        # else:
+        #     await order_service.delete(order_db.id)
+        #     deleted += 1
 
     for order in orders.values():
         if order.shop_order_id is not None:
