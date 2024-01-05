@@ -318,7 +318,7 @@ async def create_access_token(session: AsyncSession, user: models.User) -> tuple
         "sub": models.UserRead.model_validate(user, from_attributes=True).model_dump(mode="json"),
         "aud": config.app.access_token_audience,
     }
-    access_token = utils.generate_jwt(token_data, config.app.access_token_secret, 24 * 3600)
+    access_token = utils.generate_jwt(token_data, config.app.access_token_secret, 24 * 3600 * 7)
     refresh_token = utils.generate_jwt(token_data, config.app.refresh_token_secret, 24 * 3600 * 30)
     query = sa.insert(models.RefreshToken).values(token=refresh_token, user_id=user.id)
     await session.execute(query)
