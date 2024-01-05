@@ -32,18 +32,18 @@ async def boosters_from_order_sync(
     if order.booster is not None and str_boosters != order.booster:
         for booster, price in accounting_service.boosters_from_str(order.booster).items():
             user = users_in.get(booster)
-            if user and boosters_db_map.get(user.id) is None:
-                if price is None:
-                    await accounting_flows.add_booster(session, order_db, user, sync=False)
-                else:
-                    try:
+            try:
+                if user and boosters_db_map.get(user.id) is None:
+                    if price is None:
+                        await accounting_flows.add_booster(session, order_db, user, sync=False)
+                    else:
                         dollars = await currency_flows.currency_to_usd(session, price, order.date, currency="RUB")
                         await accounting_flows.add_booster_with_price(session, order_db, user, dollars, sync=False)
-                    except errors.ApiHTTPException as e:
-                        logger.error(
-                            f"Error while add booster {user.name} [id: {user.id}] "
-                            f"to order {order.order_id} [id: {order.id}] Error: {e}"
-                        )
+            except errors.ApiHTTPException as e:
+                logger.error(
+                    f"Error while add booster {user.name} [id: {user.id}] "
+                    f"to order {order.order_id} [id: {order.id}] Error: {e}"
+                )
 
     for b in boosters:
         if b.completed != (order.status == models.OrderStatus.Completed) or b.paid != (
