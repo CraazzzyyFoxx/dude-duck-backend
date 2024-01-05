@@ -93,6 +93,10 @@ async def sync_data_from(
                     logger.info(diff)
                 try:
                     update_data = models.OrderUpdate.model_validate(order.model_dump())
+                    if update_data.status == models.OrderStatus.Refund:
+                        await order_service.delete(session, order_db.id)
+                        deleted += 1
+                        continue
                     order_db = await order_service.update(session, order_db, update_data)
                     changed += 1
                 except ValidationError as e:
@@ -104,9 +108,9 @@ async def sync_data_from(
                 await screenshot_service.bulk_create(
                     session, user, order_db, [url for url in urls if url not in urls_db]
                 )
-        # else:
-        #     await order_service.delete(order_db.id)
-        #     deleted += 1
+        else:
+            await order_service.delete(order_db.id)
+            deleted += 1
 
     for order in orders.values():
         if order.shop_order_id is not None:

@@ -204,7 +204,7 @@
     },
     {
       "name": "booster_dollar_fee",
-      "row": 26,
+      "row": 25,
       "null": true,
       "generated": true,
       "valid_values": [],
