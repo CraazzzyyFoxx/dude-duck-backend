@@ -172,7 +172,7 @@ async def sync_orders() -> None:
             if not token:
                 logger.warning("Synchronization skipped, google token for first superuser missing")
                 return
-            users = await session.scalars(sa.select(models.User))
+            users = list(await session.scalars(sa.select(models.User)))
             users_names_dict = {user.name: user for user in users}
             users_ids_dict = {user.id: user for user in users}
             for cfg in await service.get_all_not_default_user_read(session):
@@ -194,7 +194,7 @@ async def sync_orders() -> None:
                     cfg,
                     order_dict.copy(),
                     users_names_dict,
-                    users_ids_dict,
+                    users_ids_dict.copy(),
                     order_db_dict.copy(),
                 )
                 if config.app.sync_boosters:
