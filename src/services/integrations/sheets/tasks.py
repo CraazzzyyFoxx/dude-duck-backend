@@ -42,7 +42,7 @@ async def boosters_from_order_sync(
             except errors.ApiHTTPException as e:
                 logger.error(
                     f"Error while add booster {user.name} [id: {user.id}] "
-                    f"to order {order_db.order_id} [id: {order_db.id}] Error: {e}"
+                    f"to order {order_db.order_id} [id: {order_db.id}] Error: {e.detail}"
                 )
 
     for b in boosters:
