@@ -11,9 +11,9 @@ from . import flows, service
 router = APIRouter(prefix="/screenshot", tags=[enums.RouteTag.SCREENSHOTS])
 
 
-@router.post("/", response_model=models.ScreenshotRead)
+@router.post("/", response_model=schemas.ScreenshotRead)
 async def create_screenshot(
-    screenshot_in: models.ScreenshotCreate,
+    screenshot_in: schemas.ScreenshotCreate,
     user: models.User = Depends(auth_flows.current_active_verified),
     session=Depends(db.get_async_session),
 ):
@@ -21,7 +21,7 @@ async def create_screenshot(
     return await flows.create(session, user, order, screenshot_in.url.unicode_string())
 
 
-@router.delete("/{screenshot_id}", response_model=models.ScreenshotRead)
+@router.delete("/{screenshot_id}", response_model=schemas.ScreenshotRead)
 async def delete_screenshot(
     screenshot_id: int,
     user: models.User = Depends(auth_flows.current_active_verified),
@@ -30,7 +30,7 @@ async def delete_screenshot(
     return await flows.delete(session, user, screenshot_id)
 
 
-@router.get("/filter", response_model=pagination.Paginated[models.ScreenshotRead])
+@router.get("/filter", response_model=pagination.Paginated[schemas.ScreenshotRead])
 async def filter_screenshot(
     params: schemas.ScreenshotParams = Depends(),
     user: models.User = Depends(auth_flows.current_active_verified),

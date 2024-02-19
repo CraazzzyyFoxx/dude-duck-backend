@@ -23,7 +23,7 @@ user_router = APIRouter(prefix="/users", tags=[enums.RouteTag.USERS])
 
 @router.post(
     "/order",
-    response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
+    response_model=schemas.OrderReadSystem | schemas.PreOrderReadSystem,
 )
 async def fetch_order_from_sheets(
     data: models.SheetEntity,
@@ -34,12 +34,12 @@ async def fetch_order_from_sheets(
     if model.shop_order_id:
         return await orders_flows.create(session, models.OrderCreate.model_validate(model.model_dump()))
     else:
-        return await preorder_flows.create(session, models.PreOrderCreate.model_validate(model.model_dump()))
+        return await preorder_flows.create(session, schemas.PreOrderCreate.model_validate(model.model_dump()))
 
 
 @router.put(
     "/order",
-    response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
+    response_model=schemas.OrderReadSystem | schemas.PreOrderReadSystem,
 )
 async def update_order_from_sheets(
     data: models.SheetEntity,
@@ -55,13 +55,13 @@ async def update_order_from_sheets(
         return await preorder_service.update(
             session,
             preorder,
-            models.PreOrderUpdate.model_validate(model.model_dump()),
+            schemas.PreOrderUpdate.model_validate(model.model_dump()),
         )
 
 
 @router.patch(
     "/order",
-    response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
+    response_model=schemas.OrderReadSystem | schemas.PreOrderReadSystem,
 )
 async def patch_order_from_sheets(
     data: models.SheetEntity,
@@ -80,13 +80,13 @@ async def patch_order_from_sheets(
     else:
         preorder = await preorder_flows.get_by_order_id(session, model.order_id)
         return await preorder_service.update(
-            session, preorder, models.PreOrderUpdate.model_validate(model.model_dump()), patch=True
+            session, preorder, schemas.PreOrderUpdate.model_validate(model.model_dump()), patch=True
         )
 
 
 @router.delete(
     "/order",
-    response_model=schemas.OrderReadSystem | models.PreOrderReadSystem,
+    response_model=schemas.OrderReadSystem | schemas.PreOrderReadSystem,
 )
 async def delete_order_from_sheets(
     data: models.SheetEntity,
@@ -172,9 +172,9 @@ async def patch_google_sheets_parser(
     return await flows.update(session, spreadsheet, sheet_id, data, patch=True)
 
 
-@router.post("/report", response_model=models.AccountingReport)
+@router.post("/report", response_model=schemas.AccountingReport)
 async def generate_payment_report(
-    data: models.AccountingReportSheetsForm,
+    data: schemas.AccountingReportSheetsForm,
     _: models.User = Depends(auth_flows.current_active_superuser_api),
     session=Depends(db.get_async_session),
 ):
@@ -217,7 +217,7 @@ async def read_google_token(
     return models.AdminGoogleToken.model_validate(token.token)
 
 
-@router.post("/message/order", response_model=models.MessageCallback)
+@router.post("/message/order", response_model=schemas.MessageCallback)
 async def create_order_message(data: schemas.CreateOrderSheetMessage, session=Depends(db.get_async_session)):
     if data.is_preorder:
         preorder = await preorder_flows.get_by_order_id(session, data.order_id)
@@ -225,7 +225,7 @@ async def create_order_message(data: schemas.CreateOrderSheetMessage, session=De
         resp = await message_service.create_order_message(
             session,
             preorder_read,
-            models.CreateOrderMessage(
+            schemas.CreateOrderMessage(
                 integration=data.integration,
                 order_id=preorder_read.id,
                 is_preorder=data.is_preorder,
@@ -240,7 +240,7 @@ async def create_order_message(data: schemas.CreateOrderSheetMessage, session=De
         resp = await message_service.create_order_message(
             session,
             order_read,
-            models.CreateOrderMessage(
+            schemas.CreateOrderMessage(
                 integration=data.integration,
                 order_id=order_read.id,
                 is_preorder=data.is_preorder,
@@ -253,13 +253,13 @@ async def create_order_message(data: schemas.CreateOrderSheetMessage, session=De
     return resp
 
 
-@router.delete("/message/order", response_model=models.MessageCallback)
+@router.delete("/message/order", response_model=schemas.MessageCallback)
 async def delete_order_message(data: schemas.DeleteOrderSheetMessage, session=Depends(db.get_async_session)):
     if data.is_preorder:
         preorder = await preorder_flows.get_by_order_id(session, data.order_id)
         resp = await message_service.delete_order_message(
             session,
-            models.DeleteOrderMessage(
+            schemas.DeleteOrderMessage(
                 integration=data.integration,
                 order_id=preorder.id,
             ),
@@ -269,7 +269,7 @@ async def delete_order_message(data: schemas.DeleteOrderSheetMessage, session=De
         order = await order_flows.get_by_order_id(session, data.order_id)
         resp = await message_service.delete_order_message(
             session,
-            models.DeleteOrderMessage(
+            schemas.DeleteOrderMessage(
                 integration=data.integration,
                 order_id=order.id,
             ),
@@ -278,7 +278,7 @@ async def delete_order_message(data: schemas.DeleteOrderSheetMessage, session=De
     return resp
 
 
-@router.patch("/message/order", response_model=models.MessageCallback)
+@router.patch("/message/order", response_model=schemas.MessageCallback)
 async def update_order_message(data: schemas.UpdateOrderSheetMessage, session=Depends(db.get_async_session)):
     if data.is_preorder:
         preorder = await preorder_flows.get_by_order_id(session, data.order_id)
@@ -286,7 +286,7 @@ async def update_order_message(data: schemas.UpdateOrderSheetMessage, session=De
         resp = await message_service.update_order_message(
             session,
             preorder_read,
-            models.UpdateOrderMessage(
+            schemas.UpdateOrderMessage(
                 integration=data.integration,
                 order_id=preorder_read.id,
                 is_preorder=data.is_preorder,
@@ -300,7 +300,7 @@ async def update_order_message(data: schemas.UpdateOrderSheetMessage, session=De
         resp = await message_service.update_order_message(
             session,
             order_read,
-            models.UpdateOrderMessage(
+            schemas.UpdateOrderMessage(
                 integration=data.integration,
                 order_id=order_read.id,
                 is_preorder=data.is_preorder,

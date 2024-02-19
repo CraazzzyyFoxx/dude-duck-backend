@@ -3,9 +3,11 @@ from fastapi.responses import ORJSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
 from pydantic import EmailStr
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from src import models
+from src import schemas
+from src.utils import get_integration
 from src.core import enums, errors
 from src.core.db import get_async_session
 from src.services.integrations.notifications import flows as notifications_flows
@@ -20,7 +22,8 @@ router = APIRouter(prefix="/auth", tags=[enums.RouteTag.AUTH])
 @router.post("/login")
 async def login(
     credentials: OAuth2PasswordRequestForm = Depends(),
-    session=Depends(get_async_session),
+    session: AsyncSession = Depends(get_async_session),
+    integration: enums.Integration = Depends(get_integration),
 ):
     user = await service.authenticate(session, credentials)
     if user is None:
@@ -29,23 +32,27 @@ async def login(
             detail=[errors.ApiException(msg="LOGIN_BAD_CREDENTIALS", code="LOGIN_BAD_CREDENTIALS")],
         )
     token = await service.create_access_token(session, user)
+    user_read = schemas.UserRead.model_validate(user, from_attributes=True)
     notifications_flows.send_logged_notify(
-        await notifications_flows.get_user_accounts(session, models.UserRead.model_validate(user, from_attributes=True))
+        await notifications_flows.get_user_accounts(session, user_read),
+        integration,
     )
+    logger.info(f"User [email={user.email} name={user.name}] has logged in.")
     return ORJSONResponse({"access_token": token[0], "refresh_token": token[1], "token_type": "bearer"})
 
 
-@router.post("/register", response_model=models.UserRead, status_code=status.HTTP_201_CREATED)
-async def register(user_create: models.UserCreate, session=Depends(get_async_session)):
+@router.post("/register", response_model=schemas.UserRead, status_code=status.HTTP_201_CREATED)
+async def register(
+    user_create: schemas.UserCreate,
+    session: AsyncSession = Depends(get_async_session),
+    integration: enums.Integration = Depends(get_integration),
+):
     created_user = await service.create(session, user_create, safe=True)
-    logger.info(f"User {created_user.id} has registered.")
-    user = models.UserRead.model_validate(created_user)
-    notifications_flows.send_registered_notify(await notifications_flows.get_user_accounts(session, user))
+    user = schemas.UserRead.model_validate(created_user)
+    logger.info(f"User [email={user.email} name={user.name}] has registered.")
+    notifications_flows.send_registered_notify(await notifications_flows.get_user_accounts(session, user), integration)
     parser = await sheets_service.get_default_booster_read(session)
-    tasks_service.create_booster.delay(
-        parser.model_dump(mode="json"),
-        user.model_dump(),
-    )
+    tasks_service.create_user.delay(parser.model_dump(mode="json"), user.model_dump())
     return user
 
 
@@ -59,10 +66,10 @@ async def request_verify_token(email: EmailStr = Body(..., embed=True), session=
     return None
 
 
-@router.post("/verify", response_model=models.UserRead)
+@router.post("/verify", response_model=schemas.UserRead)
 async def verify(token: str = Body(..., embed=True), session=Depends(get_async_session)):
     user = await service.verify_email(session, token)
-    return models.UserRead.model_validate(user, from_attributes=True)
+    return schemas.UserRead.model_validate(user, from_attributes=True)
 
 
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)

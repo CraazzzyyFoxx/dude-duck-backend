@@ -1,13 +1,12 @@
 import enum
 
-from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
 from src.models import User
 
-__all__ = ("PayrollType", "PayrollRead", "PayrollCreate", "PayrollUpdate", "Payroll")
+__all__ = ("Payroll", "PayrollType")
 
 
 class PayrollType(str, enum.Enum):
@@ -26,24 +25,3 @@ class Payroll(db.TimeStampMixin):
     bank: Mapped[str] = mapped_column(String())
     type: Mapped[PayrollType] = mapped_column(Enum(PayrollType))
     value: Mapped[str] = mapped_column(String(), nullable=False)
-
-
-class PayrollRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    user_id: int
-    bank: str
-    type: PayrollType | str
-    value: str
-
-
-class PayrollCreate(BaseModel):
-    type: PayrollType
-    bank: str
-    value: str
-
-
-class PayrollUpdate(BaseModel):
-    type: PayrollType
-    bank: str
-    value: str

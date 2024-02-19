@@ -1,19 +1,10 @@
-from datetime import datetime
-
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import BigInteger, ForeignKey, String, Text
+from sqlalchemy import BigInteger, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
 from src.models.auth import User
 
-__all__ = ("TelegramAccount", "TelegramAccountCreate", "TelegramAccountRead")
-
-
-class TelegramAccountCreate(BaseModel):
-    account_id: int
-    username: str
-    first_name: str
+__all__ = ("TelegramAccount", )
 
 
 class TelegramAccount(db.TimeStampMixin):
@@ -27,11 +18,3 @@ class TelegramAccount(db.TimeStampMixin):
     user: Mapped["User"] = relationship()
 
 
-class TelegramAccountRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    account_id: int
-    username: str
-    first_name: str
-    created_at: datetime

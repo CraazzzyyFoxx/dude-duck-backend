@@ -1,4 +1,4 @@
-from src.models.integrations.message import CreateOrderMessage, DeleteOrderMessage, UpdateOrderMessage
+from src.schemas.integrations.message import CreateOrderMessage, DeleteOrderMessage, UpdateOrderMessage
 
 __all__ = ("CreateOrderSheetMessage", "UpdateOrderSheetMessage", "DeleteOrderSheetMessage")
 

@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import func
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import config, errors
 from src.services.currency import flows as currency_flows
 from src.services.integrations.sheets import flows as sheets_flows
@@ -131,7 +131,7 @@ async def update(
     session: AsyncSession,
     order: models.Order,
     user: models.User,
-    update_model: models.UserOrderUpdate,
+    update_model: schemas.UserOrderUpdate,
     sync: bool = True,
     patch: bool = False,
 ) -> models.UserOrder:

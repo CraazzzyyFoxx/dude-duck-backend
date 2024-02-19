@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import errors, pagination
 
 from . import service
@@ -18,7 +18,7 @@ async def get(session: AsyncSession, channel_id: int) -> models.Channel:
     return channel
 
 
-async def create(session: AsyncSession, channel_in: models.ChannelCreate) -> models.Channel:
+async def create(session: AsyncSession, channel_in: schemas.ChannelCreate) -> models.Channel:
     channel = await service.get_by_game_category(session, channel_in.integration, channel_in.game, channel_in.category)
     if channel:
         raise errors.ApiHTTPException(
@@ -41,10 +41,10 @@ async def delete(session: AsyncSession, channel_id: int):
 
 
 async def get_by_filter(
-    session: AsyncSession, params: models.ChannelPaginationParams
-) -> pagination.Paginated[models.ChannelRead]:
+    session: AsyncSession, params: schemas.ChannelPaginationParams
+) -> pagination.Paginated[schemas.ChannelRead]:
     query = params.apply_filter(sa.select(models.Channel))
     result = await session.execute(params.apply_pagination(query))
-    results = [models.ChannelRead.model_validate(channel, from_attributes=True) for channel in result.scalars().all()]
+    results = [schemas.ChannelRead.model_validate(channel, from_attributes=True) for channel in result.scalars().all()]
     total = await session.scalars(params.apply_filter(sa.select(sa.func.count(models.Channel.id))))
     return pagination.Paginated(results=results, total=total.one(), page=params.page, per_page=params.per_page)

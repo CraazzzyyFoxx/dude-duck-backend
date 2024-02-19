@@ -64,24 +64,24 @@ def update_order(parser: dict, row_id: int, data: dict):
     sheets_service.update_row_data(creds.token, parser_model, row_id, data)
 
 
-@celery.task(name="create_booster")
-def create_booster(parser: dict, data: dict):
+@celery.task(name="create_user")
+def create_user(parser: dict, data: dict):
     with db.session_maker() as session:
         creds = sheets_service.get_first_superuser_token_sync(session)
     parser_model = models.OrderSheetParseRead.model_validate(parser)
     sheets_service.create_row_data(models.UserReadSheets, creds.token, parser_model, data)
 
 
-@celery.task(name="create_or_update_booster")
-def create_or_update_booster(parser: dict, value: str, data: dict):
+@celery.task(name="create_or_update_user")
+def create_or_update_user(parser: dict, value: str, data: dict):
     with db.session_maker() as session:
         creds = sheets_service.get_first_superuser_token_sync(session)
     parser_model = models.OrderSheetParseRead.model_validate(parser)
     sheets_service.create_or_update_booster(creds.token, parser_model, value, data)
 
 
-@celery.task(name="delete_booster")
-def delete_booster(parser: str, value: str):
+@celery.task(name="delete_user")
+def delete_user(parser: str, value: str):
     with db.session_maker() as session:
         creds = sheets_service.get_first_superuser_token_sync(session)
     parser_model = models.OrderSheetParseRead.model_validate_json(parser)

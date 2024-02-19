@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import config, errors
+from src.utils import jwt
 
 from . import utils
 
@@ -42,7 +43,7 @@ async def get_first_superuser(session: AsyncSession) -> models.User:
     return await get_by_email(session, config.app.super_user_email)  # type: ignore
 
 
-async def create(session: AsyncSession, user_create: models.UserCreate, safe: bool = False) -> models.User:
+async def create(session: AsyncSession, user_create: schemas.UserCreate, safe: bool = False) -> models.User:
     if await get_by_email(session, user_create.email) is not None or await get_by_name(session, user_create.name):
         raise errors.ApiHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -73,7 +74,7 @@ async def create(session: AsyncSession, user_create: models.UserCreate, safe: bo
 async def update(
     session: AsyncSession,
     user: models.User,
-    user_in: models.BaseUserUpdate,
+    user_in: schemas.BaseUserUpdate,
     safe: bool = False,
     exclude=True,
 ) -> models.User:
@@ -121,12 +122,12 @@ async def request_verify_email(session: AsyncSession, user: models.User) -> None
         "email": user.email,
         "aud": config.app.verification_token_audience,
     }
-    token = utils.generate_jwt(token_data, config.app.verify_email_secret)
+    token = jwt.generate_jwt(token_data, config.app.verify_email_secret)
 
 
 async def verify_email(session: AsyncSession, token: str) -> models.User:
     try:
-        data = utils.decode_jwt(
+        data = jwt.decode_jwt(
             token,
             config.app.verify_email_secret,
             [config.app.verification_token_audience],
@@ -157,7 +158,7 @@ async def verify_email(session: AsyncSession, token: str) -> models.User:
             ],
         )
 
-    verified_user = await update(session, user, models.UserUpdateAdmin(is_verified_email=True))
+    verified_user = await update(session, user, schemas.UserUpdateAdmin(is_verified_email=True))
     return verified_user
 
 
@@ -186,14 +187,14 @@ async def forgot_password(user: models.User) -> None:
         "password_fingerprint": utils.hash_password(user.hashed_password),
         "aud": config.app.reset_password_token_audience,
     }
-    token = utils.generate_jwt(token_data, config.app.reset_password_secret, 900)
+    token = jwt.generate_jwt(token_data, config.app.reset_password_secret, 900)
     logger.warning(token)
     return
 
 
 async def reset_password(session: AsyncSession, token: str, password: str) -> models.User:
     try:
-        data = utils.decode_jwt(
+        data = jwt.decode_jwt(
             token,
             config.app.reset_password_secret,
             [config.app.reset_password_token_audience],
@@ -230,7 +231,7 @@ async def reset_password(session: AsyncSession, token: str, password: str) -> mo
         e = errors.ApiException(msg="RESET_PASSWORD_BAD_TOKEN", code="RESET_PASSWORD_BAD_TOKEN")
         raise errors.ApiHTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=[e])
 
-    updated_user = await update(session, user, models.UserUpdate(password=password))
+    updated_user = await update(session, user, schemas.UserUpdate(password=password))
     return updated_user
 
 
@@ -238,7 +239,7 @@ async def verify_access_token(session: AsyncSession, token: str | None) -> model
     if token is None:
         return None
     try:
-        data = utils.decode_jwt(
+        data = jwt.decode_jwt(
             token,
             config.app.access_token_secret,
             [config.app.access_token_audience],
@@ -264,7 +265,7 @@ async def verify(session: AsyncSession, user: models.User) -> models.User:
             ],
         )
 
-    updated_user = await update(session, user, models.UserUpdateAdmin(is_verified=True))
+    updated_user = await update(session, user, schemas.UserUpdateAdmin(is_verified=True))
     return updated_user
 
 
@@ -275,7 +276,7 @@ async def refresh_tokens(session: AsyncSession, token: str | None) -> tuple[str,
             detail=[errors.ApiException(msg="INVALID_REFRESH_TOKEN", code="INVALID_REFRESH_TOKEN")],
         )
     try:
-        data = utils.decode_jwt(
+        data = jwt.decode_jwt(
             token,
             config.app.refresh_token_secret,
             [config.app.access_token_audience],
@@ -315,11 +316,11 @@ async def refresh_tokens(session: AsyncSession, token: str | None) -> tuple[str,
 
 async def create_access_token(session: AsyncSession, user: models.User) -> tuple[str, str]:
     token_data = {
-        "sub": models.UserRead.model_validate(user, from_attributes=True).model_dump(mode="json"),
+        "sub": schemas.UserRead.model_validate(user, from_attributes=True).model_dump(mode="json"),
         "aud": config.app.access_token_audience,
     }
-    access_token = utils.generate_jwt(token_data, config.app.access_token_secret, 24 * 3600 * 7)
-    refresh_token = utils.generate_jwt(token_data, config.app.refresh_token_secret, 24 * 3600 * 30)
+    access_token = jwt.generate_jwt(token_data, config.app.access_token_secret, 24 * 3600 * 7)
+    refresh_token = jwt.generate_jwt(token_data, config.app.refresh_token_secret, 24 * 3600 * 30)
     query = sa.insert(models.RefreshToken).values(token=refresh_token, user_id=user.id)
     await session.execute(query)
     await session.commit()

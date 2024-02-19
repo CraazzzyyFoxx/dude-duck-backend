@@ -6,7 +6,7 @@ from lxml.builder import E, ElementMaker
 from lxml.etree import tostring
 from starlette.responses import Response
 
-from src import models
+from src import models, schemas
 from src.core import db, enums, errors, pagination
 from src.services.auth import flows as auth_flows
 from src.services.currency import flows as currency_flows
@@ -26,7 +26,7 @@ async def get_currency(date: datetime.date, session=Depends(db.get_async_session
     return Response(content=tostring(the_doc, pretty_print=True), media_type="text/xml")
 
 
-@router.get("/filter", response_model=pagination.Paginated[models.CurrencyTokenRead])
+@router.get("/filter", response_model=pagination.Paginated[schemas.CurrencyTokenRead])
 async def get_currency_token_filter(
     params: pagination.PaginationParams = Depends(),
     _=Depends(auth_flows.current_active_superuser),
@@ -35,7 +35,7 @@ async def get_currency_token_filter(
     query = params.apply_pagination(sa.select(models.CurrencyToken))
     total = await session.execute(sa.select(sa.func.count(models.CurrencyToken.id)))
     result = await session.scalars(query)
-    results = [models.CurrencyTokenRead.model_validate(x, from_attributes=True) for x in result]
+    results = [schemas.CurrencyTokenRead.model_validate(x, from_attributes=True) for x in result]
     return pagination.Paginated(
         results=results,
         total=total.scalar(),
@@ -44,7 +44,7 @@ async def get_currency_token_filter(
     )
 
 
-@router.post("/api_layer_currency", response_model=models.CurrencyTokenRead)
+@router.post("/api_layer_currency", response_model=schemas.CurrencyTokenRead)
 async def add_api_layer_currency_token(
     token: str,
     _=Depends(auth_flows.current_active_superuser),
@@ -65,7 +65,7 @@ async def add_api_layer_currency_token(
     )
 
 
-@router.delete("/api_layer_currency", response_model=models.CurrencyTokenRead)
+@router.delete("/api_layer_currency", response_model=schemas.CurrencyTokenRead)
 async def remove_api_layer_currency_token(
     token: str,
     _=Depends(auth_flows.current_active_superuser),

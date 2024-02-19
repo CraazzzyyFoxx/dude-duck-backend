@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from src import models, schemas
+from src import schemas
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 from src.services.order import flows as order_flows
@@ -14,14 +14,14 @@ router = APIRouter(
 )
 
 
-@router.get("/orders", response_model=list[models.UserOrderRead])
+@router.get("/orders", response_model=list[schemas.UserOrderRead])
 async def get_order_boosters(order_id: int, session=Depends(db.get_async_session)):
     order = await order_flows.get(session, order_id)
     return await service.get_by_order_id(session, order.id)
 
 
-@router.post("/orders", response_model=models.UserOrderRead)
-async def create_order_booster(order_id: int, data: models.UserOrderCreate, session=Depends(db.get_async_session)):
+@router.post("/orders", response_model=schemas.UserOrderRead)
+async def create_order_booster(order_id: int, data: schemas.UserOrderCreate, session=Depends(db.get_async_session)):
     order = await order_flows.get(session, order_id)
     user = await auth_flows.get(session, data.user_id)
     if data.dollars:
@@ -29,11 +29,11 @@ async def create_order_booster(order_id: int, data: models.UserOrderCreate, sess
     return await flows.add_booster(session, order, user)
 
 
-@router.put("/orders", response_model=models.UserOrderRead)
+@router.put("/orders", response_model=schemas.UserOrderRead)
 async def update_order_booster(
     order_id: int,
     user_id: int,
-    data: models.UserOrderUpdate,
+    data: schemas.UserOrderUpdate,
     session=Depends(db.get_async_session),
 ):
     order = await order_flows.get(session, order_id)
@@ -41,16 +41,16 @@ async def update_order_booster(
     return await service.update(session, order, user, data)
 
 
-@router.delete("/orders", response_model=models.UserOrderRead)
+@router.delete("/orders", response_model=schemas.UserOrderRead)
 async def delete_order_booster(order_id: int, user_id: int, session=Depends(db.get_async_session)):
     order = await order_flows.get(session, order_id)
     user = await auth_flows.get(session, user_id)
     return await service.delete(session, order, user)
 
 
-@router.get("/report", response_model=models.AccountingReport)
+@router.get("/report", response_model=schemas.AccountingReport)
 async def generate_payment_report(
-    data: models.AccountingReportSheetsForm = Depends(),
+    data: schemas.AccountingReportSheetsForm = Depends(),
     session=Depends(db.get_async_session),
 ):
     return await flows.create_report(
@@ -67,7 +67,7 @@ async def generate_payment_report(
     )
 
 
-@router.get("/users/{user_id}/payment/report", response_model=models.UserAccountReport)
+@router.get("/users/{user_id}/payment/report", response_model=schemas.UserAccountReport)
 async def get_accounting_report(user_id: int, session=Depends(db.get_async_session)):
     user = await auth_flows.get(session, user_id)
     return await flows.create_user_report(session, user)

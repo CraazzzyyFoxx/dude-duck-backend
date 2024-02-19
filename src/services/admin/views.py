@@ -20,14 +20,14 @@ router = APIRouter(
 )
 
 
-@router.get("/users/filter", response_model=pagination.Paginated[models.UserRead])
+@router.get("/users/filter", response_model=pagination.Paginated[schemas.UserRead])
 async def get_users(
     params: pagination.PaginationParams = Depends(),
     session: AsyncSession = Depends(db.get_async_session),
 ):
     query = sa.select(models.User).offset(params.offset).limit(params.limit).order_by(params.order_by)
     result = await session.execute(query)
-    results = [models.UserRead.model_validate(user) for user in result.scalars()]
+    results = [schemas.UserRead.model_validate(user) for user in result.scalars()]
     total = await session.execute(sa.select(count(models.User.id)))
     return pagination.Paginated(
         page=params.page,
@@ -43,9 +43,9 @@ async def get_order(order_id: int, session=Depends(db.get_async_session)):
     return await orders_flows.format_order_system(session, order)
 
 
-@router.patch("/users/{user_id}", response_model=models.UserReadWithPayrolls)
+@router.patch("/users/{user_id}", response_model=schemas.UserReadWithPayrolls)
 async def update_user(
-    user_update: models.UserUpdateAdmin,
+    user_update: schemas.UserUpdateAdmin,
     user_id: int,
     session=Depends(db.get_async_session),
 ):
@@ -55,29 +55,29 @@ async def update_user(
     return user_with_payrolls
 
 
-@router.get("/users/{user_id}", response_model=models.UserReadWithPayrolls)
+@router.get("/users/{user_id}", response_model=schemas.UserReadWithPayrolls)
 async def get_user(user_id: int, session=Depends(db.get_async_session)):
     user = await auth_flows.get(session, user_id)
     payrolls = await payroll_service.get_by_user_id(session, user.id)
-    return models.UserReadWithPayrolls(
+    return schemas.UserReadWithPayrolls(
         **user.to_dict(),
-        payrolls=[models.PayrollRead.model_validate(p, from_attributes=True) for p in payrolls],
+        payrolls=[schemas.PayrollRead.model_validate(p, from_attributes=True) for p in payrolls],
     )
 
 
-@router.post("/users/{user_id}/verify", response_model=models.UserRead)
+@router.post("/users/{user_id}/verify", response_model=schemas.UserRead)
 async def verify_user(user_id: int, session=Depends(db.get_async_session)):
     user = await auth_flows.get(session, user_id)
     updated_user = await auth_service.verify(session, user)
-    updated_user_read = models.UserRead.model_validate(updated_user)
+    updated_user_read = schemas.UserRead.model_validate(updated_user)
     notifications_flows.send_verified_notify(await notifications_flows.get_user_accounts(session, updated_user_read))
     await sheets_flows.create_or_update_user(session, updated_user)
     return updated_user_read
 
 
-@router.post("/users/{user_id}/payroll", response_model=models.PayrollRead)
+@router.post("/users/{user_id}/payroll", response_model=schemas.PayrollRead)
 async def create_payroll(
-    payroll_create: models.PayrollCreate,
+    payroll_create: schemas.PayrollCreate,
     user_id: int,
     session=Depends(db.get_async_session),
 ):
@@ -87,9 +87,9 @@ async def create_payroll(
     return payroll
 
 
-@router.patch("/users/{user_id}/payroll", response_model=models.PayrollRead)
+@router.patch("/users/{user_id}/payroll", response_model=schemas.PayrollRead)
 async def update_payroll(
-    payroll_update: models.PayrollUpdate,
+    payroll_update: schemas.PayrollUpdate,
     user_id: int,
     payroll_id: int,
     session=Depends(db.get_async_session),
@@ -100,7 +100,7 @@ async def update_payroll(
     return payroll
 
 
-@router.delete("/users/{user_id}/payroll", response_model=models.PayrollRead)
+@router.delete("/users/{user_id}/payroll", response_model=schemas.PayrollRead)
 async def delete_payroll(user_id: int, payroll_id: int, session=Depends(db.get_async_session)):
     user = await auth_flows.get(session, user_id)
     payroll = await payroll_service.delete(session, payroll_id)
@@ -110,7 +110,7 @@ async def delete_payroll(user_id: int, payroll_id: int, session=Depends(db.get_a
 
 @router.get(
     "/users/{user_id}/payroll/filter",
-    response_model=pagination.Paginated[models.PayrollRead],
+    response_model=pagination.Paginated[schemas.PayrollRead],
 )
 async def get_payrolls(
     user_id: int,

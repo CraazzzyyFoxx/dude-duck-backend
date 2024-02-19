@@ -5,7 +5,7 @@ from pydantic_extra_types.phone_numbers import PhoneNumber
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import errors, pagination
 
 payroll_priority: dict[models.PayrollType, int] = {
@@ -69,7 +69,7 @@ async def get_by_user_id(session: AsyncSession, user_id: int) -> list[models.Pay
     return result.scalars().all()  # type: ignore
 
 
-async def create(session: AsyncSession, user: models.User, payroll_in: models.PayrollCreate) -> models.Payroll:
+async def create(session: AsyncSession, user: models.User, payroll_in: schemas.PayrollCreate) -> models.Payroll:
     query = sa.select(models.Payroll).filter_by(user_id=user.id, type=payroll_in.type)
     result = await session.execute(query)
     if result.scalars().first():
@@ -93,7 +93,7 @@ async def create(session: AsyncSession, user: models.User, payroll_in: models.Pa
     return payroll
 
 
-async def update(session: AsyncSession, payroll_id: int, model: models.PayrollUpdate) -> models.Payroll:
+async def update(session: AsyncSession, payroll_id: int, model: schemas.PayrollUpdate) -> models.Payroll:
     payroll = await get(session, payroll_id)
     if not payroll:
         raise errors.ApiHTTPException(
@@ -131,19 +131,19 @@ async def delete(session: AsyncSession, payroll_id: int) -> models.Payroll:
 
 async def get_by_filter(
     session: AsyncSession, user: models.User, params: pagination.PaginationParams
-) -> pagination.Paginated[models.PayrollRead]:
+) -> pagination.Paginated[schemas.PayrollRead]:
     query = sa.select(models.Payroll).where(models.Payroll.user_id == user.id)
     query = params.apply_pagination(query)
     result = await session.execute(query)
-    results = [models.PayrollRead.model_validate(payroll, from_attributes=True) for payroll in result.scalars().all()]
+    results = [schemas.PayrollRead.model_validate(payroll, from_attributes=True) for payroll in result.scalars().all()]
     total = await session.scalars(sa.select(sa.func.count(models.Payroll.id)).where(models.Payroll.user_id == user.id))
     return pagination.Paginated(results=results, total=total.one(), page=params.page, per_page=params.per_page)
 
 
-async def get_by_priority(session: AsyncSession, user: models.User) -> models.PayrollRead:
+async def get_by_priority(session: AsyncSession, user: models.User) -> schemas.PayrollRead:
     query = sa.select(models.Payroll).where(models.Payroll.user_id == user.id)
     result = await session.execute(query)
-    payroll = models.PayrollRead(user_id=user.id, type="Хуй знает", value="Хуй знает", bank="Хуй знает")
+    payroll = schemas.PayrollRead(user_id=user.id, type="Хуй знает", value="Хуй знает", bank="Хуй знает")
     priority = 100
     for row in result.scalars().all():
         if payroll.type == "Хуй знает" or payroll_priority[row.type] < priority:

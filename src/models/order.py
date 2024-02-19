@@ -1,7 +1,6 @@
 import enum
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from sqlalchemy import BigInteger, DateTime, Enum, Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,16 +11,6 @@ from .auth import User
 __all__ = (
     "OrderStatus",
     "OrderPaidStatus",
-    "OrderInfoMetaRead",
-    "OrderInfoRead",
-    "OrderPriceMeta",
-    "OrderPriceNone",
-    "OrderPriceRead",
-    "OrderCredentialsRead",
-    "ScreenshotRead",
-    "ScreenshotCreate",
-    "OrderCreate",
-    "OrderUpdate",
     "Order",
     "OrderInfo",
     "OrderPrice",
@@ -39,105 +28,6 @@ class OrderStatus(enum.Enum):
 class OrderPaidStatus(enum.Enum):
     Paid = "Paid"
     NotPaid = "Not Paid"
-
-
-class OrderInfoMetaRead(BaseModel):
-    boost_type: str | None = None
-    region_fraction: str | None = None
-    server: str | None = None
-    category: str | None = None
-    character_class: str | None = None
-    platform: str | None = None
-    game: str | None = None
-    purchase: str | None = None
-    comment: str | None = None
-    eta: str | None = None
-
-
-class OrderInfoRead(OrderInfoMetaRead):
-    boost_type: str
-    game: str
-    purchase: str
-
-
-class OrderPriceMeta(BaseModel):
-    booster_dollar_fee: float | None = None
-    booster_dollar: float | None = None
-    booster_gold: float | None = None
-
-
-class OrderPriceNone(OrderPriceMeta):
-    dollar: float | None = None
-
-
-class OrderPriceRead(OrderPriceNone):
-    dollar: float
-    booster_dollar: float
-    booster_dollar_fee: float
-
-
-class OrderCredentialsRead(BaseModel):
-    battle_tag: str | None = None
-    nickname: str | None = None
-    login: str | None = None
-    password: str | None = None
-    vpn: str | None = None
-    discord: str | None = None
-
-
-class ScreenshotRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    created_at: datetime
-
-    source: str
-    url: HttpUrl
-    order_id: int
-    user_id: int
-
-
-class ScreenshotCreate(BaseModel):
-    order_id: int
-    url: HttpUrl
-
-
-class OrderCreate(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    order_id: str
-    spreadsheet: str
-    sheet_id: int
-    row_id: int
-
-    date: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    shop: str | None = None
-    shop_order_id: str | int | None = None
-
-    status: OrderStatus
-    status_paid: OrderPaidStatus
-
-    info: OrderInfoRead
-    price: OrderPriceRead
-    credentials: OrderCredentialsRead
-
-    auth_date: datetime | None = None
-    end_date: datetime | None = None
-
-
-class OrderUpdate(BaseModel):
-    shop: str | None = Field(default=None)
-    shop_order_id: str | None = Field(default=None)
-
-    status: OrderStatus | None = Field(default=None)
-    status_paid: OrderPaidStatus | None = Field(default=None)
-
-    info: OrderInfoMetaRead | None = Field(default=None)
-    price: OrderPriceNone | None = Field(default=None)
-    credentials: OrderCredentialsRead | None = Field(default=None)
-
-    auth_date: datetime | None = Field(default=None)
-    end_date: datetime | None = Field(default=None)
 
 
 class Order(db.TimeStampMixin):

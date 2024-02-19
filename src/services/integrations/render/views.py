@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import ORJSONResponse
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import db, enums, errors, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.auth import flows as auth_flows
@@ -19,18 +19,18 @@ router = APIRouter(
 )
 
 
-@router.post("/filter", response_model=pagination.Paginated[models.RenderConfigRead])
+@router.post("/filter", response_model=pagination.Paginated[schemas.RenderConfigRead])
 async def reads_render_config(
-    params: models.RenderConfigParams = Depends(),
+    params: schemas.RenderConfigParams = Depends(),
     session=Depends(db.get_async_session),
     _=Depends(auth_flows.current_active_superuser),
 ):
     return await service.get_by_filter(session, params)
 
 
-@router.post("", response_model=models.RenderConfigRead)
+@router.post("", response_model=schemas.RenderConfigRead)
 async def create_render_config(
-    render_in: models.RenderConfigCreate,
+    render_in: schemas.RenderConfigCreate,
     session=Depends(db.get_async_session),
     _=Depends(auth_flows.current_active_superuser),
 ):
@@ -48,10 +48,10 @@ async def create_render_config(
     return await service.create(session, render_in)
 
 
-@router.patch("", response_model=models.RenderConfigRead)
+@router.patch("", response_model=schemas.RenderConfigRead)
 async def update_render_config(
     id: int,
-    render_in: models.RenderConfigUpdate,
+    render_in: schemas.RenderConfigUpdate,
     session=Depends(db.get_async_session),
     _=Depends(auth_flows.current_active_superuser),
 ):

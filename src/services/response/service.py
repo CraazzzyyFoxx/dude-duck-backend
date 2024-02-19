@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src import models
+from src import models, schemas
 
 
 async def get(session: AsyncSession, response_id: int, pre: bool = False) -> models.Response | None:
@@ -18,7 +18,7 @@ async def get(session: AsyncSession, response_id: int, pre: bool = False) -> mod
 
 
 async def create(
-    session: AsyncSession, response_in: models.ResponseCreate, is_preorder: bool = False
+    session: AsyncSession, response_in: schemas.ResponseCreate, is_preorder: bool = False
 ) -> models.Response:
     response = models.Response(**response_in.model_dump())
     response.is_preorder = is_preorder
@@ -72,7 +72,7 @@ async def get_by_order_id_user_id(
 async def update(
     session: AsyncSession,
     response: models.Response,
-    response_in: models.ResponseUpdate,
+    response_in: schemas.ResponseUpdate,
     patch: bool = False,
 ) -> models.Response:
     update_data = response_in.model_dump(exclude_none=True, exclude_defaults=patch)

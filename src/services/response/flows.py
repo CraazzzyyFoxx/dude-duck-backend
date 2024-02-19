@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import enums, errors, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.integrations.message import service as message_flows
@@ -89,13 +89,13 @@ async def create_order_response(
     session: AsyncSession,
     user: models.User,
     order: models.PreOrder | models.Order,
-    response: models.ResponseExtra,
+    response: schemas.ResponseExtra,
     is_preorder: bool = False,
 ) -> models.Response:
     await is_already_respond(session, order.id, user)
     resp = await service.create(
         session,
-        models.ResponseCreate(order_id=order.id, user_id=user.id, **response.model_dump()),
+        schemas.ResponseCreate(order_id=order.id, user_id=user.id, **response.model_dump()),
         is_preorder=is_preorder,
     )
     await message_flows.create_response_message(
@@ -103,8 +103,8 @@ async def create_order_response(
         await preorder_flows.format_preorder_system(session, order)
         if is_preorder
         else await order_flows.format_order_system(session, order),
-        models.UserRead.model_validate(user, from_attributes=True),
-        models.CreateResponseMessage(
+        schemas.UserRead.model_validate(user, from_attributes=True),
+        schemas.CreateResponseMessage(
             integration=enums.Integration.telegram, order_id=order.id, is_preorder=is_preorder, user_id=user.id
         ),
     )
@@ -116,7 +116,7 @@ async def approve_response(session: AsyncSession, user: models.User, order: mode
     await accounting_flows.can_user_pick_order(session, user, order)
     await accounting_flows.add_booster(session, order, user)
     responds = await service.get_by_order_id(session, order.id)
-    user_read = models.UserRead.model_validate(user, from_attributes=True)
+    user_read = schemas.UserRead.model_validate(user, from_attributes=True)
     order_read = await order_flows.format_order_system(session, order)
     for resp in responds:
         if not resp.closed:
@@ -124,7 +124,7 @@ async def approve_response(session: AsyncSession, user: models.User, order: mode
                 await service.update(
                     session,
                     resp,
-                    models.ResponseUpdate(approved=True, closed=True),
+                    schemas.ResponseUpdate(approved=True, closed=True),
                     patch=True,
                 )
                 text = await render_flows.get_order_text(
@@ -136,7 +136,7 @@ async def approve_response(session: AsyncSession, user: models.User, order: mode
                 notifications_flows.send_response_approved(
                     user_read,
                     order_read,
-                    models.ResponseRead.model_validate(resp),
+                    schemas.ResponseRead.model_validate(resp),
                     text,
                 )
             else:
@@ -146,14 +146,14 @@ async def approve_response(session: AsyncSession, user: models.User, order: mode
     )
     await message_flows.delete_order_message(
         session,
-        data=models.DeleteOrderMessage(
+        data=schemas.DeleteOrderMessage(
             order_id=order.id,
             integration=enums.Integration.telegram,
         ),
     )
     await message_flows.delete_order_message(
         session,
-        data=models.DeleteOrderMessage(
+        data=schemas.DeleteOrderMessage(
             order_id=order.id,
             integration=enums.Integration.discord,
         ),
@@ -162,11 +162,11 @@ async def approve_response(session: AsyncSession, user: models.User, order: mode
 
 
 async def _decline_response(session: AsyncSession, response: models.Response, order: models.Order) -> None:
-    user_declined = models.UserRead.model_validate(response.user, from_attributes=True)
+    user_declined = schemas.UserRead.model_validate(response.user, from_attributes=True)
     await service.update(
         session,
         response,
-        models.ResponseUpdate(approved=False, closed=True),
+        schemas.ResponseUpdate(approved=False, closed=True),
         patch=True,
     )
     notifications_flows.send_response_declined(user_declined, order.order_id)
@@ -185,7 +185,7 @@ async def approve_preorder_response(
 ) -> models.Response:
     await message_flows.delete_order_message(
         session,
-        data=models.DeleteOrderMessage(
+        data=schemas.DeleteOrderMessage(
             order_id=order.id,
             integration=enums.Integration.telegram,
             is_preorder=True,
@@ -193,7 +193,7 @@ async def approve_preorder_response(
     )
     await message_flows.delete_order_message(
         session,
-        data=models.DeleteOrderMessage(
+        data=schemas.DeleteOrderMessage(
             order_id=order.id,
             integration=enums.Integration.discord,
             is_preorder=True,
@@ -203,19 +203,19 @@ async def approve_preorder_response(
         await service.update(
             session,
             resp,
-            models.ResponseUpdate(approved=resp.user_id == user.id, closed=True),
+            schemas.ResponseUpdate(approved=resp.user_id == user.id, closed=True),
             patch=True,
         )
-    await preorder_service.update(session, order, models.PreOrderUpdate(has_response=True))
+    await preorder_service.update(session, order, schemas.PreOrderUpdate(has_response=True))
     return await get_by_order_id_user_id(session, order.id, user.id, pre=True)
 
 
 async def _decline_preorder_response(session: AsyncSession, response: models.Response, order: models.PreOrder) -> None:
-    user_declined = models.UserRead.model_validate(response.user, from_attributes=True)
+    user_declined = schemas.UserRead.model_validate(response.user, from_attributes=True)
     await service.update(
         session,
         response,
-        models.ResponseUpdate(approved=False, closed=True),
+        schemas.ResponseUpdate(approved=False, closed=True),
         patch=True,
     )
     notifications_flows.send_response_declined(user_declined, order.order_id)
@@ -232,15 +232,15 @@ async def decline_preorder_response(
 
 
 async def get_by_filter(
-    session: AsyncSession, params: models.ResponsePagination
-) -> pagination.Paginated[models.ResponseRead]:
+    session: AsyncSession, params: schemas.ResponsePagination
+) -> pagination.Paginated[schemas.ResponseRead]:
     if params.order_id:
         _ = await order_flows.get(session, params.order_id)
     query = sa.select(models.Response).options(joinedload(models.Response.user))
     query = params.apply_filter(query)
     query = params.apply_pagination(query)
     result = await session.execute(query)
-    results = [models.ResponseRead.model_validate(resp, from_attributes=True) for resp in result.scalars().all()]
+    results = [schemas.ResponseRead.model_validate(resp, from_attributes=True) for resp in result.scalars().all()]
     total = await session.execute(params.apply_filter(sa.select(sa.func.count(models.Response.id))))
     return pagination.Paginated(
         results=results,

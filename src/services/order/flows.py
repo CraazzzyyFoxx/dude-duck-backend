@@ -36,7 +36,7 @@ async def get_by_order_id(session: AsyncSession, order_id: str) -> models.Order:
     return order
 
 
-async def create(session: AsyncSession, order_in: models.OrderCreate) -> models.Order:
+async def create(session: AsyncSession, order_in: schemas.OrderCreate) -> models.Order:
     order = await service.get_order_id(session, order_in.order_id)
     if order:
         raise errors.ApiHTTPException(
@@ -66,7 +66,7 @@ async def format_order_system(session: AsyncSession, order: models.Order):
     data["info"] = order.info.to_dict()
     data["credentials"] = order.credentials.to_dict()
     data["screenshots"] = [
-        models.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
+        schemas.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
     ]
     return schemas.OrderReadSystem.model_validate(data)
 
@@ -86,7 +86,7 @@ async def format_order_perms(
     data["info"] = order.info.to_dict()
     data["credentials"] = order.credentials.to_dict()
     data["screenshots"] = [
-        models.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
+        schemas.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
     ]
     if has:
         return schemas.OrderReadHasPerms.model_validate(data)
@@ -112,7 +112,7 @@ async def format_order_active_prefetched(
     data["info"] = order.info.to_dict()
     data["credentials"] = order.credentials.to_dict()
     data["screenshots"] = [
-        models.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
+        schemas.ScreenshotRead.model_validate(screenshot, from_attributes=True) for screenshot in order.screenshots
     ]
     return schemas.OrderReadActive.model_validate(data)
 

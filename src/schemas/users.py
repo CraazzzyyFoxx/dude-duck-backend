@@ -1,8 +1,9 @@
-from src.models.auth import UserRead
-from src.models.integrations.telegram import TelegramAccountRead
-from src.models.payroll import PayrollRead
+from src.schemas.integrations.telegram import TelegramAccountRead
 
 __all__ = ("UserReadWithAccounts", "UserReadWithPayrolls", "UserReadWithAccountsAndPayrolls")
+
+from src.schemas.auth import UserRead
+from src.schemas.payroll import PayrollRead
 
 
 class UserReadWithAccounts(UserRead):

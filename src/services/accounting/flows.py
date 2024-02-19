@@ -104,7 +104,7 @@ async def add_booster_with_price(
     return await service.create(session, order, user, boosters, price, sync)
 
 
-async def create_user_report(session: AsyncSession, user: models.User) -> models.UserAccountReport:
+async def create_user_report(session: AsyncSession, user: models.User) -> schemas.UserAccountReport:
     result = await session.scalars(sa.select(models.UserOrder).filter_by(user_id=user.id, completed=True))
     total: float = 0.0
     total_rub: float = 0.0
@@ -128,7 +128,7 @@ async def create_user_report(session: AsyncSession, user: models.User) -> models
             not_paid_orders += 1
             not_paid_rub += rub
 
-    return models.UserAccountReport(
+    return schemas.UserAccountReport(
         total=total,
         total_rub=total_rub,
         paid=paid,
@@ -144,15 +144,15 @@ async def create_report(
     session: AsyncSession,
     start: datetime | date,
     end: datetime | date,
-    first_sort: models.FirstSort,
-    second_sort: models.SecondSort,
+    first_sort: schemas.FirstSort,
+    second_sort: schemas.SecondSort,
     spreadsheet: str | None = None,
     sheet_id: int | None = None,
     username: str | None = None,
     is_completed: bool = True,
     is_paid: bool = False,
-) -> models.AccountingReport:
-    items: list[models.AccountingReportItem] = []
+) -> schemas.AccountingReport:
+    items: list[schemas.AccountingReportItem] = []
     query = (
         sa.select(models.Order, models.UserOrder, models.User)
         .where(models.Order.date >= start, models.Order.date <= end)
@@ -182,7 +182,7 @@ async def create_report(
             payroll = await payroll_service.get_by_priority(session, user)
             total += order.price.dollar
             earned += payment.dollars
-            item = models.AccountingReportItem(
+            item = schemas.AccountingReportItem(
                 order_id=order.order_id,
                 date=payment.order_date,
                 username=user.name,
@@ -198,23 +198,23 @@ async def create_report(
             )
             items.append(item)
 
-    if first_sort == models.FirstSort.ORDER:
+    if first_sort == schemas.FirstSort.ORDER:
         items = sorted(items, key=lambda x: (x.order_id[0], int(x.order_id[1:])))
     else:
         items = sorted(items, key=lambda x: x.date)
-    if second_sort == models.SecondSort.ORDER:
-        if first_sort == models.FirstSort.ORDER:
+    if second_sort == schemas.SecondSort.ORDER:
+        if first_sort == schemas.FirstSort.ORDER:
             items = sorted(items, key=lambda x: (x.order_id[0], int(x.order_id[1:])))
     else:
         items = sorted(items, key=lambda x: x.username)
-    return models.AccountingReport(total=total, orders=count_orders, earned=total - earned, items=items)
+    return schemas.AccountingReport(total=total, orders=count_orders, earned=total - earned, items=items)
 
 
 async def close_order(
     session: AsyncSession,
     user: models.User,
     order: models.Order,
-    data: models.CloseOrderForm,
+    data: schemas.CloseOrderForm,
 ) -> models.Order:
     if await service.get_by_order_id_user_id(session, order.id, user.id) is None:
         raise errors.ApiHTTPException(
@@ -248,7 +248,7 @@ async def paid_order(session: AsyncSession, payment_id: int) -> models.UserOrder
         )
     order = await order_flows.get(session, data.order_id)
     user = await auth_flows.get(session, data.user_id)
-    await service.update(session, order, user, models.UserOrderUpdate(paid=True), patch=True)
+    await service.update(session, order, user, schemas.UserOrderUpdate(paid=True), patch=True)
     boosters = await service.get_by_order_id(session, order.id)
     if all(booster.paid for booster in boosters):
         update_model = models.OrderUpdate(status_paid=models.OrderPaidStatus.Paid)

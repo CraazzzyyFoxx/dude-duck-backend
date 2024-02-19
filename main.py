@@ -10,6 +10,7 @@ from sentry_sdk.integrations.asgi import SentryAsgiMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
+from starlette.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 
 from src import api
@@ -66,6 +67,11 @@ app.add_middleware(SentryAsgiMiddleware)
 app.add_middleware(TimeMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon():
+    return FileResponse("static/favicon.ico")
 
 
 api_app = FastAPI(

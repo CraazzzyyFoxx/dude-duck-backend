@@ -4,7 +4,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.functions import count
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import errors, pagination
 from src.services.currency import flows as currency_flows
 
@@ -31,7 +31,7 @@ async def get_by_order_id(session: AsyncSession, order_id: str) -> models.PreOrd
     return order
 
 
-async def create(session: AsyncSession, order_in: models.PreOrderCreate) -> models.PreOrder:
+async def create(session: AsyncSession, order_in: schemas.PreOrderCreate) -> models.PreOrder:
     order = await service.create(session, order_in)
     return order
 
@@ -44,7 +44,7 @@ async def format_preorder_system(session: AsyncSession, order: models.PreOrder):
     data = order.to_dict()
     booster_dollar = order.price.booster_dollar_fee
     if booster_dollar:
-        price = models.PreOrderPriceSystem(
+        price = schemas.PreOrderPriceSystem(
             dollar=order.price.dollar,
             booster_dollar_fee=booster_dollar,
             booster_dollar=order.price.booster_dollar,
@@ -52,32 +52,32 @@ async def format_preorder_system(session: AsyncSession, order: models.PreOrder):
             booster_gold=order.price.booster_gold,
         )
     else:
-        price = models.PreOrderPriceSystem(dollar=order.price.dollar)
+        price = schemas.PreOrderPriceSystem(dollar=order.price.dollar)
     data["price"] = price
     data["info"] = order.info.to_dict()
-    return models.PreOrderReadSystem.model_validate(data)
+    return schemas.PreOrderReadSystem.model_validate(data)
 
 
 async def format_preorder_perms(session: AsyncSession, order: models.PreOrder):
     data = order.to_dict()
     booster_price = order.price.booster_dollar_fee
     if booster_price:
-        price = models.PreOrderPriceUser(
+        price = schemas.PreOrderPriceUser(
             booster_dollar_fee=booster_price,
             booster_rub=await currency_flows.usd_to_currency(session, booster_price, order.date, "RUB"),
             booster_gold=order.price.booster_gold,
         )
     else:
-        price = models.PreOrderPriceUser()
+        price = schemas.PreOrderPriceUser()
     data["price"] = price
     data["info"] = order.info.to_dict()
-    return models.PreOrderReadUser.model_validate(data)
+    return schemas.PreOrderReadUser.model_validate(data)
 
 
 async def get_by_filter(
     session: AsyncSession,
     params: pagination.PaginationParams,
-) -> pagination.Paginated[models.PreOrderReadUser]:
+) -> pagination.Paginated[schemas.PreOrderReadUser]:
     query = (
         sa.select(models.PreOrder)
         .options(joinedload(models.PreOrder.info), joinedload(models.PreOrder.price))

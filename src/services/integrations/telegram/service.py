@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import models
+from src import models, schemas
 from src.core import config, errors
 
 telegram_client = httpx.AsyncClient(
@@ -51,7 +51,7 @@ async def get_tg_account(session: AsyncSession, user_id: int) -> models.Telegram
 
 
 async def connect_telegram(
-    session: AsyncSession, user: models.User, payload: models.TelegramAccountCreate
+    session: AsyncSession, user: models.User, payload: schemas.TelegramAccountCreate
 ) -> models.TelegramAccount:
     query = (
         sa.insert(models.TelegramAccount)

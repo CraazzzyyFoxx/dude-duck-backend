@@ -5,7 +5,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src import models
+from src import models, schemas
 
 
 async def get(session: AsyncSession, order_id: int) -> models.PreOrder | None:
@@ -63,7 +63,7 @@ async def get_order_id(session: AsyncSession, order_id: str) -> models.PreOrder 
 
 
 async def update(
-    session: AsyncSession, order: models.PreOrder, order_in: models.PreOrderUpdate, patch: bool = False
+    session: AsyncSession, order: models.PreOrder, order_in: schemas.PreOrderUpdate, patch: bool = False
 ) -> models.PreOrder:
     update_data = order_in.model_dump(exclude={"price", "info"}, exclude_unset=patch)
     if order_in.has_response is None:
@@ -84,7 +84,7 @@ async def update(
     return await get(session, order.id)  # type: ignore
 
 
-async def create(session: AsyncSession, pre_order_in: models.PreOrderCreate) -> models.PreOrder:
+async def create(session: AsyncSession, pre_order_in: schemas.PreOrderCreate) -> models.PreOrder:
     pre_order = models.PreOrder(**pre_order_in.model_dump(exclude={"price", "info"}))
     pre_order.info = models.PreOrderInfo(order_id=pre_order.id, **pre_order_in.info.model_dump())
     pre_order.price = models.PreOrderPrice(order_id=pre_order.id, **pre_order_in.price.model_dump())

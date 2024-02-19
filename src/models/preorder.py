@@ -1,57 +1,15 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src import models
 from src.core import db
 
 __all__ = (
-    "PreOrderPriceUser",
-    "PreOrderPriceSystem",
-    "PreOrderCreate",
-    "PreOrderUpdate",
     "PreOrder",
     "PreOrderInfo",
     "PreOrderPrice",
-    "PreOrderReadSystem",
-    "PreOrderReadUser",
 )
-
-from src.models.integrations.sheets import SheetEntity
-
-
-class PreOrderPriceMeta(BaseModel):
-    booster_dollar_fee: float | None = None
-    booster_dollar: float | None = None
-    booster_gold: float | None = None
-
-
-class PreOrderPriceNone(PreOrderPriceMeta):
-    dollar: float | None = None
-
-
-class PreOrderPriceUser(PreOrderPriceMeta):
-    booster_rub: float | None = None
-
-
-class PreOrderPriceSystem(PreOrderPriceNone):
-    booster_rub: float | None = None
-
-
-class PreOrderCreate(SheetEntity):
-    date: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    order_id: str
-
-    info: models.OrderInfoRead
-    price: models.OrderPriceNone
-
-
-class PreOrderUpdate(BaseModel):
-    info: models.OrderInfoRead | None = None
-    price: PreOrderPriceNone | None = None
-    has_response: bool | None = None
 
 
 class PreOrder(db.TimeStampMixin):
@@ -96,24 +54,3 @@ class PreOrderPrice(db.TimeStampMixin):
     booster_dollar: Mapped[float] = mapped_column(Float(), nullable=True)
     booster_dollar_fee: Mapped[float] = mapped_column(Float(), nullable=True)
     booster_gold: Mapped[float | None] = mapped_column(Float(), nullable=True)
-
-
-class PreOrderReadSystem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    order_id: str
-    date: datetime
-
-    info: models.OrderInfoRead
-    price: PreOrderPriceSystem
-
-
-class PreOrderReadUser(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    order_id: str
-
-    info: models.OrderInfoRead
-    price: PreOrderPriceUser

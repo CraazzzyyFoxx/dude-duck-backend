@@ -8,7 +8,7 @@ from src.core import enums, errors, pagination
 
 
 def get_all_config_names(
-    order: schemas.OrderReadSystem | models.PreOrderReadSystem,
+    order: schemas.OrderReadSystem | schemas.PreOrderReadSystem,
 ) -> list[str]:
     return [
         "order",
@@ -30,7 +30,7 @@ async def get(session: AsyncSession, config_id: int) -> models.RenderConfig | No
     return result.scalars().first()
 
 
-async def create(session: AsyncSession, config_in: models.RenderConfigCreate) -> models.RenderConfig:
+async def create(session: AsyncSession, config_in: schemas.RenderConfigCreate) -> models.RenderConfig:
     model = models.RenderConfig(**config_in.model_dump())
     session.add(model)
     await session.commit()
@@ -80,7 +80,7 @@ async def get_by_names(
 async def update(
     session: AsyncSession,
     parser: models.RenderConfig,
-    parser_in: models.RenderConfigUpdate,
+    parser_in: schemas.RenderConfigUpdate,
 ) -> models.RenderConfig:
     update_data = parser_in.model_dump(exclude_none=True)
     for key, value in update_data.items():
@@ -94,21 +94,21 @@ async def update(
 async def get_all_configs_for_order(
     session: AsyncSession,
     integration: enums.Integration,
-    order: schemas.OrderReadSystem | models.PreOrderReadSystem,
+    order: schemas.OrderReadSystem | schemas.PreOrderReadSystem,
 ) -> list[models.RenderConfig]:
     names = get_all_config_names(order)
     return await get_by_names(session, integration, names)
 
 
 async def get_by_filter(
-    session: AsyncSession, params: models.RenderConfigParams
-) -> pagination.Paginated[models.RenderConfigRead]:
+    session: AsyncSession, params: schemas.RenderConfigParams
+) -> pagination.Paginated[schemas.RenderConfigRead]:
     query = sa.select(models.RenderConfig)
     query = params.apply_pagination(query)
     query = params.apply_filter(query)
     result = await session.execute(query)
     total = await session.execute(params.apply_filter(sa.select(sa.func.count(models.RenderConfig.id))))
-    results = [models.RenderConfigRead.model_validate(item, from_attributes=True) for item in result.scalars().all()]
+    results = [schemas.RenderConfigRead.model_validate(item, from_attributes=True) for item in result.scalars().all()]
     return pagination.Paginated(
         results=results,
         total=total.scalar_one(),

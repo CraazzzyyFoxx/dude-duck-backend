@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import ORJSONResponse
 
-from src import models, schemas
+from src import schemas
 from src.core import db, enums, errors, pagination
 from src.services.accounting import flows as accounting_flows
 from src.services.auth import flows as auth_flows
@@ -16,16 +16,16 @@ from src.services.payroll import service as payroll_service
 router = APIRouter(prefix="/users", tags=[enums.RouteTag.USERS])
 
 
-@router.get("/@me", response_model=models.UserReadWithPayrolls)
+@router.get("/@me", response_model=schemas.UserReadWithPayrolls)
 async def get_me(user=Depends(auth_flows.current_active), session=Depends(db.get_async_session)):
     payrolls = await payroll_service.get_by_user_id(session, user.id)
-    return models.UserReadWithPayrolls(
+    return schemas.UserReadWithPayrolls(
         **user.to_dict(),
-        payrolls=[models.PayrollRead.model_validate(p, from_attributes=True) for p in payrolls],
+        payrolls=[schemas.PayrollRead.model_validate(p, from_attributes=True) for p in payrolls],
     )
 
 
-@router.get("/@me/payrolls", response_model=pagination.Paginated[models.PayrollRead])
+@router.get("/@me/payrolls", response_model=pagination.Paginated[schemas.PayrollRead])
 async def get_my_payrolls(
     params: pagination.PaginationParams = Depends(),
     user=Depends(auth_flows.current_active),
@@ -34,9 +34,9 @@ async def get_my_payrolls(
     return await payroll_service.get_by_filter(session, user, params)
 
 
-@router.patch("/@me", response_model=models.UserReadWithPayrolls)
+@router.patch("/@me", response_model=schemas.UserReadWithPayrolls)
 async def update_me(
-    user_update: models.UserUpdate,
+    user_update: schemas.UserUpdate,
     user=Depends(auth_flows.current_active),
     session=Depends(db.get_async_session),
 ):
@@ -77,7 +77,7 @@ async def get_active_order(
 @router.post("/@me/orders/close-request", response_model=schemas.OrderReadActive)
 async def send_close_request(
     order_id: int,
-    data: models.CloseOrderForm,
+    data: schemas.CloseOrderForm,
     user=Depends(auth_flows.current_active_verified),
     session=Depends(db.get_async_session),
 ):
@@ -87,7 +87,7 @@ async def send_close_request(
     return await orders_flows.format_order_active(session, new_order, price)
 
 
-@router.get("/@me/payment/report", response_model=models.UserAccountReport)
+@router.get("/@me/payment/report", response_model=schemas.UserAccountReport)
 async def get_accounting_report(
     user=Depends(auth_flows.current_active_verified),
     session=Depends(db.get_async_session),
@@ -102,41 +102,41 @@ async def request_verification(user=Depends(auth_flows.current_active), session=
             status_code=400, detail=[errors.ApiException(code="already_verified", msg="User already verified")]
         )
     notifications_flows.send_request_verify(
-        await notifications_flows.get_user_accounts(session, models.UserRead.model_validate(user))
+        await notifications_flows.get_user_accounts(session, schemas.UserRead.model_validate(user))
     )
     return ORJSONResponse({"detail": "ok"})
 
 
-@router.get("/@me/telegram", response_model=models.TelegramAccountRead)
+@router.get("/@me/telegram", response_model=schemas.TelegramAccountRead)
 async def get_telegram(
     user=Depends(auth_flows.current_active),
     session=Depends(db.get_async_session),
 ):
     telegram_account = await telegram_service.get_tg_account(session, user.id)
 
-    return models.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
+    return schemas.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
 
 
-@router.post("/@me/telegram", response_model=models.TelegramAccountRead)
+@router.post("/@me/telegram", response_model=schemas.TelegramAccountRead)
 async def connect_telegram(
-    payload: models.TelegramAccountCreate,
+    payload: schemas.TelegramAccountCreate,
     user=Depends(auth_flows.current_active),
     session=Depends(db.get_async_session),
 ):
     telegram_account = await telegram_service.connect_telegram(session, user, payload)
-    await notifications_service.create_notification_config(
-        session, user, models.UserNotificationCreate(type=enums.Integration.telegram)
+    await notifications_service.create_user_notification(
+        session, user, schemas.UserNotificationCreate(type=enums.Integration.telegram)
     )
     await sheets_flows.create_or_update_user(session, user)
-    return models.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
+    return schemas.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
 
 
-@router.delete("/@me/telegram", response_model=models.TelegramAccountRead)
+@router.delete("/@me/telegram", response_model=schemas.TelegramAccountRead)
 async def disconnect_telegram(
     user=Depends(auth_flows.current_active),
     session=Depends(db.get_async_session),
 ):
     telegram_account = await telegram_service.disconnect_telegram(session, user)
-    await notifications_service.delete_notification_config(session, user, enums.Integration.telegram)
+    await notifications_service.delete_user_notification(session, user, enums.Integration.telegram)
     await sheets_flows.create_or_update_user(session, user)
-    return models.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)
+    return schemas.TelegramAccountRead.model_validate(telegram_account, from_attributes=True)

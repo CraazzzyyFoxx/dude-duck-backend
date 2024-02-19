@@ -7,43 +7,41 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
-uvicorn = {extras = ["standart"], version = "^0.24.0"}
-pydantic = {extras = ["email"], version = "^2.5.0"}
+uvicorn = {extras = ["standart"], version = "^0.27.0"}
+pydantic = {extras = ["email"], version = "^2.6.0"}
 python-dotenv = "^1.0.0"
 dateparser = "^1.2.0"
 loguru = "^0.7.0"
-sentry-sdk = {extras = ["fastapi"], version = "^1.35.0"}
-fastapi = "^0.105"
+sentry-sdk = {extras = ["fastapi"], version = "^1.40.0"}
+fastapi = "^0.109"
 uvloop = {version = "^0.17.0", platform="linux"}
-pydantic-extra-types = "^2.0.0"
+pydantic-extra-types = "^2.5.0"
 phonenumbers = "^8.13.25"
 pydantic-settings = "^2.1.0"
-httpx = ">=0.18,<0.25"
+httpx = "^0.26.0"
 deepdiff = "^6.7.1"
 flower = "^2.0.1"
 redis = "^5.0.0"
 asgiref = "^3.7.2"
 gunicorn = "^21.2.0"
-gspread = "^5.12"
+gspread = "^6.0.0"
 setuptools = "^68.2.2"
 celery = "^5.3.5"
-lxml = "^4.9.3"
+lxml = "^5.1.0"
 pyjwt = "^2.8.0"
-python-multipart = "^0.0.6"
+python-multipart = "^0.0.7"
 passlib = "^1.7.4"
-bcrypt = "==4.0.1"
-cryptography = "^41.0.5"
+bcrypt = "==4.1.2"
+cryptography = "^42.0.0"
 ciso8601 = "^2.3.0"
 asyncpg = "^0.29.0"
-sqlalchemy = {extras = ["mypy"], version = "^2.0.23"}
-alembic = "^1.12.0"
-psycopg2-binary = "^2.9.9"
+sqlalchemy = {extras = ["mypy"], version = "^2.0.25"}
+alembic = "^1.13.0"
 jinja2 = "^3.1.2"
 hikari = "^2.0.0.dev122"
-cashews = "^6.3.0"
-httpx-oauth = "^0.13.0"
+cashews = "^7.0.0"
 h2 = "^4.1.0"
-orjson = "3.9.4"
+orjson = "3.9.13"
 
 
 [tool.poetry.group.dev.dependencies]

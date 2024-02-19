@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import errors
 from src.services.integrations.sheets import service as sheets_service
 from src.services.settings import service as settings_service
@@ -56,7 +56,7 @@ async def get(session: AsyncSession, currency_id: int) -> models.Currency | None
     return result.first()
 
 
-async def create(session: AsyncSession, currency_in: models.CurrencyApiLayer) -> models.Currency:
+async def create(session: AsyncSession, currency_in: schemas.CurrencyApiLayer) -> models.Currency:
     quotes = currency_in.normalize_quotes()
     settings = await settings_service.get(session)
     if (
@@ -129,7 +129,7 @@ async def used_token(session: AsyncSession, token: models.CurrencyToken) -> None
     await session.commit()
 
 
-async def get_currency_historical(session: AsyncSession, date: datetime) -> models.CurrencyApiLayer:
+async def get_currency_historical(session: AsyncSession, date: datetime) -> schemas.CurrencyApiLayer:
     date_str = normalize_date(date)
     token = await get_token(session)
     headers = {"apikey": token.token}
@@ -151,7 +151,7 @@ async def get_currency_historical(session: AsyncSession, date: datetime) -> mode
             )
         raise RuntimeError(json)
     await used_token(session, token)
-    return models.CurrencyApiLayer.model_validate(json)
+    return schemas.CurrencyApiLayer.model_validate(json)
 
 
 async def validate_token(token: str) -> bool:

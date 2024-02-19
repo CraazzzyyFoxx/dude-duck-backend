@@ -52,12 +52,14 @@ class AppConfig(BaseSettings):
     refresh_token_secret: str
     reset_password_secret: str
     verify_email_secret: str
+    discord_oauth_secret: str
     algorithm: str = "HS256"
     expires_s: int = 3600
     access_token_audience: str = "dude_duck:access"
     verification_token_audience: str = "dude_duck:verify"
     reset_password_token_audience: str = "dude_duck:reset"
     request_verify_email_token_audience: str = "dude_duck:request_verify_email"
+    discord_oauth_token_audience: str = "dude_duck:discord_oauth"
 
     # super user
     super_user_username: str

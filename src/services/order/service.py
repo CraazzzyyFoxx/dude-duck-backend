@@ -6,7 +6,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src import models
+from src import models, schemas
 from src.services.accounting import service as accounting_service
 
 
@@ -81,7 +81,7 @@ async def get_by_ids(session: AsyncSession, ids: list[int]) -> typing.Sequence[m
 async def update(
     session: AsyncSession,
     order: models.Order,
-    order_in: models.OrderUpdate,
+    order_in: schemas.OrderUpdate,
     patch: bool = False,
 ) -> models.Order:
     old = copy.deepcopy(order)
@@ -130,7 +130,7 @@ async def delete(session: AsyncSession, order_id: int) -> None:
         logger.info(f"Order deleted [id={order.id} order_id={order.order_id}]]")
 
 
-async def create(session: AsyncSession, order_in: models.OrderCreate) -> models.Order:
+async def create(session: AsyncSession, order_in: schemas.OrderCreate) -> models.Order:
     order = models.Order(**order_in.model_dump(exclude={"price", "info", "credentials"}))
     order.info = models.OrderInfo(order_id=order.id, **order_in.info.model_dump())
     order.price = models.OrderPrice(order_id=order.id, **order_in.price.model_dump())

@@ -31,7 +31,7 @@ async def get_order(
 @router.put("", response_model=schemas.OrderReadSystem)
 async def update_order(
     order_id: int,
-    data: models.OrderUpdate,
+    data: schemas.OrderUpdate,
     _=Depends(auth_flows.current_active_superuser),
     session=Depends(db.get_async_session),
 ):
@@ -43,7 +43,7 @@ async def update_order(
 @router.patch("", response_model=schemas.OrderReadSystem)
 async def patch_order(
     order_id: int,
-    data: models.OrderUpdate,
+    data: schemas.OrderUpdate,
     _=Depends(auth_flows.current_active_superuser),
     session=Depends(db.get_async_session),
 ):

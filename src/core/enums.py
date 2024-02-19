@@ -27,3 +27,4 @@ class RouteTag(StrEnum):
 class Integration(StrEnum):
     discord = "discord"
     telegram = "telegram"
+    web = "web"

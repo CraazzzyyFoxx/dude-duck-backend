@@ -27,7 +27,7 @@ async def get(session: AsyncSession, render_id: int) -> models.RenderConfig:
 
 
 def get_order_configs(
-    order_model: schemas.OrderReadSystem | models.PreOrderReadSystem,
+    order_model: schemas.OrderReadSystem | schemas.PreOrderReadSystem,
     *,
     is_preorder: bool = False,
     creds: bool = False,
@@ -55,7 +55,7 @@ def get_order_configs(
 async def check_availability_all_render_config_order(
     session: AsyncSession,
     integration: enums.Integration,
-    order_model: schemas.OrderReadSystem | models.PreOrderReadSystem,
+    order_model: schemas.OrderReadSystem | schemas.PreOrderReadSystem,
 ) -> tuple[bool, list[str]]:
     configs = await service.get_all_configs_for_order(session, integration, order_model)
     names = service.get_all_config_names(order_model)
@@ -85,7 +85,7 @@ def _render_template(template_name: str, data: dict | None = None) -> str:
     return _render(rendered)
 
 
-def loadTpl(path):
+def load_tpl(path):
     if path == "rendered_order.j2":
         return """{{rendered_order}}"""
 
@@ -93,7 +93,7 @@ def loadTpl(path):
 def _get_template_env() -> jinja2.Environment:
     if not getattr(_get_template_env, "template_env", None):
         env = jinja2.Environment(
-            loader=FunctionLoader(loadTpl),
+            loader=FunctionLoader(load_tpl),
             trim_blocks=True,
             lstrip_blocks=True,
         )
@@ -129,7 +129,7 @@ async def get_order_text(
 async def generate_body(
     session: AsyncSession,
     integration: enums.Integration,
-    order: schemas.OrderReadSystem | models.PreOrderReadSystem,
+    order: schemas.OrderReadSystem | schemas.PreOrderReadSystem,
     configs: list[str],
     is_preorder: bool,
     is_gold: bool,

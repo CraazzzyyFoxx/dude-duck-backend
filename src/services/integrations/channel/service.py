@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import models
+from src import models, schemas
 from src.core import enums
 
 
@@ -11,14 +11,14 @@ async def get(session: AsyncSession, channel_id: int) -> models.Channel | None:
     return result.scalars().first()
 
 
-async def create(session: AsyncSession, channel_in: models.ChannelCreate) -> models.Channel:
+async def create(session: AsyncSession, channel_in: schemas.ChannelCreate) -> models.Channel:
     channel_db = models.Channel(**channel_in.model_dump())
     session.add(channel_db)
     await session.commit()
     return channel_db
 
 
-async def update(session: AsyncSession, channel: models.Channel, channel_in: models.ChannelUpdate) -> models.Channel:
+async def update(session: AsyncSession, channel: models.Channel, channel_in: schemas.ChannelUpdate) -> models.Channel:
     channel_data = channel_in.model_dump(exclude_unset=True, exclude_none=True)
     for field, value in channel_data.items():
         setattr(channel, field, value)

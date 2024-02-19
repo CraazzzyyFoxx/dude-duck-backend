@@ -1,19 +1,14 @@
 import enum
 
-from pydantic import BaseModel
 from sqlalchemy import Enum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db, enums
-from src.models import User, UserRead
+from src.models import User
 
 __all__ = (
     "NotificationType",
     "UserNotification",
-    "UserNotificationRead",
-    "UserNotificationCreate",
-    "NotificationSendUser",
-    "NotificationSendSystem",
 )
 
 
@@ -39,23 +34,3 @@ class UserNotification(db.TimeStampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"))
     user: Mapped[User] = relationship()
     type: Mapped[enums.Integration] = mapped_column(Enum(enums.Integration))
-
-
-class UserNotificationRead(BaseModel):
-    user_id: int
-    type: enums.Integration
-
-
-class UserNotificationCreate(BaseModel):
-    type: enums.Integration
-
-
-class NotificationSendUser(BaseModel):
-    user: UserRead
-    type: NotificationType
-    data: dict | None = None
-
-
-class NotificationSendSystem(BaseModel):
-    type: NotificationType
-    data: dict

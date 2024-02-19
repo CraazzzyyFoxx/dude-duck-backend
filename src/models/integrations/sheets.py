@@ -7,7 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
 from src.models.auth import User
-from src.schemas import OrderReadSystemMeta
+from src.schemas.order import OrderReadSystemMeta
 
 __all__ = (
     "SheetEntity",

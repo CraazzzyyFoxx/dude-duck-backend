@@ -119,7 +119,7 @@ async def order_to_sheets(
         )
 
 
-def convert_user_to_sheets(user: models.UserReadWithAccountsAndPayrolls) -> models.CreateUpdateUserSheets:
+def convert_user_to_sheets(user: schemas.UserReadWithAccountsAndPayrolls) -> models.CreateUpdateUserSheets:
     model = models.CreateUpdateUserSheets(
         id=user.id,
         name=user.name,
@@ -149,18 +149,18 @@ def convert_user_to_sheets(user: models.UserReadWithAccountsAndPayrolls) -> mode
 async def create_or_update_user(
     session: AsyncSession,
     user: models.User,
-) -> models.UserReadWithAccountsAndPayrolls:
+) -> schemas.UserReadWithAccountsAndPayrolls:
     payrolls = await payroll_service.get_by_user_id(session, user.id)
     user_with_accounts = await notifications_flows.get_user_accounts(
-        session, models.UserRead.model_validate(user, from_attributes=True)
+        session, schemas.UserRead.model_validate(user, from_attributes=True)
     )
-    user_read = models.UserReadWithAccountsAndPayrolls(
+    user_read = schemas.UserReadWithAccountsAndPayrolls(
         **user_with_accounts.model_dump(),
-        payrolls=[models.PayrollRead.model_validate(p, from_attributes=True) for p in payrolls],
+        payrolls=[schemas.PayrollRead.model_validate(p, from_attributes=True) for p in payrolls],
     )
     parser = await service.get_default_booster_read(session)
     if parser is not None:
-        tasks_service.create_or_update_booster.delay(
+        tasks_service.create_or_update_user.delay(
             parser.model_dump(mode="json"),
             user.id,
             convert_user_to_sheets(user_read).model_dump(mode="json"),

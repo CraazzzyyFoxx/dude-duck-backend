@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from src import models
+from src import models, schemas
 from src.core import db, enums, pagination
 from src.services.auth import flows as auth_flows
 
@@ -9,7 +9,7 @@ from . import flows, service
 router = APIRouter(prefix="/preorders", tags=[enums.RouteTag.PREORDERS])
 
 
-@router.get(path="/filter", response_model=pagination.Paginated[models.PreOrderReadUser])
+@router.get(path="/filter", response_model=pagination.Paginated[schemas.PreOrderReadUser])
 async def get_preorders(
     paging: pagination.PaginationParams = Depends(),
     _=Depends(auth_flows.current_active_verified),
@@ -18,7 +18,7 @@ async def get_preorders(
     return flows.get_by_filter(session, paging)
 
 
-@router.get(path="", response_model=models.PreOrderReadUser)
+@router.get(path="", response_model=schemas.PreOrderReadUser)
 async def get_preorder(
     order_id: int,
     _=Depends(auth_flows.current_active_verified),
@@ -28,10 +28,10 @@ async def get_preorder(
     return order
 
 
-@router.put("", response_model=models.PreOrderReadSystem)
+@router.put("", response_model=schemas.PreOrderReadSystem)
 async def update_preorder(
     order_id: int,
-    data: models.PreOrderUpdate,
+    data: schemas.PreOrderUpdate,
     _=Depends(auth_flows.current_active_superuser),
     session=Depends(db.get_async_session),
 ):
@@ -39,10 +39,10 @@ async def update_preorder(
     return await service.update(session, order, data)
 
 
-@router.patch("", response_model=models.PreOrderReadSystem)
+@router.patch("", response_model=schemas.PreOrderReadSystem)
 async def patch_preorder(
     order_id: int,
-    data: models.PreOrderUpdate,
+    data: schemas.PreOrderUpdate,
     _=Depends(auth_flows.current_active_superuser),
     session=Depends(db.get_async_session),
 ):
@@ -50,7 +50,7 @@ async def patch_preorder(
     return await service.update(session, order, data, patch=True)
 
 
-@router.delete("", response_model=models.PreOrderReadSystem)
+@router.delete("", response_model=schemas.PreOrderReadSystem)
 async def delete_preorder(
     order_id: int,
     _=Depends(auth_flows.current_active_superuser),
