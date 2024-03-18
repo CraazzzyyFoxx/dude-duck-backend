@@ -137,7 +137,7 @@ async def get_currency_historical(session: AsyncSession, date: datetime) -> sche
     date_str = normalize_date(date)
     token = await get_token(session)
     try:
-        response = await client.request("GET", f"/historical?apikey={token}&currencies=&date={date_str}")
+        response = await client.request("GET", f"/historical?apikey={token.token}&currencies=&date={date_str}")
     except Exception as e:
         raise errors.ApiHTTPException(
             status_code=500,
