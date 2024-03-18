@@ -1,3 +1,4 @@
+from .general import *
 from .accounting import *
 from .auth import *
 from .currency import *

@@ -80,25 +80,3 @@ async def currency_to_usd(
         return round(price, settings.get_precision(currency))
     else:
         return price
-
-
-async def currency_to_used_prefetched(
-    session: AsyncSession,
-    wallet: float,
-    currency_db: models.Currency,
-    currency: str = "USD",
-    *,
-    with_round: bool = False,
-    with_fee: bool = False,
-) -> float:
-    settings = await settings_service.get(session)
-    if currency == "USD":
-        price = wallet
-    else:
-        price = wallet / currency_db.quotes[currency]
-    if with_fee:
-        price *= settings.accounting_fee
-    if with_round:
-        return round(price, settings.get_precision(currency))
-    else:
-        return price

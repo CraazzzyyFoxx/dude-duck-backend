@@ -7,10 +7,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core import db
 from src.models.auth import User
+from src.models.general import SheetEntity
 from src.schemas.order import OrderReadSystemMeta
 
 __all__ = (
-    "SheetEntity",
     "OrderSheetParseItem",
     "OrderSheetParseItemDB",
     "OrderSheetParse",
@@ -40,12 +40,6 @@ allowed_types = [
     "PaymentCardNumber",
     "bool",
 ]
-
-
-class SheetEntity(BaseModel):
-    spreadsheet: str
-    sheet_id: int
-    row_id: int
 
 
 class OrderSheetParseItem(BaseModel):

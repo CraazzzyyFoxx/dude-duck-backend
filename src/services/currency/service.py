@@ -11,7 +11,7 @@ from src.services.integrations.sheets import service as sheets_service
 from src.services.settings import service as settings_service
 
 client = httpx.AsyncClient(
-    base_url="https://api.apilayer.com",
+    base_url="https://api.currencyapi.com/v3",
     limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
 )
 
@@ -56,7 +56,7 @@ async def get(session: AsyncSession, currency_id: int) -> models.Currency | None
     return result.first()
 
 
-async def create(session: AsyncSession, currency_in: schemas.CurrencyApiLayer) -> models.Currency:
+async def create(session: AsyncSession, currency_in: schemas.CurrencyAPI) -> models.Currency:
     quotes = currency_in.normalize_quotes()
     settings = await settings_service.get(session)
     if (
@@ -129,12 +129,11 @@ async def used_token(session: AsyncSession, token: models.CurrencyToken) -> None
     await session.commit()
 
 
-async def get_currency_historical(session: AsyncSession, date: datetime) -> schemas.CurrencyApiLayer:
+async def get_currency_historical(session: AsyncSession, date: datetime) -> schemas.CurrencyAPI:
     date_str = normalize_date(date)
     token = await get_token(session)
-    headers = {"apikey": token.token}
     try:
-        response = await client.request("GET", f"/currency_data/historical?date={date_str}", headers=headers)
+        response = await client.request("GET", f"/historical?apikey={token}&currencies=&date={date_str}")
     except Exception as e:
         raise errors.ApiHTTPException(
             status_code=500,
@@ -151,7 +150,7 @@ async def get_currency_historical(session: AsyncSession, date: datetime) -> sche
             )
         raise RuntimeError(json)
     await used_token(session, token)
-    return schemas.CurrencyApiLayer.model_validate(json)
+    return schemas.CurrencyAPI.model_validate(json)
 
 
 async def validate_token(token: str) -> bool:

@@ -24,7 +24,3 @@ ENV VIRTUAL_ENV=/app/.venv \
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
 COPY . .
-
-#CMD ["poetry", "shell"]
-#CMD ["aerich", "upgrade"]
-#CMD ["poetry", "exit"]

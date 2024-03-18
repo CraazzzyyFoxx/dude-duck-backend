@@ -3,7 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
-__all__ = ("CurrencyTokenRead", "CurrencyApiLayer")
+__all__ = ("CurrencyTokenRead", "CurrencyApiLayer", "CurrencyAPI", "CurrencyMetaAPI", "CurrencyEntityAPI")
 
 
 class CurrencyTokenRead(BaseModel):
@@ -33,3 +33,23 @@ class CurrencyApiLayer(BaseModel):
     @field_validator("date", mode="before")
     def date_validator(cls, v: str) -> datetime:
         return datetime.strptime(v, "%Y-%m-%d")
+
+
+class CurrencyMetaAPI(BaseModel):
+    last_updated_at: datetime
+
+
+class CurrencyEntityAPI(BaseModel):
+    code: str
+    value: float
+
+
+class CurrencyAPI(BaseModel):
+    meta: CurrencyMetaAPI
+    data: dict[str, CurrencyEntityAPI]
+
+    def normalize_quotes(self) -> dict[str, float]:
+        data = {}
+        for name, value in self.data.items():
+            data[value.code] = value.value
+        return data

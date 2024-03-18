@@ -13,7 +13,7 @@ python-dotenv = "^1.0.0"
 dateparser = "^1.2.0"
 loguru = "^0.7.0"
 sentry-sdk = {extras = ["fastapi"], version = "^1.40.0"}
-fastapi = "^0.109"
+fastapi = "^0.110"
 uvloop = {version = "^0.17.0", platform="linux"}
 pydantic-extra-types = "^2.5.0"
 phonenumbers = "^8.13.25"
@@ -53,7 +53,7 @@ black = "^23.9.1"
 
 [tool.black]
 line-length = 120
-target_version = ['py311']
+target_version = ['py312']
 include = '\.pyi?$'
 
 [tool.ruff]
@@ -105,8 +105,8 @@ line-length = 120
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-# Assume Python 3.11
-target-version = "py311"
+# Assume Python 3.12
+target-version = "py312"
 
 [tool.ruff.mccabe]
 # -Unlike

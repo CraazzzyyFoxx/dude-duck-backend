@@ -36,7 +36,6 @@ cache.setup("mem://")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    db.Base.metadata.create_all(db.engine)
     async with db.async_session_maker() as session:
         await settings_service.create(session)
         await auth_flows.create_first_superuser(session)

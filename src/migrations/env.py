@@ -6,19 +6,14 @@ from alembic import context
 
 from src.core import db
 from src.core.config import app
+from src.models import *  # noqa
 
 sys.path.append(os.path.join(sys.path[0], "src"))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-
-section = config.config_ini_section
-config.set_section_option(section, "POSTGRES_HOST", app.postgres_host)
-config.set_section_option(section, "POSTGRES_PORT", app.postgres_port)
-config.set_section_option(section, "POSTGRES_USER", app.postgres_user)
-config.set_section_option(section, "POSTGRES_DB", app.postgres_db)
-config.set_section_option(section, "POSTGRES_PASSWORD", app.postgres_password)
+config.set_main_option("sqlalchemy.url", app.db_url_asyncpg + "?async_fallback=True")
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
