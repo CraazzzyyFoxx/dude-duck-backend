@@ -145,14 +145,12 @@ async def get_currency_historical(session: AsyncSession, date: datetime) -> sche
         ) from e
     if response.status_code == 429:
         raise RuntimeError("API Layer currency request limit exceeded.")
+    if response.status_code == 422:
+        raise errors.ApiHTTPException(
+            status_code=400,
+            detail=[errors.ApiException(msg="Invalid date", code="invalid_date")],
+        )
     json = response.json()
-    if json["success"] is False:
-        if json["error"]["code"] == 302:
-            raise errors.ApiHTTPException(
-                status_code=400,
-                detail=[errors.ApiException(msg="Invalid date", code="invalid_date")],
-            )
-        raise RuntimeError(json)
     await used_token(session, token)
     return schemas.CurrencyAPI.model_validate(json)
 
