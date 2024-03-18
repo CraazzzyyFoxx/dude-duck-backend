@@ -45,6 +45,7 @@ class CurrencyEntityAPI(BaseModel):
 
 
 class CurrencyAPI(BaseModel):
+    date: datetime
     meta: CurrencyMetaAPI
     data: dict[str, CurrencyEntityAPI]
 

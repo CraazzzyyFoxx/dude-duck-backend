@@ -151,6 +151,7 @@ async def get_currency_historical(session: AsyncSession, date: datetime) -> sche
             detail=[errors.ApiException(msg="Invalid date", code="invalid_date")],
         )
     json = response.json()
+    json["date"] = date
     await used_token(session, token)
     return schemas.CurrencyAPI.model_validate(json)
 
