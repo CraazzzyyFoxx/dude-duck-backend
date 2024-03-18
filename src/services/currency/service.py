@@ -82,7 +82,11 @@ async def create(session: AsyncSession, currency_in: schemas.CurrencyAPI) -> mod
             )
     else:
         quotes["WOW"] = settings.currency_wow
-    currency = models.Currency(date=currency_in.date, timestamp=currency_in.timestamp, quotes=quotes)
+    currency = models.Currency(
+        date=currency_in.date,
+        timestamp=currency_in.meta.last_updated_at.timestamp(),
+        quotes=quotes
+    )
     session.add(currency)
     await session.commit()
     return currency
