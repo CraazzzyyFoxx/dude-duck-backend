@@ -61,6 +61,5 @@ networks:
   backend:
     driver: bridge
   npm:
-    driver: bridge
     external: true
     name: npm
