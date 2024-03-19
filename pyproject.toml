@@ -40,7 +40,7 @@ hikari = "^2.0.0.dev122"
 cashews = "^7.0.0"
 h2 = "^4.1.0"
 orjson = "3.9.13"
-psycopg = "^3.1.18"
+psycopg = {extras = ["binary"], version = "^3.1.18"}
 
 
 [tool.poetry.group.dev.dependencies]
