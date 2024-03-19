@@ -112,7 +112,7 @@ async def get_by_filter(session: AsyncSession, params: schemas.ScreenshotParams)
     query = params.apply_filters(sa.select(models.Screenshot))
     result = await session.scalars(params.apply_pagination(query))
     total = await session.execute(params.apply_filters(sa.select(sa.func.count(models.Screenshot.id))))
-    results = [models.ScreenshotRead.model_validate(row, from_attributes=True) for row in result.all()]
+    results = [schemas.ScreenshotRead.model_validate(row, from_attributes=True) for row in result.all()]
     return pagination.Paginated(
         results=results,
         total=total.scalar_one(),

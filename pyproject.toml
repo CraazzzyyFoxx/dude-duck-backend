@@ -22,8 +22,6 @@ httpx = "^0.26.0"
 deepdiff = "^6.7.1"
 flower = "^2.0.1"
 redis = "^5.0.0"
-asgiref = "^3.7.2"
-gunicorn = "^21.2.0"
 gspread = "^6.0.0"
 setuptools = "^68.2.2"
 celery = "^5.3.5"
@@ -42,6 +40,7 @@ hikari = "^2.0.0.dev122"
 cashews = "^7.0.0"
 h2 = "^4.1.0"
 orjson = "3.9.13"
+psycopg = "^3.1.18"
 
 
 [tool.poetry.group.dev.dependencies]

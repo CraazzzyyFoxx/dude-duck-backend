@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2Pas
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from src import models
+from src import models, schemas
 from src.core import config, db, errors
 
 from . import service
@@ -143,7 +143,7 @@ async def create_first_superuser(session: AsyncSession):
     if not await service.get_first_superuser(session):
         await service.create(
             session,
-            models.UserCreate(
+            schemas.UserCreate(
                 email=config.app.super_user_email,
                 password=config.app.super_user_password,
                 name=config.app.super_user_username,

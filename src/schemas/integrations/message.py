@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import Select
 
+from src import models
 from src.core import enums, pagination
 
 __all__ = (
@@ -157,13 +158,13 @@ class OrderMessagePaginationParams(pagination.PaginationParams):
     is_preorder: bool | None = None
 
     def apply_filter(self, query: Select) -> Select:
-        query = query.where(OrderMessage.integration == self.integration)
+        query = query.where(models.OrderMessage.integration == self.integration)
         if self.channel_id:
-            query = query.where(OrderMessage.channel_id == self.channel_id)
+            query = query.where(models.OrderMessage.channel_id == self.channel_id)
         if self.order_id:
-            query = query.where(OrderMessage.order_id == self.order_id)
+            query = query.where(models.OrderMessage.order_id == self.order_id)
         if self.is_preorder is not None:
-            query = query.where(OrderMessage.is_preorder == self.is_preorder)
+            query = query.where(models.OrderMessage.is_preorder == self.is_preorder)
         return query
 
 
@@ -173,11 +174,11 @@ class ResponseMessagePaginationParams(pagination.PaginationParams):
     user_id: int | None = None
 
     def apply_filter(self, query: Select) -> Select:
-        query = query.where(ResponseMessage.integration == self.integration)
+        query = query.where(models.ResponseMessage.integration == self.integration)
         if self.order_id:
-            query = query.where(ResponseMessage.order_id == self.order_id)
+            query = query.where(models.ResponseMessage.order_id == self.order_id)
         if self.user_id:
-            query = query.where(ResponseMessage.user_id == self.user_id)
+            query = query.where(models.ResponseMessage.user_id == self.user_id)
         return query
 
 
@@ -186,7 +187,7 @@ class UserMessagePaginationParams(pagination.PaginationParams):
     user_id: int | None = None
 
     def apply_filter(self, query: Select) -> Select:
-        query = query.where(UserMessage.integration == self.integration)
+        query = query.where(models.UserMessage.integration == self.integration)
         if self.user_id:
-            query = query.where(UserMessage.user_id == self.user_id)
+            query = query.where(models.UserMessage.user_id == self.user_id)
         return query

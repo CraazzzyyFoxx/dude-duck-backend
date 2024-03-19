@@ -10,7 +10,7 @@ from starlette import status
 
 from src import models, schemas
 from src.core import config, errors
-from src.utils import jwt
+from src.utils import jwt as jwt_utils
 
 from . import utils
 
@@ -122,12 +122,12 @@ async def request_verify_email(session: AsyncSession, user: models.User) -> None
         "email": user.email,
         "aud": config.app.verification_token_audience,
     }
-    token = jwt.generate_jwt(token_data, config.app.verify_email_secret)
+    token = jwt_utils.generate_jwt(token_data, config.app.verify_email_secret)
 
 
 async def verify_email(session: AsyncSession, token: str) -> models.User:
     try:
-        data = jwt.decode_jwt(
+        data = jwt_utils.decode_jwt(
             token,
             config.app.verify_email_secret,
             [config.app.verification_token_audience],
@@ -187,14 +187,14 @@ async def forgot_password(user: models.User) -> None:
         "password_fingerprint": utils.hash_password(user.hashed_password),
         "aud": config.app.reset_password_token_audience,
     }
-    token = jwt.generate_jwt(token_data, config.app.reset_password_secret, 900)
+    token = jwt_utils.generate_jwt(token_data, config.app.reset_password_secret, 900)
     logger.warning(token)
     return
 
 
 async def reset_password(session: AsyncSession, token: str, password: str) -> models.User:
     try:
-        data = jwt.decode_jwt(
+        data = jwt_utils.decode_jwt(
             token,
             config.app.reset_password_secret,
             [config.app.reset_password_token_audience],
@@ -239,7 +239,7 @@ async def verify_access_token(session: AsyncSession, token: str | None) -> model
     if token is None:
         return None
     try:
-        data = jwt.decode_jwt(
+        data = jwt_utils.decode_jwt(
             token,
             config.app.access_token_secret,
             [config.app.access_token_audience],
@@ -276,7 +276,7 @@ async def refresh_tokens(session: AsyncSession, token: str | None) -> tuple[str,
             detail=[errors.ApiException(msg="INVALID_REFRESH_TOKEN", code="INVALID_REFRESH_TOKEN")],
         )
     try:
-        data = jwt.decode_jwt(
+        data = jwt_utils.decode_jwt(
             token,
             config.app.refresh_token_secret,
             [config.app.access_token_audience],
@@ -319,8 +319,8 @@ async def create_access_token(session: AsyncSession, user: models.User) -> tuple
         "sub": schemas.UserRead.model_validate(user, from_attributes=True).model_dump(mode="json"),
         "aud": config.app.access_token_audience,
     }
-    access_token = jwt.generate_jwt(token_data, config.app.access_token_secret, 24 * 3600 * 7)
-    refresh_token = jwt.generate_jwt(token_data, config.app.refresh_token_secret, 24 * 3600 * 30)
+    access_token = jwt_utils.generate_jwt(token_data, config.app.access_token_secret, 24 * 3600 * 7)
+    refresh_token = jwt_utils.generate_jwt(token_data, config.app.refresh_token_secret, 24 * 3600 * 30)
     query = sa.insert(models.RefreshToken).values(token=refresh_token, user_id=user.id)
     await session.execute(query)
     await session.commit()

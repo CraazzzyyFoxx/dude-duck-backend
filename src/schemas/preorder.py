@@ -14,7 +14,7 @@ __all__ = (
     "PreOrderReadUser",
 )
 
-from src.models.integrations.sheets import SheetEntity
+from src.models.general import SheetEntity
 
 
 class PreOrderPriceMeta(BaseModel):

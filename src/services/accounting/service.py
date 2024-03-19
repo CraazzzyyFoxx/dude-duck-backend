@@ -105,7 +105,7 @@ async def create(
         raise e
     else:
         if not boosters:
-            order_update = models.OrderUpdate(auth_date=datetime.now(UTC))
+            order_update = schemas.OrderUpdate(auth_date=datetime.now(UTC))
             new_order = await order_service.update(session, order, order_update)
             if sync:
                 await sheets_flows.order_to_sheets(

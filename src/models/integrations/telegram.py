@@ -16,5 +16,3 @@ class TelegramAccount(db.TimeStampMixin):
 
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), nullable=False, unique=True)
     user: Mapped["User"] = relationship()
-
-

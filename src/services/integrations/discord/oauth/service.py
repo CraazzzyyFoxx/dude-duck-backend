@@ -16,7 +16,7 @@ cache.setup(config.app.redis_url.unicode_string())
 discord_app = hikari.RESTApp()
 
 
-async def get_by_user_id(session: AsyncSession, user_id: int) -> models.OAuthUser:
+async def get_by_user_id(session: AsyncSession, user_id: int) -> models.OAuthUser | None:
     query = sa.select(models.OAuthUser).where(
         models.OAuthUser.user_id == user_id, models.OAuthUser.oauth_name == "discord"
     )

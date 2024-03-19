@@ -14,7 +14,7 @@ from . import utils
 
 async def get_user_notification(
     session: AsyncSession, user_id: int, notification_type: enums.Integration
-) -> models.UserNotification:
+) -> models.UserNotification | None:
     query = sa.select(models.UserNotification).where(
         models.UserNotification.user_id == user_id, models.UserNotification.type == notification_type
     )

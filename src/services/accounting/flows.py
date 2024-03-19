@@ -222,11 +222,11 @@ async def close_order(
             detail=[errors.ApiException(msg="You don't have access to the order", code="forbidden")],
         )
     await screenshot_service.create(session, user, order, data.url.unicode_string())
-    update_model = models.OrderUpdate(end_date=datetime.now(tz=UTC))
+    update_model = schemas.OrderUpdate(end_date=datetime.now(tz=UTC))
     new_order = await order_service.update(session, order, update_model)
     await sheets_flows.order_to_sheets(session, new_order, await order_flows.format_order_system(session, new_order))
     notifications_flows.send_order_close_notify(
-        models.UserRead.model_validate(user),
+        schemas.UserRead.model_validate(user),
         order.order_id,
         str(data.url),
         data.message,
@@ -251,7 +251,7 @@ async def paid_order(session: AsyncSession, payment_id: int) -> models.UserOrder
     await service.update(session, order, user, schemas.UserOrderUpdate(paid=True), patch=True)
     boosters = await service.get_by_order_id(session, order.id)
     if all(booster.paid for booster in boosters):
-        update_model = models.OrderUpdate(status_paid=models.OrderPaidStatus.Paid)
+        update_model = schemas.OrderUpdate(status_paid=models.OrderPaidStatus.Paid)
         new_order = await order_service.update(session, order, update_model)
         await sheets_flows.order_to_sheets(
             session,

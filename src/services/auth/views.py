@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from src import schemas
-from src.utils import get_integration
+from src.utils.integration import get_integration
 from src.core import enums, errors
 from src.core.db import get_async_session
 from src.services.integrations.notifications import flows as notifications_flows

@@ -22,7 +22,7 @@ router = APIRouter(
 
 @router.get("/get-url-connect", status_code=status.HTTP_200_OK, response_model=schemas.DiscordOAuthUrl)
 async def get_discord_oauth_url(request: Request, user: models.User = Depends(auth_flows.current_active)):
-    return service.get_oauth_url(request, models.UserRead.model_validate(user, from_attributes=True))
+    return service.get_oauth_url(request, schemas.UserRead.model_validate(user, from_attributes=True))
 
 
 @router.get("/callback", status_code=status.HTTP_200_OK)

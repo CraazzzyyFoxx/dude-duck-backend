@@ -32,7 +32,7 @@ async def fetch_order_from_sheets(
 ):
     model = await flows.get_order_from_sheets(session, data, user)
     if model.shop_order_id:
-        return await orders_flows.create(session, models.OrderCreate.model_validate(model.model_dump()))
+        return await orders_flows.create(session, schemas.OrderCreate.model_validate(model.model_dump()))
     else:
         return await preorder_flows.create(session, schemas.PreOrderCreate.model_validate(model.model_dump()))
 
@@ -49,7 +49,7 @@ async def update_order_from_sheets(
     model = await flows.get_order_from_sheets(session, data, user)
     if model.shop_order_id:
         order = await orders_flows.get_by_order_id(session, model.order_id)
-        return await orders_service.update(session, order, models.OrderUpdate.model_validate(model.model_dump()))
+        return await orders_service.update(session, order, schemas.OrderUpdate.model_validate(model.model_dump()))
     else:
         preorder = await preorder_flows.get_by_order_id(session, model.order_id)
         return await preorder_service.update(
@@ -74,7 +74,7 @@ async def patch_order_from_sheets(
         return await orders_service.update(
             session,
             order,
-            models.OrderUpdate.model_validate(model.model_dump()),
+            schemas.OrderUpdate.model_validate(model.model_dump()),
             patch=True,
         )
     else:
@@ -233,7 +233,7 @@ async def create_order_message(data: schemas.CreateOrderSheetMessage, session=De
                 configs=data.configs,
             ),
         )
-        notifications_flows.send_sent_order_notify(preorder_read.order_id, resp)
+        notifications_flows.send_sent_order_notify(preorder_read.order_id, enums.Integration.telegram, resp)
     else:
         order = await order_flows.get_by_order_id(session, data.order_id)
         order_read = await order_flows.format_order_system(session, order)
@@ -248,7 +248,7 @@ async def create_order_message(data: schemas.CreateOrderSheetMessage, session=De
                 configs=data.configs,
             ),
         )
-        notifications_flows.send_sent_order_notify(order_read.order_id, resp)
+        notifications_flows.send_sent_order_notify(order_read.order_id, enums.Integration.telegram, resp)
 
     return resp
 
@@ -264,7 +264,7 @@ async def delete_order_message(data: schemas.DeleteOrderSheetMessage, session=De
                 order_id=preorder.id,
             ),
         )
-        notifications_flows.send_deleted_order_notify(preorder.order_id, resp)
+        notifications_flows.send_deleted_order_notify(preorder.order_id, enums.Integration.telegram, resp)
     else:
         order = await order_flows.get_by_order_id(session, data.order_id)
         resp = await message_service.delete_order_message(
@@ -274,7 +274,7 @@ async def delete_order_message(data: schemas.DeleteOrderSheetMessage, session=De
                 order_id=order.id,
             ),
         )
-        notifications_flows.send_deleted_order_notify(order.order_id, resp)
+        notifications_flows.send_deleted_order_notify(order.order_id, enums.Integration.telegram, resp)
     return resp
 
 
@@ -293,7 +293,7 @@ async def update_order_message(data: schemas.UpdateOrderSheetMessage, session=De
                 configs=data.configs,
             ),
         )
-        notifications_flows.send_edited_order_notify(preorder.order_id, resp)
+        notifications_flows.send_edited_order_notify(preorder.order_id, enums.Integration.telegram, resp)
     else:
         order = await order_flows.get_by_order_id(session, data.order_id)
         order_read = await order_flows.format_order_system(session, order)
@@ -307,5 +307,5 @@ async def update_order_message(data: schemas.UpdateOrderSheetMessage, session=De
                 configs=data.configs,
             ),
         )
-        notifications_flows.send_edited_order_notify(order.order_id, resp)
+        notifications_flows.send_edited_order_notify(order.order_id, enums.Integration.telegram, resp)
     return resp

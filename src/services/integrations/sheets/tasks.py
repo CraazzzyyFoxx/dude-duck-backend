@@ -7,7 +7,7 @@ from loguru import logger
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src import models
+from src import models, schemas
 from src.core import config, db, errors
 from src.services.accounting import flows as accounting_flows
 from src.services.accounting import service as accounting_service
@@ -40,16 +40,17 @@ async def boosters_from_order_sync(
                         dollars = await currency_flows.currency_to_usd(session, price, order.date, currency="RUB")
                         await accounting_flows.add_booster_with_price(session, order_db, user, dollars, sync=False)
             except errors.ApiHTTPException as e:
-                logger.error(
-                    f"Error while add booster {user.name} [id: {user.id}] "
-                    f"to order {order_db.order_id} [id: {order_db.id}] Error: {e.detail}"
-                )
+                if user:
+                    logger.error(
+                        f"Error while add booster {user.name} [id: {user.id}] "
+                        f"to order {order_db.order_id} [id: {order_db.id}] Error: {e.detail}"
+                    )
 
     for b in boosters:
         if b.completed != (order.status == models.OrderStatus.Completed) or b.paid != (
             order.status_paid == models.OrderPaidStatus.Paid
         ):
-            update_model = models.UserOrderUpdate(
+            update_model = schemas.UserOrderUpdate(
                 completed=True if order.status == models.OrderStatus.Completed else False,
                 paid=True if order.status_paid == models.OrderPaidStatus.Paid else False,
             )
@@ -92,7 +93,7 @@ async def sync_data_from(
                 if config.app.debug:
                     logger.info(diff)
                 try:
-                    update_data = models.OrderUpdate.model_validate(order.model_dump())
+                    update_data = schemas.OrderUpdate.model_validate(order.model_dump())
                     if update_data.status == models.OrderStatus.Refund:
                         await order_service.delete(session, order_db.id)
                         deleted += 1
@@ -115,7 +116,7 @@ async def sync_data_from(
     for order in orders.values():
         if order.shop_order_id is not None:
             try:
-                insert_data = models.OrderCreate.model_validate(order.model_dump())
+                insert_data = schemas.OrderCreate.model_validate(order.model_dump())
                 order_db = await order_service.create(session, insert_data)
                 await boosters_from_order_sync(session, order_db, order, users, users_ids)
                 if order.screenshot is not None:

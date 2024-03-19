@@ -16,7 +16,7 @@ from . import service
 
 
 async def manage_preorders():
-    async with db.async_session_maker() as session:
+    async with db.session_maker() as session:
         creds = await sheets_service.get_first_superuser_token(session)
         settings = await settings_service.get(session)
         if creds is None:

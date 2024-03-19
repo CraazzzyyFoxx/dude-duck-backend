@@ -11,7 +11,7 @@ from . import service
 async def get(session: AsyncSession, currency_date: datetime) -> models.Currency:
     currency = await service.get_by_date(session, currency_date)
     if currency is None:
-        data = await service.get_currency_historical(session, currency_date)
+        data = await service.get_currency_historical(currency_date)
         currency = await service.create(session, data)
     return currency
 
