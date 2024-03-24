@@ -368,13 +368,13 @@ files = [
 
 [[package]]
 name = "cashews"
-version = "7.0.0"
+version = "7.0.2"
 description = "cache tools with async power"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "cashews-7.0.0-py3-none-any.whl", hash = "sha256:0a54b6ed5f718da2f74509f67770e8741350e5e8bdff7f1ffba9e950451613fa"},
-    {file = "cashews-7.0.0.tar.gz", hash = "sha256:43bf2b0a1acf89206a0f8166657dbafcaa948b2c8e00471746e9a647c21d9fd6"},
+    {file = "cashews-7.0.2-py3-none-any.whl", hash = "sha256:fa984d918461fab97cd232e2ccdd027c8b87b2a60062799b16b9b04c61307c1f"},
+    {file = "cashews-7.0.2.tar.gz", hash = "sha256:27ea1e2b74b95fe094d99197c60160a791f837c603b93120f39430c8a2767ca8"},
 ]
 
 [package.extras]
@@ -383,7 +383,7 @@ diskcache = ["diskcache (>=5.0.0)"]
 lint = ["mypy (>=1.5.0)", "types-redis"]
 redis = ["redis (>=4.3.1,!=5.0.1)"]
 speedup = ["bitarray (<3.0.0)", "hiredis", "xxhash (<4.0.0)"]
-tests = ["hypothesis", "pytest", "pytest-asyncio (==0.23.3)"]
+tests = ["hypothesis", "pytest", "pytest-asyncio (==0.21.1)"]
 
 [[package]]
 name = "celery"
@@ -2933,4 +2933,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "0ce18f7db4ed65eac993f550f1ff898b5020d41ede0df2b453c82269bde3e8e3"
+content-hash = "6f078ed20353139c0240b15815ae498494548a0550a6645b10d36fedac91d81b"
