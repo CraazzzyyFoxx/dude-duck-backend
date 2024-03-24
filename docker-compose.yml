@@ -13,11 +13,12 @@ services :
     ports:
       - "6379:6379"
       - "8001:8001"
-    networks:
-      - backend
 
   app:
+    image: "craazzzyyfoxx/dude-duck-backend:latest"
     container_name: app
+    env_file:
+      - .env
     build:
       context: .
       dockerfile: Dockerfile
@@ -26,36 +27,33 @@ services :
     command: uvicorn main:app --host 0.0.0.0 --port ${PORT} --loop uvloop
     ports:
       - "${PORT}:${PORT}"
-    networks:
-      - npm
-      - backend
+
   worker:
+    image: "craazzzyyfoxx/dude-duck-backend:latest"
     container_name: worker
     command: celery -A src.services.tasks.service.celery worker --beat --loglevel=info
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       - redis
-    networks:
-      - backend
-      - npm
+
   flower:
+    image: "craazzzyyfoxx/dude-duck-backend:latest"
     container_name: flower
     command: celery --broker=${CELERY_BROKER_URL} flower --port=5555 --basic_auth=${POSTGRES_USER}:${POSTGRES_PASSWORD}
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "5555:5555"
     depends_on:
       - redis
       - worker
-    networks:
-      - npm
-      - backend
-
-
-networks:
-  backend:
-    driver: bridge
-  npm:
-    external: true
-    name: npm
 
 
 volumes:
