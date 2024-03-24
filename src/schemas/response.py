@@ -4,10 +4,9 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Select
 
 from src.core import pagination
+from src import models
 
-__all__ = ("ResponseExtra", "ResponseCreate", "ResponseRead", "ResponseUpdate", "Response", "ResponsePagination")
-
-from src.models import Response
+__all__ = ("ResponseExtra", "ResponseCreate", "ResponseRead", "ResponseUpdate", "ResponsePagination")
 
 
 class ResponseExtra(BaseModel):
@@ -58,9 +57,9 @@ class ResponsePagination(pagination.PaginationParams):
 
     def apply_filter(self, query: Select) -> Select:
         if self.order_id is not None:
-            query = query.where(Response.order_id == self.order_id)
+            query = query.where(models.Response.order_id == self.order_id)
         if self.user_id is not None:
-            query = query.where(Response.user_id == self.user_id)
+            query = query.where(models.Response.user_id == self.user_id)
         if self.is_preorder is not None:
-            query = query.where(Response.is_preorder == self.is_preorder)
+            query = query.where(models.Response.is_preorder == self.is_preorder)
         return query
